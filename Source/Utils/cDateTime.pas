@@ -2,10 +2,10 @@
 {                                                                              }
 {   Library:          Fundamentals 4.00                                        }
 {   File name:        cDateTime.pas                                            }
-{   File version:     4.20                                                     }
+{   File version:     4.21                                                     }
 {   Description:      DateTime functions                                       }
 {                                                                              }
-{   Copyright:        Copyright © 1999-2010, David J Butler                    }
+{   Copyright:        Copyright © 1999-2011, David J Butler                    }
 {                     All rights reserved.                                     }
 {                     Redistribution and use in source and binary forms, with  }
 {                     or without modification, are permitted provided that     }
@@ -56,6 +56,7 @@
 {   2008/12/30  4.18  Revision.                                                }
 {   2009/10/09  4.19  Compilable with Delphi 2009 Win32/.NET.                  }
 {   2010/06/27  4.20  Compilable with FreePascal 2.4.0 OSX x86-64              }
+{   2011/05/04  4.21  Moved timer functions to cTimers unit.                   }
 {                                                                              }
 { Supported compilers:                                                         }
 {                                                                              }
@@ -433,56 +434,6 @@ function  RFCTimeZoneToGMTBias(const Zone: AnsiString): Integer;
 
 
 {                                                                              }
-{ Tick timer                                                                   }
-{                                                                              }
-{   The tick timer returns millisecond units.                                  }
-{   On some systems the tick is only accurate to the nearest 10ms.             }
-{                                                                              }
-function  GetTick: LongWord;
-function  TickDelta(const D1, D2: LongWord): Integer;
-
-
-
-{                                                                              }
-{ High-precision timer                                                         }
-{                                                                              }
-{   StartTimer returns an encoded time (running timer).                        }
-{   StopTimer returns an encoded elapsed time (stopped timer).                 }
-{   ResumeTimer returns an encoded time (running timer), given an encoded      }
-{     elapsed time (stopped timer).                                            }
-{   StoppedTimer returns an encoded elapsed time of zero, ie a stopped timer   }
-{     with no time elapsed.                                                    }
-{   MillisecondsElapsed returns elapsed time for a timer in milliseconds.      }
-{   MicrosecondsElapsed returns elapsed time for a timer in microseconds.      }
-{   DelayMicroSeconds goes into a tight loop for the specified duration. It    }
-{     should be used where short and accurate delays are required.             }
-{   GetHighPrecisionFrequency returns the resolution of the high-precision     }
-{     timer in units per second.                                               }
-{   GetHighPrecisionTimerOverhead calculates the overhead associated with      }
-{     calling both StartTimer and StopTimer. Use this value as Overhead when   }
-{     calling AdjustTimerForOverhead.                                          }
-{                                                                              }
-type
-  THPTimer = Int64;
-
-function  StartTimer: THPTimer;
-procedure StopTimer(var Timer: THPTimer);
-procedure ResumeTimer(var StoppedTimer: THPTimer);
-function  StoppedTimer: THPTimer;
-function  ElapsedTimer(const Milliseconds: Integer): THPTimer;
-function  MillisecondsElapsed(const Timer: THPTimer;
-          const TimerRunning: Boolean = True): Integer;
-function  MicrosecondsElapsed(const Timer: THPTimer;
-          const TimerRunning: Boolean = True): Int64;
-procedure DelayMicroSeconds(const MicroSeconds: Integer);
-function  GetHighPrecisionFrequency: Int64;
-function  GetHighPrecisionTimerOverhead: Int64;
-procedure AdjustTimerForOverhead(var StoppedTimer: THPTimer;
-          const Overhead: Int64 = 0);
-
-
-
-{                                                                              }
 { Constants                                                                    }
 {                                                                              }
 {   TropicalYear is the time for one orbit of the earth around the sun.        }
@@ -503,9 +454,9 @@ function  TimePeriodStr(const D: TDateTime): AnsiString;
 {                                                                              }
 { Test cases                                                                   }
 {                                                                              }
-{$IFDEF DEBUG}
+{$IFDEF DEBUG}{$IFDEF SELFTEST}
 procedure SelfTest;
-{$ENDIF}
+{$ENDIF}{$ENDIF}
 
 
 
@@ -533,6 +484,9 @@ uses
   {$ENDIF}
 
   { Fundamentals }
+  {$IFDEF DEBUG}{$IFDEF SELFTEST}
+  cTimers,
+  {$ENDIF}{$ENDIF}
   cUtils,
   cStrings;
 
@@ -1846,232 +1800,6 @@ end;
 
 
 {                                                                              }
-{ Tick timer                                                                   }
-{                                                                              }
-{$IFDEF WindowsPlatform}
-function GetTick: LongWord;
-begin
-  Result := GetTickCount;
-end;
-{$ELSE}{$IFDEF UNIX}
-function GetTick: LongWord;
-begin
-  Result := LongWord(DateTimeToTimeStamp(Now).Time);
-end;
-{$ENDIF}{$ENDIF}
-
-{$Q-}
-function TickDelta(const D1, D2: LongWord): Integer;
-begin
-  Result := Integer(D2 - D1);
-end;
-{$IFDEF DEBUG}{$Q+}{$ENDIF}
-
-
-
-{                                                                              }
-{ High-precision timing                                                        }
-{                                                                              }
-{$IFDEF WindowsPlatform}
-var
-  HighPrecisionTimerInit     : Boolean = False;
-  HighPrecisionMilliFactor   : Int64;  // millisecond factor
-  HighPrecisionMicroFactor   : Int64;  // microsecond factor
-
-function CPUClockFrequency: Int64;
-begin
-  if not QueryPerformanceFrequency(Result) then
-    raise EDateTime.Create(SHighResTimerNotAvailable);
-end;
-
-procedure InitHighPrecisionTimer;
-var F : Int64;
-begin
-  F := CPUClockFrequency;
-  HighPrecisionMilliFactor := F div 1000;
-  HighPrecisionMicroFactor := F div 1000000;
-  HighPrecisionTimerInit := True;
-end;
-{$ENDIF}
-{$IFDEF UNIX}
-const
-  HighPrecisionMilliFactor = 1000;  // millisecond factor
-  HighPrecisionMicroFactor = 1;     // microsecond factor
-{$ENDIF}
-
-{$IFDEF WindowsPlatform}
-function GetHighPrecisionCounter: Int64;
-begin
-  if not HighPrecisionTimerInit then
-    InitHighPrecisionTimer;
-  QueryPerformanceCounter(Result);
-end;
-{$ENDIF}
-{$IFDEF UNIX}
-{$IFDEF FREEPASCAL}
-function GetHighPrecisionCounter: Int64;
-var TV : TTimeVal;
-    TZ : PTimeZone;
-begin
-  TZ := nil;
-  fpGetTimeOfDay(@TV, TZ);
-  Result := Int64(TV.tv_sec) * 1000000 + Int64(TV.tv_usec);
-end;
-{$ELSE}
-function GetHighPrecisionCounter: Int64;
-var T : Ttimeval;
-begin
-  GetTimeOfDay(T, nil);
-  Result := Int64(T.tv_sec) * 1000000 + Int64(T.tv_usec);
-end;
-{$ENDIF}
-{$ENDIF}
-
-function StartTimer: Int64;
-begin
-  Result := GetHighPrecisionCounter;
-end;
-
-{$Q-}
-function MillisecondsElapsed(const Timer: Int64; const TimerRunning: Boolean = True): Integer;
-begin
-  if not TimerRunning then
-    Result := Timer div HighPrecisionMilliFactor
-  else
-    Result := Integer(Int64(GetHighPrecisionCounter - Timer) div HighPrecisionMilliFactor);
-end;
-{$IFDEF DEBUG}{$Q+}{$ENDIF}
-
-{$IFDEF WindowsPlatform}
-{$Q-}
-function MicrosecondsElapsed(const Timer: Int64; const TimerRunning: Boolean = True): Int64;
-begin
-  if not TimerRunning then
-    Result := Timer div HighPrecisionMicroFactor
-  else
-    {$IFDEF DELPHI5}
-    Result := Int64((GetHighPrecisionCounter - Timer) div HighPrecisionMicroFactor);
-    {$ELSE}
-    Result := Int64(Int64(GetHighPrecisionCounter - Timer) div HighPrecisionMicroFactor);
-    {$ENDIF}
-end;
-{$IFDEF DEBUG}{$Q+}{$ENDIF}
-{$ELSE}{$IFDEF UNIX}
-{$Q-}
-function MicrosecondsElapsed(const Timer: Int64; const TimerRunning: Boolean = True): Int64;
-begin
-  if not TimerRunning then
-    Result := Timer
-  else
-    Result := Int64(GetHighPrecisionCounter - Timer);
-end;
-{$IFDEF DEBUG}{$Q+}{$ENDIF}
-{$ENDIF}{$ENDIF}
-
-{$Q-}
-procedure StopTimer(var Timer: Int64);
-begin
-  Timer := Int64(GetHighPrecisionCounter - Timer);
-end;
-{$IFDEF DEBUG}{$Q+}{$ENDIF}
-
-procedure ResumeTimer(var StoppedTimer: Int64);
-begin
-  StoppedTimer := Int64(StartTimer - StoppedTimer);
-end;
-
-function StoppedTimer: Int64;
-begin
-  Result := 0;
-end;
-
-{$Q-}
-function ElapsedTimer(const Milliseconds: Integer): THPTimer;
-begin
-  {$IFDEF DELPHI5}
-  Result := GetHighPrecisionCounter - (Milliseconds * HighPrecisionMilliFactor);
-  {$ELSE}
-  Result := Int64(GetHighPrecisionCounter - (Milliseconds * HighPrecisionMilliFactor));
-  {$ENDIF}
-end;
-{$IFDEF DEBUG}{$Q+}{$ENDIF}
-
-{$Q-}{$IFDEF DELPHI5}{$OPTIMIZATION OFF}{$ENDIF}
-procedure DelayMicroSeconds(const MicroSeconds: Integer);
-var I, J, F : Int64;
-begin
-  if MicroSeconds <= 0 then
-    exit;
-  I := GetHighPrecisionCounter;
-  {$IFDEF DELPHI5}
-  F := MicroSeconds * HighPrecisionMicroFactor;
-  {$ELSE}
-  F := Int64(MicroSeconds * HighPrecisionMicroFactor);
-  {$ENDIF}
-  repeat
-    J := GetHighPrecisionCounter;
-  {$IFDEF DELPHI5}
-  until J - I >= F;
-  {$ELSE}
-  until Int64(J - I) >= F;
-  {$ENDIF}
-end;
-{$IFDEF DEBUG}{$Q+}{$ENDIF}{$IFDEF DELPHI5}{$OPTIMIZATION ON}{$ENDIF}
-
-{$IFDEF WindowsPlatform}
-function GetHighPrecisionFrequency: Int64;
-begin
-  Result := CPUClockFrequency;
-end;
-{$ELSE}{$IFDEF UNIX}
-function GetHighPrecisionFrequency: Int64;
-begin
-  Result := 1000000;
-end;
-{$ENDIF}{$ENDIF}
-
-function GetHighPrecisionTimerOverhead: Int64;
-var T : THPTimer;
-    I : Integer;
-    H : Int64;
-begin
-  T := StartTimer;
-  StopTimer(T);
-  H := T;
-  for I := 1 to 1000 do
-    begin
-      T := StartTimer;
-      StopTimer(T);
-      if T < H then
-        H := T;
-    end;
-  Result := H;
-end;
-
-{$Q-}{$IFDEF DELPHI5}{$OPTIMIZATION OFF}{$ENDIF}
-procedure AdjustTimerForOverhead(var StoppedTimer: THPTimer;
-    const Overhead: Int64);
-begin
-  if Overhead <= 0 then
-    {$IFDEF DELPHI5}
-    StoppedTimer := StoppedTimer - GetHighPrecisionTimerOverhead
-    {$ELSE}
-    StoppedTimer := Int64(StoppedTimer - GetHighPrecisionTimerOverhead)
-    {$ENDIF}
-  else
-    {$IFDEF DELPHI5}
-    StoppedTimer := StoppedTimer - Overhead;
-    {$ELSE}
-    StoppedTimer := Int64(StoppedTimer - Overhead);
-    {$ENDIF}
-  if StoppedTimer < 0 then
-    StoppedTimer :=0;
-end;
-{$IFDEF DEBUG}{$Q+}{$ENDIF}{$IFDEF DELPHI5}{$OPTIMIZATION ON}{$ENDIF}
-
-
-
-{                                                                              }
 { Natural language                                                             }
 {                                                                              }
 function TimePeriodStr(const D: TDateTime): AnsiString;
@@ -2128,7 +1856,8 @@ end;
 {                                                                              }
 { Test cases                                                                   }
 {                                                                              }
-{$IFDEF DEBUG}{$ASSERTIONS ON}
+{$IFDEF DEBUG}{$IFDEF SELFTEST}
+{$ASSERTIONS ON}
 procedure SelfTest;
 var Ye, Mo, Da         : Word;
     Ho, Mi, Se, Ms     : Word;
@@ -2214,14 +1943,14 @@ begin
   Assert(GetHighPrecisionFrequency >= 1000, 'GetHighPrecisionFrequency');
   for I := 1 to 10 do
     begin
-      T1 := StartTimer;
-      DelayMicroSeconds(1000 * I);
+      StartTimer(T1);
+      WaitMicroseconds(1000 * I);
       E := MicrosecondsElapsed(T1, True);
 
       if not ((E >= 1000 * I) and (E <= 1000 * I * 2 + 15000)) then
         begin
           // ?? Debug why this fails every once in a while
-          Writeln('DEBUG this: ', 1000 * I, ' ', E, ' ', 1000 * I * 2 + 15000, ' ', T1, ' ', StartTimer);
+          Writeln('DEBUG this: ', 1000 * I, ' ', E, ' ', 1000 * I * 2 + 15000, ' ', T1);
           Readln;
         end;
 
@@ -2235,7 +1964,7 @@ begin
   I := 0;
   F := GetTick;
   repeat
-    DelayMicroSeconds(1000);
+    WaitMicroseconds(1000);
     I := I + 1;
   until (GetTick <> F) or (I > 100);
   Assert(GetTick <> F, 'GetTick');
@@ -2259,7 +1988,7 @@ begin
   Assert(NextWorkDay(EncodeDate(2006, 1, 13)) = EncodeDate(2006, 1, 16), 'NextWorkDay');
   Assert(NextWorkDay(EncodeDate(2006, 1, 16)) = EncodeDate(2006, 1, 17), 'NextWorkDay');
 end;
-{$ENDIF}
+{$ENDIF}{$ENDIF}
 
 
 
