@@ -1,7 +1,7 @@
 {******************************************************************************}
 {                                                                              }
 {   File name:        cDefines.inc                                             }
-{   File updated:     2010/07/09                                               }
+{   File updated:     2011/03/17                                               }
 {                                                                              }
 {   Library:          Fundamentals 4.00                                        }
 {   Home page:        http://fundementals.sourceforge.net                      }
@@ -77,6 +77,7 @@
 {   SupportAnonymousMethods    - Compiler supports anonymous methods.          }
 {   SupportUnicodeString       - Compiler supports UnicodeString type.         }
 {   SupportRawByteString       - Compiler supports RawByteString type.         }
+{   SupportEnumValue           - Compiler supports enumeration values.         }
 {                                                                              }
 {   CharIsAnsi      - Default Char type is AnsiChar.                           }
 {   CharIsWide      - Default Char type is WideChar.                           }
@@ -509,6 +510,7 @@
   {$IFDEF DELPHI2009_UP}{$IFDEF ManagedCode}
     {$UNDEF SupportUCS4String}
   {$ENDIF}{$ENDIF}
+  {$DEFINE SupportEnumValue}
 {$ENDIF}
 {$IFDEF DELPHI2005_UP}
   {$DEFINE SupportInline}
@@ -613,6 +615,7 @@
   {$DEFINE CharIsAnsi}
   {$DEFINE StringIsAnsi}
   {$DEFINE SetSizeAlignIsLongWord}
+  {$DEFINE SupportEnumValue}
 {$ENDIF}
 
 
