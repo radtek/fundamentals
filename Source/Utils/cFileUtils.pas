@@ -58,7 +58,9 @@
 {$IFDEF FREEPASCAL}
   {$WARNINGS OFF}{$HINTS OFF}
 {$ENDIF}
-{$WARN SYMBOL_PLATFORM OFF}
+{$IFDEF DELPHI6_UP}
+  {$WARN SYMBOL_PLATFORM OFF}
+{$ENDIF}
 unit cFileUtils;
 
 interface
@@ -126,27 +128,28 @@ function  WinPathToUnixPath(const Path: AnsiString): AnsiString;
 {                                                                              }
 type
   TFileError = (
-    feNone             = $00,
-    feInvalidParameter = $01,
+    feNone             {$IFDEF SupportEnumValue} = $00 {$ENDIF},
+    feInvalidParameter {$IFDEF SupportEnumValue} = $01 {$ENDIF},
 
-    feFileError        = $10,
-    feFileOpenError    = $11,
-    feFileCreateError  = $12,
-    feFileSharingError = $13,
-    feFileSeekError    = $14,
-    feFileReadError    = $15,
-    feFileWriteError   = $16,
-    feFileSizeError    = $17,
-    feFileExists       = $18,
-    feFileDoesNotExist = $19,
-    feFileMoveError    = $1A,
+    feFileError        {$IFDEF SupportEnumValue} = $10 {$ENDIF},
+    feFileOpenError    {$IFDEF SupportEnumValue} = $11 {$ENDIF},
+    feFileCreateError  {$IFDEF SupportEnumValue} = $12 {$ENDIF},
+    feFileSharingError {$IFDEF SupportEnumValue} = $13 {$ENDIF},
+    feFileSeekError    {$IFDEF SupportEnumValue} = $14 {$ENDIF},
+    feFileReadError    {$IFDEF SupportEnumValue} = $15 {$ENDIF},
+    feFileWriteError   {$IFDEF SupportEnumValue} = $16 {$ENDIF},
+    feFileSizeError    {$IFDEF SupportEnumValue} = $17 {$ENDIF},
+    feFileExists       {$IFDEF SupportEnumValue} = $18 {$ENDIF},
+    feFileDoesNotExist {$IFDEF SupportEnumValue} = $19 {$ENDIF},
+    feFileMoveError    {$IFDEF SupportEnumValue} = $1A {$ENDIF},
+    feFileDeleteError  {$IFDEF SupportEnumValue} = $1B {$ENDIF},
 
-    feOutOfSpace       = $20,
-    feOutOfResources   = $21,
-    feInvalidFilePath  = $22,
-    feInvalidFileName  = $23,
-    feAccessDenied     = $24,
-    feDeviceFailure    = $25
+    feOutOfSpace       {$IFDEF SupportEnumValue} = $20 {$ENDIF},
+    feOutOfResources   {$IFDEF SupportEnumValue} = $21 {$ENDIF},
+    feInvalidFilePath  {$IFDEF SupportEnumValue} = $22 {$ENDIF},
+    feInvalidFileName  {$IFDEF SupportEnumValue} = $23 {$ENDIF},
+    feAccessDenied     {$IFDEF SupportEnumValue} = $24 {$ENDIF},
+    feDeviceFailure    {$IFDEF SupportEnumValue} = $25 {$ENDIF}
   );
 
   EFileError = class(Exception)
@@ -318,9 +321,9 @@ function  DriveFreeSpace(const Path: AnsiString): Int64;
 {                                                                              }
 { Test cases                                                                   }
 {                                                                              }
-{$IFDEF DEBUG}
+{$IFDEF DEBUG}{$IFDEF SELFTEST}
 procedure SelfTest;
-{$ENDIF}
+{$ENDIF}{$ENDIF}
 
 
 
@@ -361,6 +364,7 @@ resourcestring
   SFileSeekError           = 'File seek error: %s';
   SInvalidFileName         = 'Invalid file name';
   SInvalidPath             = 'Invalid path';
+  SFileDeleteError         = 'File delete error: %s';
 
 
 
@@ -1184,7 +1188,7 @@ begin
   if FileName = '' then
     raise EFileError.Create(feInvalidParameter, SInvalidFileName);
   if not DeleteFile(FileName) then
-    RaiseLastOSError;
+    raise EFileError.CreateFmt(feFileDeleteError, SFileDeleteError, [GetLastOSErrorMessage]);
 end;
 
 procedure FileRenameExA(
@@ -1557,7 +1561,7 @@ end;
 {                                                                              }
 { Test cases                                                                   }
 {                                                                              }
-{$IFDEF DEBUG}
+{$IFDEF DEBUG}{$IFDEF SELFTEST}
 {$ASSERTIONS ON}
 procedure SelfTest;
 begin
@@ -1706,7 +1710,7 @@ begin
   Assert(UnixPathToWinPath('/c/d.f') = '\c\d.f', 'UnixPathToWinPath');
   Assert(WinPathToUnixPath('\c\d.f') = '/c/d.f', 'WinPathToUnixPath');
 end;
-{$ENDIF}
+{$ENDIF}{$ENDIF}
 
 
 

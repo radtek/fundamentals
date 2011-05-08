@@ -1,7 +1,7 @@
 {******************************************************************************}
 {                                                                              }
 {   File name:        cHugeInt.pas                                             }
-{   File version:     4.15                                                     }
+{   File version:     4.16                                                     }
 {   Description:      HugeInt functions                                        }
 {                                                                              }
 {   Copyright:        Copyright © 2001-2011, David J Butler                    }
@@ -50,6 +50,7 @@
 {   2010/12/01  4.13  HugeWordAssignBuf.                                       }
 {   2011/01/24  4.14  Revised for FreePascal 2.4.2.                            }
 {   2011/01/25  4.15  THugeInt class.                                          }
+{   2011/04/02  4.16  Compilable with Delphi 5.                                }
 {                                                                              }
 {******************************************************************************}
 
@@ -456,6 +457,23 @@ uses
   SysUtils,
   { Fundamentals }
   cRandom;
+
+
+
+{                                                                              }
+{ Utilities                                                                    }
+{                                                                              }
+
+{$IFDEF DELPHI5}
+type
+  PByte = ^Byte;
+  PLongWord = ^LongWord;
+  PLongInt = ^LongInt;
+{$ENDIF}
+
+const
+  MinInt32 = LongInt(Low(LongInt)); // -$80000000
+  MinInt64 = Int64(Low(Int64));     // -$8000000000000000
 
 
 
@@ -3402,7 +3420,7 @@ begin
   if B < 0 then
     begin
       A.Sign := -1;
-      if B = -$8000000000000000 then // -Min(Int64) is out of Int64 range
+      if B = MinInt64 {-$8000000000000000} then // -Min(Int64) is out of Int64 range
         begin
           HugeWordSetSize(A.Value, 2);
           HugeWordSetElement(A.Value, 0, $00000000);
@@ -3609,7 +3627,16 @@ begin
   if A.Sign > 0 then
     Result := HugeWordToWord32(A.Value) else
   if A.Sign < 0 then
-    Result := -HugeWordToWord32(A.Value)
+    begin
+      {$IFDEF DELPHI5}
+      // Delphi5 incorrectly raises an exception if done as:
+      //   Result := -HugeWordToWord32(A.Value)
+      Result := HugeWordToWord32(A.Value);
+      Result := -Result;
+      {$ELSE}
+      Result := -HugeWordToWord32(A.Value)
+      {$ENDIF}
+    end
   else
     Result := 0;
 end;
@@ -3641,9 +3668,21 @@ begin
       if (A.Value.Used = 2) and
          (HugeWordGetElement(A.Value, 1) = $80000000) and
          (HugeWordGetElement(A.Value, 0) = $00000000) then
-        Result := -$8000000000000000
+        Result := MinInt64 { -$8000000000000000 }
       else
-        Result := -HugeWordToInt64(A.Value);
+        begin
+          {$IFDEF DELPHI5}
+          // Delphi5 incorrectly raises an overflow with 7FFFFFFFFFFFFFFF
+          if (A.Value.Used = 2) and
+             (HugeWordGetElement(A.Value, 1) = $7FFFFFFF) and
+             (HugeWordGetElement(A.Value, 0) = $FFFFFFFF) then
+            Result := -$7FFFFFFFFFFFFFFF
+          else
+            Result := -HugeWordToInt64(A.Value);
+          {$ELSE}
+          Result := -HugeWordToInt64(A.Value);
+          {$ENDIF}
+        end;
     end
   else
     Result := 0;
@@ -3677,7 +3716,7 @@ begin
       Result := False
     else
       begin
-        if B = -$8000000000000000 then
+        if B = MinInt64 { -$8000000000000000 } then
           begin
             if HugeWordGetSize(A.Value) <> 2 then
               Result := False
@@ -3744,7 +3783,7 @@ begin
       Result := -1
     else
       begin
-        if B = -$8000000000000000 then
+        if B = MinInt64 { -$8000000000000000 } then
           begin
             L := HugeWordGetSize(A.Value);
             if L < 2 then
@@ -5033,9 +5072,9 @@ begin
   Assert(HugeIntToInt32(A) = 0);
   StrToHugeInt('0', A);
   Assert(HugeIntIsZero(A));
-  Assert(HugeIntCompareInt64(A, -$8000000000000000) = 1);
+  Assert(HugeIntCompareInt64(A, MinInt64 { -$8000000000000000 }) = 1);
   Assert(HugeIntCompareInt64(A, $7FFFFFFFFFFFFFFF) = -1);
-  Assert(not HugeIntEqualsInt64(A, -$8000000000000000));
+  Assert(not HugeIntEqualsInt64(A, MinInt64 { -$8000000000000000 }));
   HugeIntAddInt32(A, 0);
   Assert(HugeIntIsZero(A));
   HugeIntSubtractInt32(A, 0);
@@ -5074,9 +5113,9 @@ begin
   Assert(HugeIntIsWord32Range(A));
   StrToHugeInt('1', A);
   Assert(HugeIntIsOne(A));
-  Assert(HugeIntCompareInt64(A, -$8000000000000000) = 1);
+  Assert(HugeIntCompareInt64(A, MinInt64 { -$8000000000000000 }) = 1);
   Assert(HugeIntCompareInt64(A, $7FFFFFFFFFFFFFFF) = -1);
-  Assert(not HugeIntEqualsInt64(A, -$8000000000000000));
+  Assert(not HugeIntEqualsInt64(A, MinInt64 { -$8000000000000000 }));
   HugeIntAddInt32(A, 0);
   Assert(HugeIntIsOne(A));
   HugeIntSubtractInt32(A, 0);
@@ -5110,9 +5149,9 @@ begin
   Assert(not HugeIntIsWord32Range(A));
   StrToHugeInt('-1', A);
   Assert(HugeIntIsMinusOne(A));
-  Assert(HugeIntCompareInt64(A, -$8000000000000000) = 1);
+  Assert(HugeIntCompareInt64(A, MinInt64 { -$8000000000000000 }) = 1);
   Assert(HugeIntCompareInt64(A, $7FFFFFFFFFFFFFFF) = -1);
-  Assert(not HugeIntEqualsInt64(A, -$8000000000000000));
+  Assert(not HugeIntEqualsInt64(A, MinInt64 { -$8000000000000000 }));
   HugeIntMultiplyInt8(A, 1);
   Assert(HugeIntIsMinusOne(A));
   HugeIntAddWord32(A, 1);
@@ -5127,13 +5166,13 @@ begin
   Assert(HugeWordIsOne(F));
 
   // MinInt64 (-$8000000000000000)
-  HugeIntAssignInt64(A, -$8000000000000000);
-  Assert(HugeIntToInt64(A) = -$8000000000000000);
+  HugeIntAssignInt64(A, MinInt64 { -$8000000000000000 });
+  Assert(HugeIntToInt64(A) = MinInt64 { -$8000000000000000 });
   Assert(HugeIntToStr(A) = '-9223372036854775808');
   Assert(HugeIntToHex(A) = '-8000000000000000');
-  Assert(HugeIntEqualsInt64(A, -$8000000000000000));
-  Assert(not HugeIntEqualsInt64(A, -$80000000));
-  Assert(HugeIntCompareInt64(A, -$8000000000000000) = 0);
+  Assert(HugeIntEqualsInt64(A, MinInt64 { -$8000000000000000 }));
+  Assert(not HugeIntEqualsInt64(A, MinInt32 { -$80000000 }));
+  Assert(HugeIntCompareInt64(A, MinInt64 { -$8000000000000000 }) = 0);
   Assert(HugeIntCompareInt64(A, -$7FFFFFFFFFFFFFFF) = -1);
   Assert(not HugeIntIsInt32Range(A));
   Assert(HugeIntIsInt64Range(A));
@@ -5142,11 +5181,11 @@ begin
   HugeIntAbsInPlace(A);
   Assert(HugeIntToStr(A) = '9223372036854775808');
   Assert(HugeIntToHex(A) = '8000000000000000');
-  Assert(not HugeIntEqualsInt64(A, -$8000000000000000));
-  Assert(HugeIntCompareInt64(A, -$8000000000000000) = 1);
+  Assert(not HugeIntEqualsInt64(A, MinInt64 { -$8000000000000000 }));
+  Assert(HugeIntCompareInt64(A, MinInt64 { -$8000000000000000 }) = 1);
   Assert(not HugeIntIsInt64Range(A));
   HugeIntNegate(A);
-  Assert(HugeIntToInt64(A) = -$8000000000000000);
+  Assert(HugeIntToInt64(A) = MinInt64 { -$8000000000000000 });
 
   // MinInt64 + 1 (-$7FFFFFFFFFFFFFFF)
   HugeIntAssignInt64(A, -$7FFFFFFFFFFFFFFF);
@@ -5154,34 +5193,34 @@ begin
   Assert(HugeIntToStr(A) = '-9223372036854775807');
   Assert(HugeIntToHex(A) = '-7FFFFFFFFFFFFFFF');
   Assert(HugeIntEqualsInt64(A, -$7FFFFFFFFFFFFFFF));
-  Assert(not HugeIntEqualsInt64(A, -$8000000000000000));
+  Assert(not HugeIntEqualsInt64(A, MinInt64 { -$8000000000000000 }));
   Assert(HugeIntCompareInt64(A, -$7FFFFFFFFFFFFFFE) = -1);
   Assert(HugeIntCompareInt64(A, -$7FFFFFFFFFFFFFFF) = 0);
-  Assert(HugeIntCompareInt64(A, -$8000000000000000) = 1);
+  Assert(HugeIntCompareInt64(A, MinInt64 { -$8000000000000000 }) = 1);
   Assert(HugeIntIsInt64Range(A));
   HugeIntAbsInPlace(A);
   Assert(HugeIntToStr(A) = '9223372036854775807');
   Assert(HugeIntToHex(A) = '7FFFFFFFFFFFFFFF');
   Assert(HugeIntToInt64(A) = $7FFFFFFFFFFFFFFF);
   Assert(HugeIntEqualsInt64(A, $7FFFFFFFFFFFFFFF));
-  Assert(not HugeIntEqualsInt64(A, -$8000000000000000));
-  Assert(HugeIntCompareInt64(A, -$8000000000000000) = 1);
+  Assert(not HugeIntEqualsInt64(A, MinInt64 { -$8000000000000000 }));
+  Assert(HugeIntCompareInt64(A, MinInt64 { -$8000000000000000 }) = 1);
   Assert(HugeIntIsInt64Range(A));
   HugeIntNegate(A);
   Assert(HugeIntToInt64(A) = -$7FFFFFFFFFFFFFFF);
 
   // MinInt64 - 1 (-$8000000000000001)
-  HugeIntAssignInt64(A, -$8000000000000000);
+  HugeIntAssignInt64(A, MinInt64 { -$8000000000000000 });
   HugeIntSubtractInt32(A, 1);
   Assert(HugeIntToStr(A) = '-9223372036854775809');
   Assert(HugeIntToHex(A) = '-8000000000000001');
-  Assert(not HugeIntEqualsInt64(A, -$8000000000000000));
-  Assert(HugeIntCompareInt64(A, -$8000000000000000) = -1);
+  Assert(not HugeIntEqualsInt64(A, MinInt64 { -$8000000000000000 }));
+  Assert(HugeIntCompareInt64(A, MinInt64 { -$8000000000000000 }) = -1);
   Assert(not HugeIntIsInt64Range(A));
   HugeIntAbsInPlace(A);
   Assert(HugeIntToStr(A) = '9223372036854775809');
-  Assert(not HugeIntEqualsInt64(A, -$8000000000000000));
-  Assert(HugeIntCompareInt64(A, -$8000000000000000) = 1);
+  Assert(not HugeIntEqualsInt64(A, MinInt64 { -$8000000000000000 }));
+  Assert(HugeIntCompareInt64(A, MinInt64 { -$8000000000000000 }) = 1);
   HugeIntNegate(A);
   Assert(HugeIntToStr(A) = '-9223372036854775809');
 

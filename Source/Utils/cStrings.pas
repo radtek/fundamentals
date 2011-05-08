@@ -2,10 +2,10 @@
 {                                                                              }
 {   Library:          Fundamentals 4.00                                        }
 {   File name:        cStrings.pas                                             }
-{   File version:     4.47                                                     }
+{   File version:     4.48                                                     }
 {   Description:      String utility functions                                 }
 {                                                                              }
-{   Copyright:        Copyright © 1999-2010, David J Butler                    }
+{   Copyright:        Copyright © 1999-2011, David J Butler                    }
 {                     All rights reserved.                                     }
 {                     Redistribution and use in source and binary forms, with  }
 {                     or without modification, are permitted provided that     }
@@ -91,10 +91,11 @@
 {                     Initial update for Delphi 2009.                          }
 {   2009/10/09  4.46  Compilable with Delphi 2009 Win32/.NET.                  }
 {   2010/06/27  4.47  Compilable with FreePascal 2.4.0 OSX x86-64              }
+{   2011/03/17  4.48  Compilable with Delphi 5.                                }
 {                                                                              }
 { Supported compilers:                                                         }
 {                                                                              }
-{   Borland Delphi 5 Win32 i386         4.44  2009/01/04                       }
+{   Borland Delphi 5 Win32 i386         4.48  2011/03/17                       }
 {   Borland Delphi 6 Win32 i386                                                }
 {   Borland Delphi 7 Win32 i386         4.46  2009/10/09                       }
 {   Borland Delphi 2005 Win32 i386                                             }
@@ -454,12 +455,13 @@ const
   WideDEL  = WideChar(#127);
   WideXON  = WideDC1;
   WideXOFF = WideDC3;
-
+  {$IFNDEF DELPHI5}
+  // Both definitions below for WideCRLF fail with Delphi 5
   {$IFDEF DELPHI7_DOWN}
   WideCRLF = WideString(WideCR) + WideString(WideLF);
   {$ELSE}
   WideCRLF = WideCR + WideLF;
-  {$ENDIF}
+  {$ENDIF}{$ENDIF}
 
   WideNoBreakSpace       = WideChar(#$00A0);
   WideLineSeparator      = WideChar(#$2028);
@@ -473,7 +475,7 @@ const
   WideInvalid            = WideChar(#$FFFF);
 
   WideCopyrightSign      = WideChar(#$00A9);
-  WideRegisteredSign     = WideChar(#$00AE);
+  WideRegisteredSign     = WideChar(#$00AE); 
 
   WideHighSurrogateFirst        = WideChar(#$D800);
   WideHighSurrogateLast         = WideChar(#$DB7F);

@@ -2,7 +2,7 @@
 {                                                                              }
 {   Library:          Fundamentals 4.00                                        }
 {   File name:        cHash.pas                                                }
-{   File version:     4.15                                                     }
+{   File version:     4.16                                                     }
 {   Description:      Hashing functions                                        }
 {                                                                              }
 {   Copyright:        Copyright © 1999-2011, David J Butler                    }
@@ -52,6 +52,7 @@
 {   2010/11/15  4.13  Added HMAC-SHA256.                                       }
 {   2010/11/16  4.14  Added SHA512.                                            }
 {   2010/11/17  4.15  Added HMAC-SHA512, SHA224, SHA384.                       }
+{   2011/04/02  4.16  Compilable with Delphi 5.                                }
 {                                                                              }
 { Supported compilers:                                                         }
 {                                                                              }
@@ -1615,7 +1616,14 @@ begin
   Q^ := $80;
   Inc(Q);
 
-  L := Int64(TotalSize * 8);
+  {$IFDEF DELPHI5}
+  // Delphi 5 sometimes reports fatal error (internal error C1093) when compiling:
+  //   L := TotalSize * 8
+  L := TotalSize;
+  L := L * 8;
+  {$ELSE}
+  L := TotalSize * 8;
+  {$ENDIF}
   if SwapEndian then
     ReverseMem(L, 8);
   if BufSize + 1 > 64 - Sizeof(Int64) then
@@ -1659,7 +1667,14 @@ begin
   Q^ := $80;
   Inc(Q);
 
-  L := Int64(TotalSize * 8);
+  {$IFDEF DELPHI5}
+  // Delphi 5 sometimes reports fatal error (internal error C1093) when compiling:
+  //   L := TotalSize * 8
+  L := TotalSize;
+  L := L * 8;
+  {$ELSE}
+  L := TotalSize * 8;
+  {$ENDIF}
   if SwapEndian then
     ReverseMem(L, 8);
   if BufSize + 1 > 128 - Sizeof(Int64) * 2 then

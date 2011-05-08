@@ -5,7 +5,7 @@
 {   File version:     4.21                                                     }
 {   Description:      Reader, Writer and Stream classes                        }
 {                                                                              }
-{   Copyright:        Copyright © 1999-2010, David J Butler                    }
+{   Copyright:        Copyright © 1999-2011, David J Butler                    }
 {                     All rights reserved.                                     }
 {                     Redistribution and use in source and binary forms, with  }
 {                     or without modification, are permitted provided that     }
