@@ -313,9 +313,9 @@ function  WideSplit(const S, D: WideString): WideStringArray;
 {                                                                              }
 { Self-testing code                                                            }
 {                                                                              }
-{$IFDEF DEBUG}
+{$IFDEF DEBUG}{$IFDEF SELFTEST}
 procedure SelfTest;
-{$ENDIF}
+{$ENDIF}{$ENDIF}
 
 
 

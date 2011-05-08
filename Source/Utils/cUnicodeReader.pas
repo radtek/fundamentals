@@ -183,8 +183,9 @@ type
 {                                                                              }
 { Test cases                                                                   }
 {                                                                              }
-{$ASSERTIONS ON}
+{$IFDEF DEBUG}{$IFDEF SELFTEST}
 procedure SelfTest;
+{$ENDIF}{$ENDIF}
 
 
 
