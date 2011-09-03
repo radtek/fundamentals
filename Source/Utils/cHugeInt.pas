@@ -1,7 +1,7 @@
 {******************************************************************************}
 {                                                                              }
 {   File name:        cHugeInt.pas                                             }
-{   File version:     4.16                                                     }
+{   File version:     4.17                                                     }
 {   Description:      HugeInt functions                                        }
 {                                                                              }
 {   Copyright:        Copyright © 2001-2011, David J Butler                    }
@@ -51,6 +51,7 @@
 {   2011/01/24  4.14  Revised for FreePascal 2.4.2.                            }
 {   2011/01/25  4.15  THugeInt class.                                          }
 {   2011/04/02  4.16  Compilable with Delphi 5.                                }
+{   2011/09/03  4.17  Fix for Delphi 7 in HugeIntToInt32.                      }
 {                                                                              }
 {******************************************************************************}
 
@@ -2829,6 +2830,8 @@ end;
 const
   HexLookupU = '0123456789ABCDEF';
   HexLookupL = '0123456789abcdef';
+  HexLookupU_AnsiStr : AnsiString = HexLookupU;
+  HexLookupL_AnsiStr : AnsiString = HexLookupL;
 
 function HugeWordToHex(const A: HugeWord): AnsiString;
 var L, I, J : Integer;
@@ -2883,8 +2886,8 @@ begin
             B := A[L - I * 8 - J];
           E := 16;
           for D := 1 to 16 do
-            if (B = HexLookupU[D]) or
-               (B = HexLookupL[D]) then
+            if (B = HexLookupU_AnsiStr[D]) or
+               (B = HexLookupL_AnsiStr[D]) then
               begin
                 E := D - 1;
                 break;
@@ -3628,14 +3631,11 @@ begin
     Result := HugeWordToWord32(A.Value) else
   if A.Sign < 0 then
     begin
-      {$IFDEF DELPHI5}
-      // Delphi5 incorrectly raises an exception if done as:
+      // Delphi5/7 incorrectly raises an exception if the following is done
+      // in one statement, i.e.
       //   Result := -HugeWordToWord32(A.Value)
       Result := HugeWordToWord32(A.Value);
       Result := -Result;
-      {$ELSE}
-      Result := -HugeWordToWord32(A.Value)
-      {$ENDIF}
     end
   else
     Result := 0;
@@ -5623,16 +5623,19 @@ begin
   T := GetTickCount - T;
   Writeln('Compare: ', 1000 / (T / 100000):0:1, '/s');
 
-  HugeWordRandom(A, 100);
-  HugeWordRandom(B, 100);
+//  HugeWordRandom(A, 100);
+//  HugeWordRandom(B, 100);
+  HugeWordAssignInt32(A, 10);
+  HugeWordAssignInt32(B, 10);
 
   T := GetTickCount;
-  for I := 1 to 1000 do
+  for I := 1 to 10000 do
     begin
-      HugeWordMultiply_Long(C, A, B);
+//      HugeWordMultiply_Long(C, A, B);
+      HugeWordMultiply_Long(A, A, B);
     end;
   T := GetTickCount - T;
-  Writeln('Mul_Long: ', 1000 / (T / 1000):0:1, '/s');
+  Writeln('Mul_Long: ', 1000 / (T / 10000):0:1, '/s');
 
   T := GetTickCount;
   for I := 1 to 1000 do
