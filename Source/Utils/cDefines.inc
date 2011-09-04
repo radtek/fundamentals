@@ -1,7 +1,7 @@
 {******************************************************************************}
 {                                                                              }
 {   File name:        cDefines.inc                                             }
-{   File updated:     2011/03/17                                               }
+{   File updated:     2011/09/03                                               }
 {                                                                              }
 {   Library:          Fundamentals 4.00                                        }
 {   Home page:        http://fundementals.sourceforge.net                      }
@@ -37,6 +37,8 @@
 {     DELPHI2007      - Delphi 2007.                                           }
 {     DELPHI2009      - Delphi 2009.                                           }
 {     DELPHI2010      - Delphi 2010.                                           }
+{     DELPHIXE        - Delphi XE.                                             }
+{     DELPHIXE2       - Delphi XE2.                                            }                                             
 {     DELPHI3_UP      - Delphi 3 or later.                                     }
 {     DELPHI4_UP      - Delphi 4 or later.                                     }
 {     DELPHI5_UP      - Delphi 5 or later.                                     }
@@ -48,6 +50,8 @@
 {     DELPHI2007_UP   - Delphi 2007 or later.                                  }
 {     DELPHI2009_UP   - Delphi 2009 or later.                                  }
 {     DELPHI2010_UP   - Delphi 2010 or later.                                  }
+{     DELPHIXE_UP     - Delphi XE or later.                                    }
+{     DELPHIXE2_UP    - Delphi XE2 or later.                                   }
 {     DELPHI3_DOWN    - Delphi 3 or earlier.                                   }
 {     DELPHI4_DOWN    - Delphi 4 or earlier.                                   }
 {     DELPHI5_DOWN    - Delphi 5 or earlier.                                   }
@@ -394,24 +398,69 @@
 
 
 {                                                                              }
+{ Delphi XE                                                                    }
+{                                                                              }
+{$IFDEF VER220}
+  {$DEFINE DELPHI}
+  {$DEFINE DELPHIXE}
+  {$DEFINE DELPHI3_UP}
+  {$DEFINE DELPHI4_UP}
+  {$DEFINE DELPHI5_UP}
+  {$DEFINE DELPHI6_UP}
+  {$DEFINE DELPHI7_UP}
+  {$DEFINE DELPHI8_UP}
+  {$DEFINE DELPHI2005_UP}
+  {$DEFINE DELPHI2006_UP}
+  {$DEFINE DELPHI2007_UP}
+  {$DEFINE DELPHI2009_UP}
+  {$DEFINE DELPHI2010_UP}
+  {$DEFINE DELPHIXE_UP}
+{$ENDIF}
+
+
+
+{                                                                              }
+{ Delphi XE2                                                                   }
+{                                                                              }
+{$IFDEF VER230}
+  {$DEFINE DELPHI}
+  {$DEFINE DELPHIXE2}
+  {$DEFINE DELPHI3_UP}
+  {$DEFINE DELPHI4_UP}
+  {$DEFINE DELPHI5_UP}
+  {$DEFINE DELPHI6_UP}
+  {$DEFINE DELPHI7_UP}
+  {$DEFINE DELPHI8_UP}
+  {$DEFINE DELPHI2005_UP}
+  {$DEFINE DELPHI2006_UP}
+  {$DEFINE DELPHI2007_UP}
+  {$DEFINE DELPHI2009_UP}
+  {$DEFINE DELPHI2010_UP}
+  {$DEFINE DELPHIXE_UP}
+  {$DEFINE DELPHIXE2_UP}
+{$ENDIF}
+
+
+
+{                                                                              }
 { Future Delphi versions                                                       }
 {                                                                              }
-{$IFDEF VER215}
-  {$DEFINE DELPHI_Future}
-{$ENDIF}
-{$IFDEF VER220}
-  {$DEFINE DELPHI_Future}
-{$ENDIF}
-{$IFDEF VER225}
-  {$DEFINE DELPHI_Future}
-{$ENDIF}
-{$IFDEF VER230}
-  {$DEFINE DELPHI_Future}
-{$ENDIF}
 {$IFDEF VER235}
   {$DEFINE DELPHI_Future}
 {$ENDIF}
 {$IFDEF VER240}
+  {$DEFINE DELPHI_Future}
+{$ENDIF}
+{$IFDEF VER245}
+  {$DEFINE DELPHI_Future}
+{$ENDIF}
+{$IFDEF VER250}
+  {$DEFINE DELPHI_Future}
+{$ENDIF}
+{$IFDEF VER255}
+  {$DEFINE DELPHI_Future}
+{$ENDIF}
+{$IFDEF VER260}
   {$DEFINE DELPHI_Future}
 {$ENDIF}
 {$IFDEF DELPHI_Future}
@@ -427,6 +476,7 @@
   {$DEFINE DELPHI2007_UP}
   {$DEFINE DELPHI2009_UP}
   {$DEFINE DELPHI2010_UP}
+  {$DEFINE DELPHIXE_UP}
 {$ENDIF}
 
 
@@ -729,6 +779,9 @@
 {$IFDEF CPU386}
   {$DEFINE INTEL386}
   {$DEFINE CPU_INTEL386}
+{$ENDIF}
+{$IFDEF CPUX64}
+  {$DEFINE CPU_X86_64}
 {$ENDIF}
 {$IFDEF CPU86_64}
   {$DEFINE CPU_X86_64}
