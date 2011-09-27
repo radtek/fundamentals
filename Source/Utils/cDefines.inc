@@ -1,7 +1,7 @@
 {******************************************************************************}
 {                                                                              }
 {   File name:        cDefines.inc                                             }
-{   File updated:     2011/09/03                                               }
+{   File updated:     2011/09/27                                               }
 {                                                                              }
 {   Library:          Fundamentals 4.00                                        }
 {   Home page:        http://fundementals.sourceforge.net                      }
@@ -20,9 +20,6 @@
 {                                                                              }
 { Conditionals defined here:                                                   }
 {                                                                              }
-{   Fundamentals      - Fundamentals Library.                                  }
-{     Fundamentals4   - Fundamentals Library 4.x.                              }
-{                                                                              }
 {   DELPHI            - Delphi compiler.                                       }
 {     DELPHI1         - Delphi 1.                                              }
 {     DELPHI2         - Delphi 2.                                              }
@@ -38,7 +35,8 @@
 {     DELPHI2009      - Delphi 2009.                                           }
 {     DELPHI2010      - Delphi 2010.                                           }
 {     DELPHIXE        - Delphi XE.                                             }
-{     DELPHIXE2       - Delphi XE2.                                            }                                             
+{     DELPHIXE2       - Delphi XE2.                                            }
+{                                                                              }
 {     DELPHI3_UP      - Delphi 3 or later.                                     }
 {     DELPHI4_UP      - Delphi 4 or later.                                     }
 {     DELPHI5_UP      - Delphi 5 or later.                                     }
@@ -52,17 +50,23 @@
 {     DELPHI2010_UP   - Delphi 2010 or later.                                  }
 {     DELPHIXE_UP     - Delphi XE or later.                                    }
 {     DELPHIXE2_UP    - Delphi XE2 or later.                                   }
+{                                                                              }
 {     DELPHI3_DOWN    - Delphi 3 or earlier.                                   }
 {     DELPHI4_DOWN    - Delphi 4 or earlier.                                   }
 {     DELPHI5_DOWN    - Delphi 5 or earlier.                                   }
 {     DELPHI6_DOWN    - Delphi 6 or earlier.                                   }
 {     DELPHI7_DOWN    - Delphi 7 or earlier.                                   }
+{                                                                              }
 {   KYLIX             - Kylix compiler.                                        }
 {   BCB               - Borland C++ Builder compiler.                          }
+{                                                                              }
 {   FREEPASCAL        - Free Pascal compiler.                                  }
 {     FREEPASCAL1     - FreePascal 1.x                                         }
 {     FREEPASCAL2     - FreePascal 2.x                                         }
 {     FREEPASCAL2_UP  - FreePascal 2.x or later.                               }
+{     FREEPASCAL2_0   - FreePascal 2.0                                         }
+{     FREEPASCAL2_2   - FreePascal 2.2                                         }
+{     FREEPASCAL2_4   - FreePascal 2.4                                         }
 {                                                                              }
 {   SupportCardinal            - Compiler supports Cardinal type.              }
 {   SupportDynArray            - Compiler supports dynamic arrays.             }
@@ -83,8 +87,8 @@
 {   SupportRawByteString       - Compiler supports RawByteString type.         }
 {   SupportEnumValue           - Compiler supports enumeration values.         }
 {                                                                              }
-{   CharIsAnsi      - Default Char type is AnsiChar.                           }
-{   CharIsWide      - Default Char type is WideChar.                           }
+{   CharIsAnsi      - Default Char type is AnsiChar (1 byte).                  }
+{   CharIsWide      - Default Char type is WideChar (2 bytes).                 }
 {   StringIsAnsi    - Default String type is AnsiString.                       }
 {   StringIsUnicode - Default String type is UnicodeString.                    }
 {                                                                              }
@@ -129,14 +133,6 @@
 
 
 {                                                                              }
-{ Fundamentals Library                                                         }
-{                                                                              }
-{$DEFINE Fundamentals}
-{$DEFINE Fundamentals4}
-
-
-
-{                                                                              }
 { Delphi 1                                                                     }
 {                                                                              }
 {$IFDEF VER80}
@@ -172,6 +168,7 @@
 
 {                                                                              }
 { Delphi 3                                                                     }
+{ C Builder 3                                                                  }
 {                                                                              }
 {$IFDEF VER100}
   {$DEFINE DELPHI}
@@ -303,13 +300,14 @@
 
 
 {                                                                              }
-{ Delphi 2006                                                                  }
-{ Delphi 2007                                                                  }
+{ Delphi 2006 (or Delphi 2007)                                                 }
+{ Delphi 2006 and some releases of Delphi 2007 used VER180.                    }
+{ This file treats VER180 as Delphi 2006.                                      }
 {                                                                              }
 {$IFDEF VER180}
+{$IFNDEF VER185}
   {$DEFINE DELPHI}
   {$DEFINE DELPHI2006}
-  {$DEFINE DELPHI2007}
   {$DEFINE DELPHI3_UP}
   {$DEFINE DELPHI4_UP}
   {$DEFINE DELPHI5_UP}
@@ -318,8 +316,13 @@
   {$DEFINE DELPHI8_UP}
   {$DEFINE DELPHI2005_UP}
   {$DEFINE DELPHI2006_UP}
-  {$DEFINE DELPHI2007_UP}
 {$ENDIF}
+{$ENDIF}
+
+
+{                                                                              }
+{ Delphi 2007                                                                  }
+{                                                                              }
 {$IFDEF VER185}
   {$DEFINE DELPHI}
   {$DEFINE DELPHI2007}
@@ -396,7 +399,6 @@
 {$ENDIF}
 
 
-
 {                                                                              }
 { Delphi XE                                                                    }
 {                                                                              }
@@ -457,12 +459,7 @@
 {$IFDEF VER250}
   {$DEFINE DELPHI_Future}
 {$ENDIF}
-{$IFDEF VER255}
-  {$DEFINE DELPHI_Future}
-{$ENDIF}
-{$IFDEF VER260}
-  {$DEFINE DELPHI_Future}
-{$ENDIF}
+
 {$IFDEF DELPHI_Future}
   {$DEFINE DELPHI}
   {$DEFINE DELPHI3_UP}
@@ -477,6 +474,7 @@
   {$DEFINE DELPHI2009_UP}
   {$DEFINE DELPHI2010_UP}
   {$DEFINE DELPHIXE_UP}
+  {$DEFINE DELPHIXE2_UP}
 {$ENDIF}
 
 
@@ -545,16 +543,19 @@
   {$DEFINE SupportCurrency}
   {$DEFINE SupportVariant}
 {$ENDIF}
+
 {$IFDEF DELPHI4_UP}
   {$DEFINE SupportInt64}
   {$DEFINE SupportWideChar}
   {$DEFINE SupportDynArray}
   {$DEFINE SupportAssert}
 {$ENDIF}
+
 {$IFDEF DELPHI5_UP}
   {$DEFINE SupportOverload}
 {$ENDIF}
-{$IFDEF DELPHI7_UP}
+
+{$IFDEF DELPHI6_UP}
   {$DEFINE SupportUTF8String}
   {$DEFINE SupportUCS4String}
   {$IFDEF DELPHI2009_UP}{$IFDEF ManagedCode}
@@ -562,24 +563,35 @@
   {$ENDIF}{$ENDIF}
   {$DEFINE SupportEnumValue}
 {$ENDIF}
+
 {$IFDEF DELPHI2005_UP}
   {$DEFINE SupportInline}
   {$DEFINE SupportOperatorOverloading}
 {$ENDIF}
+
+{$IFDEF DELPHI2005}
+  {$DEFINE SupportInlineIsBuggy}
+{$ENDIF}
+
+{$IFDEF DELPHI2006}
+  {$DEFINE SupportInlineIsBuggy}
+{$ENDIF}
+
 {$IFDEF DELPHI2007_UP}
   {$DEFINE SupportForIn}
 {$ENDIF}
+
 {$IFDEF DELPHI2009_UP}
   {$DEFINE SupportAnonymousMethods}
   {$DEFINE SupportGenerics}
   {$DEFINE SupportUnicodeString}
   {$DEFINE SupportRawByteString}
-  {$IFDEF DELPHI2009_UP}{$IFDEF ManagedCode}
+  {$IFDEF ManagedCode}
     {$UNDEF SupportRawByteString}
     {$UNDEF SupportUTF8String}
-  {$ENDIF}{$ENDIF}
-{$ELSE}
+  {$ENDIF}
 {$ENDIF}
+
 {$IFDEF DELPHI}
   {$IFDEF DELPHI2009_UP}
     {$DEFINE CharIsWide}
@@ -822,9 +834,16 @@
   {$ENDIF}
 {$ENDIF}
 
+
+
+{                                                                              }
+{ Function inlining                                                            }
+{                                                                              }
 {$IFDEF SupportInline}
+  {$IFNDEF SupportInlineIsBuggy}
   {$IFNDEF PurePascal}
     {$DEFINE UseInline}
+  {$ENDIF}
   {$ENDIF}
 {$ENDIF}
 
@@ -877,11 +896,14 @@
   {$WARN UNSAFE_TYPE OFF}
   {$WARN UNSAFE_CAST OFF}
 {$ENDIF}
-{$IFDEF DELPHI2007}{$IFNDEF DOT_NET}
+
+{$IFDEF DELPHI2007}
+{$IFNDEF DOT_NET}
   {$WARN UNSAFE_CODE OFF}
   {$WARN UNSAFE_TYPE OFF}
   {$WARN UNSAFE_CAST OFF}
-{$ENDIF}{$ENDIF}
+{$ENDIF}
+{$ENDIF}
 
 {$IFDEF DOT_NET}
   {$WARN UNIT_PLATFORM OFF}
