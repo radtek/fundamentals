@@ -459,7 +459,7 @@ type
     FTLSClient : TTLSServerClient;
 
     procedure TLSClientTransportLayerSendProc(const Sender: TTLSConnection; const Buffer; const Size: Integer);
-    procedure TLSClientLog(Sender: TTLSConnection; LogType: TTLSLogType; LogMsg: AnsiString; LogLevel: Integer);
+    procedure TLSClientLog(Sender: TTLSConnection; LogType: TTLSLogType; LogMsg: String; LogLevel: Integer);
     procedure TLSClientStateChange(Sender: TTLSConnection; State: TTLSConnectionState);
 
   public
@@ -508,7 +508,7 @@ begin
   ConnectionPutWriteData(Buffer, Size);
 end;
 
-procedure TTCPServerClientTLSConnectionProxy.TLSClientLog(Sender: TTLSConnection; LogType: TTLSLogType; LogMsg: AnsiString; LogLevel: Integer);
+procedure TTCPServerClientTLSConnectionProxy.TLSClientLog(Sender: TTLSConnection; LogType: TTLSLogType; LogMsg: String; LogLevel: Integer);
 begin
   {$IFDEF TCP_DEBUG}
   Log(tlDebug, Format('TLS:%s', [LogMsg]), LogLevel + 1);

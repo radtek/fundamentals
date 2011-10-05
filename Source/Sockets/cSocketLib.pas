@@ -664,7 +664,7 @@ uses
   {$ENDIF}
   SyncObjs,
   { Fundamentals }
-  cAnsiStrSysUtils;
+  cMultiStrSysUtils;
 
 
 

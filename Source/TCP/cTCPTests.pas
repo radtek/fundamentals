@@ -538,7 +538,7 @@ type
     Lock : TCriticalSection;
     constructor Create;
     destructor Destroy; override;
-    procedure Log(Msg: AnsiString);
+    procedure Log(Msg: String);
     procedure ClientLog(Client: TF4TCPClient; LogType: TTCPClientLogType; Msg: String; LogLevel: Integer);
     procedure ServerLog(Sender: TF4TCPServer; LogType: TTCPLogType; Msg: String; LogLevel: Integer);
   end;
@@ -555,7 +555,7 @@ begin
   inherited Destroy;
 end;
 
-procedure TTCPDebugObj.Log(Msg: AnsiString);
+procedure TTCPDebugObj.Log(Msg: String);
 begin
   {$IFDEF TCP_SELFTEST_LOG_TO_CONSOLE}
   Lock.Acquire;
