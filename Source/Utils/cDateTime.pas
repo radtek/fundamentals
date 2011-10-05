@@ -1073,12 +1073,12 @@ end;
 
 function DateTimeAsISO8601String(const D: TDateTime): AnsiString;
 begin
-  Result := StrPadLeft(IntToAnsiString(Year(D)), '0', 2, False) +
-            StrPadLeft(IntToAnsiString(Month(D)), '0', 2, False) +
-            StrPadLeft(IntToAnsiString(Day(D)), '0', 2, False) + 'T' +
-            StrPadLeft(IntToAnsiString(Hour(D)), '0', 2, False) + ':' +
-            StrPadLeft(IntToAnsiString(Minute(D)), '0', 2, False) + ':' +
-            StrPadLeft(IntToAnsiString(Second(D)), '0', 2, False);
+  Result := StrPadLeftA(IntToAnsiString(Year(D)), '0', 2, False) +
+            StrPadLeftA(IntToAnsiString(Month(D)), '0', 2, False) +
+            StrPadLeftA(IntToAnsiString(Day(D)), '0', 2, False) + 'T' +
+            StrPadLeftA(IntToAnsiString(Hour(D)), '0', 2, False) + ':' +
+            StrPadLeftA(IntToAnsiString(Minute(D)), '0', 2, False) + ':' +
+            StrPadLeftA(IntToAnsiString(Second(D)), '0', 2, False);
 end;
 
 function AnsiStringToTime(const D: AnsiString): TDateTime;
@@ -1108,9 +1108,9 @@ var Date, Time : AnsiString;
     Ye, Mo, Da : Word;
 begin
   StrSplitAtChar(D, ['T', 't'], Date, Time);
-  Ye := Word(AnsiStringToInt(CopyLeft(Date, 4)));
-  Mo := Word(AnsiStringToInt(CopyRange(Date, 5, 6)));
-  Da := Word(AnsiStringToInt(CopyRange(Date, 7, 8)));
+  Ye := Word(AnsiStringToInt(CopyLeftA(Date, 4)));
+  Mo := Word(AnsiStringToInt(CopyRangeA(Date, 5, 6)));
+  Da := Word(AnsiStringToInt(CopyRangeA(Date, 7, 8)));
   Result := EncodeDate(Ye, Mo, Da) + AnsiStringToTime(Time);
 end;
 
@@ -1250,8 +1250,8 @@ var Ye, Mo, Da : Word;
 begin
   DecodeDate(D, Ye, Mo, Da);
   Result := IntToAnsiString(Ye) + '-' +
-            StrPadLeft(IntToAnsiString(Mo), '0', 2) + '-' +
-            StrPadLeft(IntToAnsiString(Da), '0', 2);
+            StrPadLeftA(IntToAnsiString(Mo), '0', 2) + '-' +
+            StrPadLeftA(IntToAnsiString(Da), '0', 2);
 end;
 
 function ISOIntegerToDateTime(const ISOInteger: Integer): TDateTime;
@@ -1285,10 +1285,10 @@ begin
   else
     Result := '';
   Result := Result + IntToAnsiString(Hour(D)) + ':' +
-            StrPadLeft(IntToAnsiString(Minute(D)), '0', 2) + ':' +
-            StrPadLeft(IntToAnsiString(Second(D)), '0', 2);
+            StrPadLeftA(IntToAnsiString(Minute(D)), '0', 2) + ':' +
+            StrPadLeftA(IntToAnsiString(Second(D)), '0', 2);
   if IncludeMilliseconds then
-    Result := Result + '.' + StrPadLeft(IntToAnsiString(Millisecond(D)), '0', 3);
+    Result := Result + '.' + StrPadLeftA(IntToAnsiString(Millisecond(D)), '0', 3);
 end;
 
 // Unix time is the number of seconds elapsed since 1 Jan 1970
@@ -1523,10 +1523,10 @@ function GMTTimeToRFC1123Time(const D: TDateTime; const IncludeSeconds: Boolean)
 var Ho, Mi, Se, Ms : Word;
 begin
   DecodeTime(D, Ho, Mi, Se, Ms);
-  Result := StrPadLeft(IntToAnsiString(Ho), '0', 2) + ':' +
-            StrPadLeft(IntToAnsiString(Mi), '0', 2);
+  Result := StrPadLeftA(IntToAnsiString(Ho), '0', 2) + ':' +
+            StrPadLeftA(IntToAnsiString(Mi), '0', 2);
   if IncludeSeconds then
-    Result := Result + ':' + StrPadLeft(IntToAnsiString(Se), '0', 2);
+    Result := Result + ':' + StrPadLeftA(IntToAnsiString(Se), '0', 2);
   Result := Result + ' GMT';
 end;
 
@@ -1539,7 +1539,7 @@ begin
   else
     Result := '';
   Result := Result +
-            StrPadLeft(IntToAnsiString(Da), '0', 2) + ' ' +
+            StrPadLeftA(IntToAnsiString(Da), '0', 2) + ' ' +
             RFCMonthNames[Mo] + ' ' +
             IntToAnsiString(Ye) + ' ' +
             GMTTimeToRFC1123Time(D, True);
@@ -1617,9 +1617,9 @@ begin
   C := Zone[1];
   if (C = '+') or (C = '-') then // +hhmm format
     begin
-      S := StrTrim(Zone, RFC_SPACE);
+      S := StrTrimA(Zone, RFC_SPACE);
       Result := MaxI(-23, MinI(23, AnsiStringToIntDef(Copy(S, 2, 2), 0))) * 60;
-      S := CopyFrom(S, 4);
+      S := CopyFromA(S, 4);
       if S <> '' then
         Result := Result + MinI(59, MaxI(0, AnsiStringToIntDef(S, 0)));
       if Zone[1] = '-' then
@@ -1627,7 +1627,7 @@ begin
     end
   else
     begin // named format
-      S := StrTrim(Zone, RFC_SPACE);
+      S := StrTrimA(Zone, RFC_SPACE);
       for I := 1 to TimeZones do
         if StrEqualNoCase(ZoneBias[I].Zone, S) then
           begin
@@ -1649,16 +1649,16 @@ begin
   Hours := 0;
   Minutes := 0;
   Seconds := 0;
-  T := StrTrim(S, RFC_SPACE);
+  T := StrTrimA(S, RFC_SPACE);
   if T = '' then
     exit;
 
   // Get Zone bias
-  I := PosCharRev(RFC_SPACE, T);
+  I := PosCharRevA(RFC_SPACE, T);
   if I > 0 then
     begin
-      Bias := RFCTimeZoneToGMTBias(CopyFrom(T, I + 1));
-      T := StrTrim(CopyLeft(T, I - 1), RFC_SPACE);
+      Bias := RFCTimeZoneToGMTBias(CopyFromA(T, I + 1));
+      T := StrTrimA(CopyLeftA(T, I - 1), RFC_SPACE);
     end
   else
     Bias := 0;
@@ -1673,10 +1673,10 @@ begin
     end else
   if (Length(U) >= 2) or (Length(U) <= 3) then // hh:mm[:ss] format (RFC1123)
     begin
-      HH := AnsiStringToIntDef(StrTrim(U[0], RFC_SPACE), 0);
-      MM := AnsiStringToIntDef(StrTrim(U[1], RFC_SPACE), 0);
+      HH := AnsiStringToIntDef(StrTrimA(U[0], RFC_SPACE), 0);
+      MM := AnsiStringToIntDef(StrTrimA(U[1], RFC_SPACE), 0);
       if Length(U) = 3 then
-        SS := AnsiStringToIntDef(StrTrim(U[2], RFC_SPACE), 0) else
+        SS := AnsiStringToIntDef(StrTrimA(U[2], RFC_SPACE), 0) else
         SS := 0;
     end
   else
@@ -1725,25 +1725,25 @@ begin
   Result := 0.0;
 
   W := nil;
-  T := StrTrim(S, RFC_SPACE);
+  T := StrTrimA(S, RFC_SPACE);
 
   // Extract Day of week
-  I := PosChar(RFC_SPACE + [','], T);
+  I := PosCharA(RFC_SPACE + [','], T);
   if I > 0 then
     begin
-      U := CopyLeft(T, I - 1);
+      U := CopyLeftA(T, I - 1);
       DOW := RFC850DayOfWeek(U);
       if DOW = -1 then
         DOW := RFC1123DayOfWeek(U);
       if DOW <> -1 then
-        T := StrTrim(CopyFrom(S, I + 1), RFC_SPACE);
+        T := StrTrimA(CopyFromA(S, I + 1), RFC_SPACE);
     end;
 
   V := StrSplitChar(T, RFC_SPACE);
   if Length(V) < 3 then
     exit;
 
-  if PosChar('-', V[0]) > 0 then // RFC850 date, eg "Sunday, 06-Nov-94 08:49:37 GMT"
+  if PosCharA('-', V[0]) > 0 then // RFC850 date, eg "Sunday, 06-Nov-94 08:49:37 GMT"
     begin
       W := StrSplitChar(V[0], AnsiChar('-'));
       if Length(W) <> 3 then

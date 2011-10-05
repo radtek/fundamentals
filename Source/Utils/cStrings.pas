@@ -2,7 +2,7 @@
 {                                                                              }
 {   Library:          Fundamentals 4.00                                        }
 {   File name:        cStrings.pas                                             }
-{   File version:     4.48                                                     }
+{   File version:     4.51                                                     }
 {   Description:      String utility functions                                 }
 {                                                                              }
 {   Copyright:        Copyright © 1999-2011, David J Butler                    }
@@ -92,17 +92,20 @@
 {   2009/10/09  4.46  Compilable with Delphi 2009 Win32/.NET.                  }
 {   2010/06/27  4.47  Compilable with FreePascal 2.4.0 OSX x86-64              }
 {   2011/03/17  4.48  Compilable with Delphi 5.                                }
+{   2011/05/28  4.49  Fix in TWideStringBuilder.                               }
+{   2011/06/14  4.50  Added Append(BufPtr) method to TStringBuilder.           }
+{   2011/09/30  4.51  Improved UnicodeString support.                          }
 {                                                                              }
 { Supported compilers:                                                         }
 {                                                                              }
-{   Borland Delphi 5 Win32 i386         4.48  2011/03/17                       }
-{   Borland Delphi 6 Win32 i386                                                }
-{   Borland Delphi 7 Win32 i386         4.46  2009/10/09                       }
-{   Borland Delphi 2005 Win32 i386                                             }
-{   Borland Delphi 2006 Win32 i386                                             }
-{   Borland Delphi 2007 Win32 i386      4.45                                   }
-{   Borland Delphi 2009 Win32 i386      4.45  2009/01/04                       }
-{   Borland Delphi 2009 .NET            4.46  2009/10/09                       }
+{   Delphi 5 Win32 i386                 4.48  2011/03/17                       }
+{   Delphi 6 Win32 i386                                                        }
+{   Delphi 7 Win32 i386                 4.46  2009/10/09                       }
+{   Delphi 2005 Win32 i386                                                     }
+{   Delphi 2006 Win32 i386                                                     }
+{   Delphi 2007 Win32 i386              4.45                                   }
+{   Delphi 2009 Win32 i386              4.50  2011/09/27                       }
+{   Delphi 2009 .NET                    4.46  2009/10/09                       }
 {   FreePascal 2.0.4 Linux i386         4.45  2009/06/06                       }
 {   FreePascal 2.2.4 OSX i386           4.47  2010/07/09                       }
 {   FreePascal 2.4.0 OSX x86-64         4.47  2010/06/27                       }
@@ -110,9 +113,18 @@
 {******************************************************************************}
 
 {$INCLUDE cDefines.inc}
+
 {$IFDEF FREEPASCAL}
-  {$WARNINGS OFF}{$HINTS OFF}
+  {$WARNINGS OFF}
+  {$HINTS OFF}
 {$ENDIF}
+
+{$IFDEF DEBUG}
+{$IFDEF SELFTEST}
+  {$DEFINE STRINGS_SELFTEST}
+{$ENDIF}
+{$ENDIF}
+
 unit cStrings;
 
 interface
@@ -475,7 +487,7 @@ const
   WideInvalid            = WideChar(#$FFFF);
 
   WideCopyrightSign      = WideChar(#$00A9);
-  WideRegisteredSign     = WideChar(#$00AE); 
+  WideRegisteredSign     = WideChar(#$00AE);
 
   WideHighSurrogateFirst        = WideChar(#$D800);
   WideHighSurrogateLast         = WideChar(#$DB7F);
@@ -502,8 +514,8 @@ const
 { Zero terminated string pointer                                               }
 {                                                                              }
 {$IFNDEF ManagedCode}
-function StrZLen(const S: PAnsiChar): Integer;
-function StrWZLen(const S: PWideChar): Integer;
+function StrZLenA(const S: PAnsiChar): Integer;
+function StrZLenW(const S: PWideChar): Integer;
 {$ENDIF}
 
 
@@ -582,8 +594,12 @@ function  StrZMatchStr(const P: PAnsiChar; const M: AnsiString;
           const CaseSensitive: Boolean): Boolean; overload;
 {$ENDIF}
 
-function  StrMatch(const S, M: AnsiString; const Index: Integer = 1): Boolean;
+function  StrMatchA(const S, M: AnsiString; const Index: Integer = 1): Boolean;
+function  StrMatchW(const S, M: WideString; const Index: Integer): Boolean;
+function  StrMatch(const S, M: String; const Index: Integer): Boolean;
+
 function  StrMatchNoCase(const S, M: AnsiString; const Index: Integer = 1): Boolean;
+
 function  StrMatchLeft(const S, M: AnsiString;
           const CaseSensitive: Boolean = True): Boolean;
 function  StrMatchRight(const S, M: AnsiString;
@@ -632,24 +648,33 @@ function  StrPPosStr(const F: String; const S: PAnsiChar; const Len: Integer): I
 function  StrZPosChar(const F: AnsiChar; const S: PAnsiChar): Integer;
 {$ENDIF}
 
-function  PosChar(const F: AnsiChar; const S: AnsiString;
-          const Index: Integer = 1): Integer; overload;
-function  PosChar(const F: CharSet; const S: AnsiString;
-          const Index: Integer = 1): Integer; overload;
-function  PosNotChar(const F: AnsiChar; const S: AnsiString;
-          const Index: Integer = 1): Integer; overload;
-function  PosNotChar(const F: CharSet; const S: AnsiString;
-          const Index: Integer = 1): Integer; overload;
-function  PosCharRev(const F: AnsiChar; const S: AnsiString;
-          const Index: Integer = 1): Integer; overload;
-function  PosCharRev(const F: CharSet; const S: AnsiString;
-          const Index: Integer = 1): Integer; overload;
-function  PosStr(const F, S: AnsiString; const Index: Integer = 1;
+function  PosCharA(const F: AnsiChar; const S: AnsiString; const Index: Integer = 1): Integer; overload;
+function  PosCharW(const F: WideChar; const S: WideString; const Index: Integer = 1): Integer;
+function  PosChar(const F: Char; const S: String; const Index: Integer = 1): Integer;
+
+function  PosCharA(const F: CharSet; const S: AnsiString; const Index: Integer = 1): Integer; overload
+
+function  PosNotCharA(const F: AnsiChar; const S: AnsiString; const Index: Integer = 1): Integer; overload;
+function  PosNotCharW(const F: WideChar; const S: WideString; const Index: Integer): Integer;
+function  PosNotChar(const F: Char; const S: String; const Index: Integer): Integer;
+
+function  PosNotCharA(const F: CharSet; const S: AnsiString; const Index: Integer = 1): Integer; overload;
+
+function  PosCharRevA(const F: AnsiChar; const S: AnsiString; const Index: Integer = 1): Integer; overload;
+function  PosCharRevW(const F: WideChar; const S: WideString; const Index: Integer): Integer;
+function  PosCharRev(const F: Char; const S: String; const Index: Integer): Integer;
+
+function  PosCharRevA(const F: CharSet; const S: AnsiString; const Index: Integer = 1): Integer; overload;
+
+function  PosStrA(const F, S: AnsiString; const Index: Integer = 1;
           const CaseSensitive: Boolean = True): Integer;
+
 function  PosStrRev(const F, S: AnsiString; const Index: Integer = 1;
           const CaseSensitive: Boolean = True): Integer;
+
 function  PosStrRevIdx(const F, S: AnsiString; const Index: Integer = 1;
           const CaseSensitive: Boolean = True): Integer;
+
 function  PosNStr(const F, S: AnsiString; const N: Integer;
           const Index: Integer = 1; const CaseSensitive: Boolean = True): Integer;
 
@@ -661,13 +686,22 @@ function  PosNStr(const F, S: AnsiString; const N: Integer;
 {   Out-of-range values of StartIndex, StopIndex and Count are clipped.        }
 {   These variants return a reference to the existing string if possible.      }
 {                                                                              }
-function  WideCopyRange(const S: WideString; const StartIndex, StopIndex: Integer): WideString;
+function  CopyRangeW(const S: WideString; const StartIndex, StopIndex: Integer): WideString;
+function  CopyRangeA(const S: AnsiString; const StartIndex, StopIndex: Integer): AnsiString;
+function  CopyRange(const S: String; const StartIndex, StopIndex: Integer): String;
 
-function  CopyRange(const S: AnsiString;
-          const StartIndex, StopIndex: Integer): AnsiString;
-function  CopyFrom(const S: AnsiString; const Index: Integer): AnsiString;
-function  CopyLeft(const S: AnsiString; const Count: Integer): AnsiString;
-function  CopyRight(const S: AnsiString; const Count: Integer): AnsiString;
+function  CopyFromW(const S: WideString; const Index: Integer): WideString;
+function  CopyFromA(const S: AnsiString; const Index: Integer): AnsiString;
+function  CopyFrom(const S: String; const Index: Integer): String;
+
+function  CopyLeftW(const S: WideString; const Count: Integer): WideString;
+function  CopyLeftA(const S: AnsiString; const Count: Integer): AnsiString;
+function  CopyLeft(const S: String; const Count: Integer): String;
+
+function  CopyRightW(const S: WideString; const Count: Integer): WideString;
+function  CopyRightA(const S: AnsiString; const Count: Integer): AnsiString;
+function  CopyRight(const S: String; const Count: Integer): String;
+
 function  CopyLeftEllipsed(const S: AnsiString; const Count: Integer): AnsiString;
 
 
@@ -679,8 +713,16 @@ function  CopyLeftEllipsed(const S: AnsiString; const Count: Integer): AnsiStrin
 {   indexes from the end of the string, eg. -2 will reference the second last  }
 {   character in the string.                                                   }
 {                                                                              }
+function  CopyExA(const S: AnsiString; const Start, Count: Integer): AnsiString;
+function  CopyExW(const S: String; const Start, Count: Integer): String;
 function  CopyEx(const S: String; const Start, Count: Integer): String;
+
 function  CopyRangeEx(const S: String; const Start, Stop: Integer): String;
+function  CopyRangeExA(const S: AnsiString; const Start, Stop: Integer): AnsiString;
+function  CopyRangeExW(const S: WideString; const Start, Stop: Integer): WideString;
+
+function  CopyFromExA(const S: AnsiString; const Start: Integer): AnsiString;
+function  CopyFromExW(const S: WideString; const Start: Integer): WideString;
 function  CopyFromEx(const S: String; const Start: Integer): String;
 
 
@@ -688,19 +730,30 @@ function  CopyFromEx(const S: String; const Start: Integer): String;
 {                                                                              }
 { Trim                                                                         }
 {                                                                              }
-function  StrTrimLeft(const S: AnsiString;
-          const C: CharSet{$IFNDEF CLR} = csWhiteSpace{$ENDIF}): AnsiString;
+function  StrTrimLeftA(const S: AnsiString; const C: CharSet{$IFNDEF CLR} = csWhiteSpace{$ENDIF}): AnsiString;
+function  StrTrimLeftW(const S: WideString; const C: CharSet{$IFNDEF CLR} = csWhiteSpace{$ENDIF}): WideString;
+function  StrTrimLeft(const S: String;      const C: CharSet{$IFNDEF CLR} = csWhiteSpace{$ENDIF}): String;
+
 procedure StrTrimLeftInPlace(var S: AnsiString;
           const C: CharSet{$IFNDEF CLR} = csWhiteSpace{$ENDIF});
+
 function  StrTrimLeftStrNoCase(const S: AnsiString;
           const TrimStr: AnsiString): AnsiString;
-function  StrTrimRight(const S: AnsiString;
-          const C: CharSet{$IFNDEF CLR} = csWhiteSpace{$ENDIF}): AnsiString;
+
+function  StrTrimRightA(const S: AnsiString; const C: CharSet{$IFNDEF CLR} = csWhiteSpace{$ENDIF}): AnsiString;
+function  StrTrimRightW(const S: WideString; const C: CharSet{$IFNDEF CLR} = csWhiteSpace{$ENDIF}): WideString;
+function  StrTrimRight(const S: String;      const C: CharSet{$IFNDEF CLR} = csWhiteSpace{$ENDIF}): String;
+
 procedure StrTrimRightInPlace(var S: AnsiString;
           const C: CharSet{$IFNDEF CLR} = csWhiteSpace{$ENDIF});
+
 function  StrTrimRightStrNoCase(const S: AnsiString;
           const TrimStr: AnsiString): AnsiString;
-function  StrTrim(const S: AnsiString; const C: CharSet): AnsiString; overload;
+
+function  StrTrimA(const S: AnsiString; const C: CharSet): AnsiString;
+function  StrTrimW(const S: WideString; const C: CharSet): WideString;
+function  StrTrim(const S: String; const C: CharSet): String; overload;
+
 procedure StrTrimInPlace(var S: AnsiString; const C: CharSet{$IFNDEF CLR} = csWhiteSpace{$ENDIF});
 
 procedure TrimStrings(var S: AnsiStringArray; const C: CharSet{$IFNDEF CLR} = csWhiteSpace{$ENDIF}); overload;
@@ -711,23 +764,35 @@ procedure TrimStrings(var S: AnsiStringArray; const C: CharSet{$IFNDEF CLR} = cs
 { Duplicate                                                                    }
 {                                                                              }
 {$IFNDEF CLR}
-function  DupBuf(const Buf; const BufSize: Integer): AnsiString; overload;
-function  DupBuf(const Buf; const BufSize: Integer; const Count: Integer): AnsiString; overload;
+function  DupBufA(const Buf; const BufSize: Integer): AnsiString; overload;
+function  DupBufA(const Buf; const BufSize: Integer; const Count: Integer): AnsiString; overload;
 {$ENDIF}
-function  DupStr(const S: AnsiString; const Count: Integer): AnsiString;
-function  DupChar(const Ch: AnsiChar; const Count: Integer): AnsiString;
-function  DupSpace(const Count: Integer): AnsiString;
+
+function  DupStrA(const S: AnsiString; const Count: Integer): AnsiString;
+
+function  DupCharA(const Ch: AnsiChar; const Count: Integer): AnsiString;
+function  DupCharW(const Ch: WideChar; const Count: Integer): WideString;
+function  DupChar(const Ch: Char; const Count: Integer): String;
+
+function  DupSpaceA(const Count: Integer): AnsiString;
+function  DupSpaceW(const Count: Integer): WideString;
 
 
 
 {                                                                              }
 { Pad                                                                          }
 {                                                                              }
-function  StrPad(const S: AnsiString; const PadChar: AnsiChar; const Len: Integer;
+function  StrPadA(const S: AnsiString; const PadChar: AnsiChar; const Len: Integer;
           const Cut: Boolean = False): AnsiString;
-function  StrPadLeft(const S: AnsiString; const PadChar: AnsiChar;
+function  StrPadW(const S: WideString; const PadChar: WideChar; const Len: Integer;
+          const Cut: Boolean = False): WideString;
+function  StrPad(const S: String; const PadChar: Char; const Len: Integer;
+          const Cut: Boolean = False): String;
+
+function  StrPadLeftA(const S: AnsiString; const PadChar: AnsiChar;
           const Len: Integer; const Cut: Boolean = False): AnsiString;
-function  StrPadRight(const S: AnsiString; const PadChar: AnsiChar;
+
+function  StrPadRightA(const S: AnsiString; const PadChar: AnsiChar;
           const Len: Integer; const Cut: Boolean = False): AnsiString;
 
 
@@ -800,16 +865,20 @@ function  StrCountChar(const S: AnsiString; const C: CharSet): Integer; overload
 {                                                                              }
 { Replace                                                                      }
 {                                                                              }
-function  StrReplaceChar(const Find, Replace: AnsiChar;
-          const S: AnsiString): AnsiString; overload;
-function  StrReplaceChar(const Find: CharSet; const Replace: AnsiChar;
-          const S: AnsiString): AnsiString; overload;
+function  StrReplaceCharA(const Find, Replace: AnsiChar; const S: AnsiString): AnsiString; overload;
+function  StrReplaceCharW(const Find, Replace: WideChar; const S: WideString): WideString;
+function  StrReplaceChar(const Find, Replace: Char; const S: String): String;
+
+function  StrReplaceCharA(const Find: CharSet; const Replace: AnsiChar; const S: AnsiString): AnsiString; overload;
+
 function  StrReplace(const Find, Replace, S: AnsiString;
           const CaseSensitive: Boolean = True): AnsiString; overload;
+
 {$IFNDEF CLR}
 function  StrReplace(const Find: CharSet;
           const Replace, S: AnsiString): AnsiString; overload;
 {$ENDIF}
+
 function  StrRemoveDup(const S: AnsiString; const C: AnsiChar): AnsiString;
 function  StrRemoveChar(const S: AnsiString; const C: AnsiChar): AnsiString; overload;
 {$IFNDEF CLR}
@@ -979,8 +1048,12 @@ function  HexToLongWordDef(const S: AnsiString; const Default: LongWord): LongWo
 { Type conversion                                                              }
 {                                                                              }
 function  StrToFloatDef(const S: String; const Default: Extended): Extended;
-function  BooleanToStr(const B: Boolean): AnsiString;
-function  StrToBoolean(const S: AnsiString): Boolean;
+
+function  BooleanToStrW(const B: Boolean): WideString;
+function  BooleanToStrA(const B: Boolean): AnsiString;
+function  BooleanToStr(const B: Boolean): String;
+
+function  StrToBooleanA(const S: AnsiString): Boolean;
 
 
 
@@ -1107,15 +1180,18 @@ type
     FLength : Integer;
 
     procedure EnsureCapacity(const L: Integer);
-    function  GetAsString: AnsiString;
-    procedure SetAsString(const S: AnsiString);
+
+    function  GetAsAnsiString: AnsiString;
+    procedure SetAsAnsiString(const S: AnsiString);
+    function  GetAsString: String;
 
   public
     constructor Create(const S: AnsiString = ''); overload;
     constructor Create(const Capacity: Integer); overload;
 
     property  Length: Integer read FLength;
-    property  AsString: AnsiString read GetAsString write SetAsString;
+    property  AsAnsiString: AnsiString read GetAsAnsiString write SetAsAnsiString;
+    property  AsString: String read GetAsString;
 
     procedure Clear;
     procedure Assign(const S: TAnsiStringBuilder);
@@ -1124,6 +1200,7 @@ type
     procedure Append(const S: AnsiString; const Count: Integer); overload;
     procedure Append(const C: AnsiChar); overload;
     procedure Append(const C: AnsiChar; const Count: Integer); overload;
+    procedure Append(const BufPtr: Pointer; const Size: Integer); overload;
     procedure Append(const S: TAnsiStringBuilder); overload;
 
     procedure Pack;
@@ -1169,9 +1246,9 @@ type
 {                                                                              }
 { Test cases                                                                   }
 {                                                                              }
-{$IFDEF DEBUG}{$IFDEF SELFTEST}
+{$IFDEF STRINGS_SELFTEST}
 procedure SelfTest;
-{$ENDIF}{$ENDIF}
+{$ENDIF}
 
 
 
@@ -1231,7 +1308,7 @@ end;
 { Zero terminated string functions                                             }
 {                                                                              }
 {$IFNDEF ManagedCode}
-function StrZLen(const S: PAnsiChar): Integer;
+function StrZLenA(const S: PAnsiChar): Integer;
 var P : PAnsiChar;
 begin
   if not Assigned(S) then
@@ -1248,7 +1325,7 @@ begin
     end;
 end;
 
-function StrWZLen(const S: PWideChar): Integer;
+function StrZLenW(const S: PWideChar): Integer;
 var P : PWideChar;
 begin
   if not Assigned(S) then
@@ -1918,7 +1995,7 @@ end;
 {$ENDIF}
 
 {$IFDEF CLR}
-function StrMatch(const S, M: AnsiString; const Index: Integer): Boolean;
+function StrMatchA(const S, M: AnsiString; const Index: Integer): Boolean;
 var N, T, I : Integer;
 begin
   N := Length(M);
@@ -1937,7 +2014,7 @@ begin
   Result := True;
 end;
 {$ELSE}
-function StrMatch(const S, M: AnsiString; const Index: Integer): Boolean;
+function StrMatchA(const S, M: AnsiString; const Index: Integer): Boolean;
 var N, T : Integer;
     Q    : PAnsiChar;
 begin
@@ -1953,6 +2030,44 @@ begin
   Result := StrPMatch(Pointer(M), Q, N);
 end;
 {$ENDIF}
+
+function StrMatchW(const S, M: WideString; const Index: Integer): Boolean;
+var N, T, I : Integer;
+begin
+  N := Length(M);
+  T := Length(S);
+  if (N = 0) or (T = 0) or (Index < 1) or (Index + N - 1 > T) then
+    begin
+      Result := False;
+      exit;
+    end;
+  for I := 1 to N do
+    if M[I] <> S[I + Index - 1] then
+      begin
+        Result := False;
+        exit;
+      end;
+  Result := True;
+end;
+
+function StrMatch(const S, M: String; const Index: Integer): Boolean;
+var N, T, I : Integer;
+begin
+  N := Length(M);
+  T := Length(S);
+  if (N = 0) or (T = 0) or (Index < 1) or (Index + N - 1 > T) then
+    begin
+      Result := False;
+      exit;
+    end;
+  for I := 1 to N do
+    if M[I] <> S[I + Index - 1] then
+      begin
+        Result := False;
+        exit;
+      end;
+  Result := True;
+end;
 
 {$IFDEF CLR}
 function StrMatchNoCase(const S, M: AnsiString; const Index: Integer): Boolean;
@@ -1994,7 +2109,7 @@ end;
 function StrMatchLeft(const S, M: AnsiString; const CaseSensitive: Boolean): Boolean;
 begin
   if CaseSensitive then
-    Result := StrMatch(S, M, 1)
+    Result := StrMatchA(S, M, 1)
   else
     Result := StrMatchNoCase(S, M, 1);
 end;
@@ -2004,7 +2119,7 @@ var I: Integer;
 begin
   I := Length(S) - Length(M) + 1;
   if CaseSensitive then
-    Result := StrMatch(S, M, I)
+    Result := StrMatchA(S, M, I)
   else
     Result := StrMatchNoCase(S, M, I);
 end;
@@ -2387,8 +2502,7 @@ end;
 {$ENDIF}
 
 {$IFDEF CLR}
-function PosChar(const F: AnsiChar; const S: AnsiString;
-    const Index: Integer): Integer;
+function PosCharA(const F: AnsiChar; const S: AnsiString; const Index: Integer): Integer;
 var L, I : Integer;
 begin
   L := Length(S);
@@ -2412,8 +2526,7 @@ begin
   Result := 0;
 end;
 {$ELSE}
-function PosChar(const F: AnsiChar; const S: AnsiString;
-    const Index: Integer): Integer;
+function PosCharA(const F: AnsiChar; const S: AnsiString; const Index: Integer): Integer;
 var P    : PAnsiChar;
     L, I : Integer;
 begin
@@ -2443,8 +2556,56 @@ begin
 end;
 {$ENDIF}
 
+function PosCharW(const F: WideChar; const S: WideString; const Index: Integer): Integer;
+var L, I : Integer;
+begin
+  L := Length(S);
+  if (L = 0) or (Index > L) then
+    begin
+      Result := 0;
+      exit;
+    end;
+  if Index < 1 then
+    I := 1
+  else
+    I := Index;
+  while I <= L do
+    if S[I] = F then
+      begin
+        Result := I;
+        exit;
+      end
+    else
+      Inc(I);
+  Result := 0;
+end;
+
+function PosChar(const F: Char; const S: String; const Index: Integer): Integer;
+var L, I : Integer;
+begin
+  L := Length(S);
+  if (L = 0) or (Index > L) then
+    begin
+      Result := 0;
+      exit;
+    end;
+  if Index < 1 then
+    I := 1
+  else
+    I := Index;
+  while I <= L do
+    if S[I] = F then
+      begin
+        Result := I;
+        exit;
+      end
+    else
+      Inc(I);
+  Result := 0;
+end;
+
 {$IFDEF CLR}
-function PosChar(const F: CharSet; const S: AnsiString;
+function PosCharA(const F: CharSet; const S: AnsiString;
     const Index: Integer): Integer;
 var L, I : Integer;
 begin
@@ -2469,7 +2630,7 @@ begin
   Result := 0;
 end;
 {$ELSE}
-function PosChar(const F: CharSet; const S: AnsiString;
+function PosCharA(const F: CharSet; const S: AnsiString;
     const Index: Integer): Integer;
 var P    : PAnsiChar;
     L, I : Integer;
@@ -2501,7 +2662,7 @@ end;
 {$ENDIF}
 
 {$IFDEF CLR}
-function PosNotChar(const F: AnsiChar; const S: AnsiString;
+function PosNotCharA(const F: AnsiChar; const S: AnsiString;
     const Index: Integer): Integer;
 var L, I : Integer;
 begin
@@ -2526,7 +2687,7 @@ begin
   Result := 0;
 end;
 {$ELSE}
-function PosNotChar(const F: AnsiChar; const S: AnsiString;
+function PosNotCharA(const F: AnsiChar; const S: AnsiString;
     const Index: Integer): Integer;
 var P    : PAnsiChar;
     L, I : Integer;
@@ -2557,6 +2718,54 @@ begin
 end;
 {$ENDIF}
 
+function PosNotCharW(const F: WideChar; const S: WideString; const Index: Integer): Integer;
+var L, I : Integer;
+begin
+  L := Length(S);
+  if (L = 0) or (Index > L) then
+    begin
+      Result := 0;
+      exit;
+    end;
+  if Index < 1 then
+    I := 1
+  else
+    I := Index;
+  while I <= L do
+    if S[I] <> F then
+      begin
+        Result := I;
+        exit;
+      end
+    else
+      Inc(I);
+  Result := 0;
+end;
+
+function PosNotChar(const F: Char; const S: String; const Index: Integer): Integer;
+var L, I : Integer;
+begin
+  L := Length(S);
+  if (L = 0) or (Index > L) then
+    begin
+      Result := 0;
+      exit;
+    end;
+  if Index < 1 then
+    I := 1
+  else
+    I := Index;
+  while I <= L do
+    if S[I] <> F then
+      begin
+        Result := I;
+        exit;
+      end
+    else
+      Inc(I);
+  Result := 0;
+end;
+
 {$IFDEF CLR}
 function PosNotChar(const F: CharSet; const S: AnsiString;
     const Index: Integer): Integer;
@@ -2583,7 +2792,7 @@ begin
   Result := 0;
 end;
 {$ELSE}
-function PosNotChar(const F: CharSet; const S: AnsiString;
+function PosNotCharA(const F: CharSet; const S: AnsiString;
     const Index: Integer): Integer;
 var P    : PAnsiChar;
     L, I : Integer;
@@ -2641,7 +2850,7 @@ begin
   Result := 0;
 end;
 {$ELSE}
-function PosCharRev(const F: AnsiChar; const S: AnsiString;
+function PosCharRevA(const F: AnsiChar; const S: AnsiString;
     const Index: Integer): Integer;
 var P       : PAnsiChar;
     L, I, J : Integer;
@@ -2673,6 +2882,56 @@ begin
 end;
 {$ENDIF}
 
+function PosCharRevW(const F: WideChar; const S: WideString; const Index: Integer): Integer;
+var L, I, J : Integer;
+begin
+  L := Length(S);
+  if (L = 0) or (Index > L) then
+    begin
+      Result := 0;
+      exit;
+    end;
+  if Index < 1 then
+    I := 1
+  else
+    I := Index;
+  J := L;
+  while J >= I do
+    if S[J] = F then
+      begin
+        Result := J;
+        exit;
+      end
+    else
+      Dec(J);
+  Result := 0;
+end;
+
+function PosCharRev(const F: Char; const S: String; const Index: Integer): Integer;
+var L, I, J : Integer;
+begin
+  L := Length(S);
+  if (L = 0) or (Index > L) then
+    begin
+      Result := 0;
+      exit;
+    end;
+  if Index < 1 then
+    I := 1
+  else
+    I := Index;
+  J := L;
+  while J >= I do
+    if S[J] = F then
+      begin
+        Result := J;
+        exit;
+      end
+    else
+      Dec(J);
+  Result := 0;
+end;
+
 {$IFDEF CLR}
 function PosCharRev(const F: CharSet; const S: AnsiString;
     const Index: Integer): Integer;
@@ -2700,7 +2959,7 @@ begin
   Result := 0;
 end;
 {$ELSE}
-function PosCharRev(const F: CharSet; const S: AnsiString;
+function PosCharRevA(const F: CharSet; const S: AnsiString;
     const Index: Integer): Integer;
 var P       : PAnsiChar;
     L, I, J : Integer;
@@ -2733,7 +2992,7 @@ end;
 {$ENDIF}
 
 {$IFDEF CLR}
-function PosStr(const F, S: AnsiString; const Index: Integer;
+function PosStrA(const F, S: AnsiString; const Index: Integer;
     const CaseSensitive: Boolean): Integer;
 var L, M, I : Integer;
 begin
@@ -2770,7 +3029,7 @@ begin
   Result := 0;
 end;
 {$ELSE}
-function PosStr(const F, S: AnsiString; const Index: Integer;
+function PosStrA(const F, S: AnsiString; const Index: Integer;
     const CaseSensitive: Boolean): Integer;
 var P, Q    : PAnsiChar;
     L, M, I : Integer;
@@ -2999,7 +3258,7 @@ begin
   J := Index;
   for I := 1 to N do
     begin
-      Result := PosStr(F, S, J, CaseSensitive);
+      Result := PosStrA(F, S, J, CaseSensitive);
       if Result = 0 then
         exit;
       J := Result + M;
@@ -3011,7 +3270,7 @@ end;
 {                                                                              }
 { Copy variations                                                              }
 {                                                                              }
-function WideCopyRange(const S: WideString; const StartIndex, StopIndex: Integer): WideString;
+function CopyRangeW(const S: WideString; const StartIndex, StopIndex: Integer): WideString;
 var L, I : Integer;
 begin
   L := Length(S);
@@ -3033,7 +3292,7 @@ begin
     end;
 end;
 
-function CopyRange(const S: AnsiString; const StartIndex, StopIndex: Integer): AnsiString;
+function CopyRangeA(const S: AnsiString; const StartIndex, StopIndex: Integer): AnsiString;
 var L, I : Integer;
 begin
   L := Length(S);
@@ -3055,7 +3314,29 @@ begin
     end;
 end;
 
-function CopyFrom(const S: AnsiString; const Index: Integer): AnsiString;
+function CopyRange(const S: String; const StartIndex, StopIndex: Integer): String;
+var L, I : Integer;
+begin
+  L := Length(S);
+  if (StartIndex > StopIndex) or (StopIndex < 1) or (StartIndex > L) or (L = 0) then
+    Result := ''
+  else
+    begin
+      if StartIndex <= 1 then
+        if StopIndex >= L then
+          begin
+            Result := S;
+            exit;
+          end
+        else
+          I := 1
+      else
+        I := StartIndex;
+      Result := Copy(S, I, StopIndex - I + 1);
+    end;
+end;
+
+function CopyFromW(const S: WideString; const Index: Integer): WideString;
 var L : Integer;
 begin
   if Index <= 1 then
@@ -3070,7 +3351,37 @@ begin
     end;
 end;
 
-function CopyLeft(const S: AnsiString; const Count: Integer): AnsiString;
+function CopyFromA(const S: AnsiString; const Index: Integer): AnsiString;
+var L : Integer;
+begin
+  if Index <= 1 then
+    Result := S
+  else
+    begin
+      L := Length(S);
+      if (L = 0) or (Index > L) then
+        Result := ''
+      else
+        Result := Copy(S, Index, L - Index + 1);
+    end;
+end;
+
+function CopyFrom(const S: String; const Index: Integer): String;
+var L : Integer;
+begin
+  if Index <= 1 then
+    Result := S
+  else
+    begin
+      L := Length(S);
+      if (L = 0) or (Index > L) then
+        Result := ''
+      else
+        Result := Copy(S, Index, L - Index + 1);
+    end;
+end;
+
+function CopyLeftW(const S: WideString; const Count: Integer): WideString;
 var L : Integer;
 begin
   L := Length(S);
@@ -3082,7 +3393,55 @@ begin
       Result := Copy(S, 1, Count);
 end;
 
-function CopyRight(const S: AnsiString; const Count: Integer): AnsiString;
+function CopyLeftA(const S: AnsiString; const Count: Integer): AnsiString;
+var L : Integer;
+begin
+  L := Length(S);
+  if (L = 0) or (Count <= 0) then
+    Result := '' else
+    if Count >= L then
+      Result := S
+    else
+      Result := Copy(S, 1, Count);
+end;
+
+function CopyLeft(const S: String; const Count: Integer): String;
+var L : Integer;
+begin
+  L := Length(S);
+  if (L = 0) or (Count <= 0) then
+    Result := '' else
+    if Count >= L then
+      Result := S
+    else
+      Result := Copy(S, 1, Count);
+end;
+
+function CopyRightW(const S: WideString; const Count: Integer): WideString;
+var L : Integer;
+begin
+  L := Length(S);
+  if (L = 0) or (Count <= 0) then
+    Result := '' else
+    if Count >= L then
+      Result := S
+    else
+      Result := Copy(S, L - Count + 1, Count);
+end;
+
+function CopyRightA(const S: AnsiString; const Count: Integer): AnsiString;
+var L : Integer;
+begin
+  L := Length(S);
+  if (L = 0) or (Count <= 0) then
+    Result := '' else
+    if Count >= L then
+      Result := S
+    else
+      Result := Copy(S, L - Count + 1, Count);
+end;
+
+function CopyRight(const S: String; const Count: Integer): String;
 var L : Integer;
 begin
   L := Length(S);
@@ -3115,7 +3474,7 @@ begin
     end;
   if Count <= 3 then
     begin
-      Result := DupChar(' ', Count);
+      Result := DupCharA(' ', Count);
       exit;
     end;
   Result := Copy(S, 1, Count - 3) + '...';
@@ -3130,9 +3489,8 @@ end;
 { TranslateStartStop translates Start, Stop parameters (negative values are    }
 { indexed from back of string) into StartIdx and StopIdx (relative to start).  }
 { Returns False if the Start, Stop does not specify a valid range.             }
-function TranslateStart(const S: String; const Start: Integer; var Len, StartIndex : Integer): Boolean;
+function TranslateStart(const Len, Start: Integer; var StartIndex : Integer): Boolean;
 begin
-  Len := Length(S);
   if Len = 0 then
     Result := False
   else
@@ -3151,9 +3509,8 @@ begin
     end;
 end;
 
-function TranslateStartStop(const S: String; const Start, Stop: Integer; var Len, StartIndex, StopIndex : Integer): Boolean;
+function TranslateStartStop(const Len, Start, Stop: Integer; var StartIndex, StopIndex: Integer): Boolean;
 begin
-  Len := Length(S);
   if Len = 0 then
     Result := False
   else
@@ -3177,10 +3534,11 @@ begin
     end;
 end;
 
-function CopyEx(const S: String; const Start, Count: Integer): String;
+function CopyExA(const S: AnsiString; const Start, Count: Integer): AnsiString;
 var I, L : Integer;
 begin
-  if (Count < 0) or not TranslateStart(S, Start, L, I) then
+  L := Length(S);
+  if (Count < 0) or not TranslateStart(L, Start, I) then
     Result := '' else
     if (I = 1) and (Count >= L) then
       Result := S
@@ -3188,10 +3546,35 @@ begin
       Result := Copy(S, I, Count);
 end;
 
-function CopyRangeEx(const S: String; const Start, Stop: Integer): String;
+function CopyExW(const S: String; const Start, Count: Integer): String;
+var I, L : Integer;
+begin
+  L := Length(S);
+  if (Count < 0) or not TranslateStart(L, Start, I) then
+    Result := '' else
+    if (I = 1) and (Count >= L) then
+      Result := S
+    else
+      Result := Copy(S, I, Count);
+end;
+
+function CopyEx(const S: String; const Start, Count: Integer): String;
+var I, L : Integer;
+begin
+  L := Length(S);
+  if (Count < 0) or not TranslateStart(L, Start, I) then
+    Result := '' else
+    if (I = 1) and (Count >= L) then
+      Result := S
+    else
+      Result := Copy(S, I, Count);
+end;
+
+function CopyRangeExA(const S: AnsiString; const Start, Stop: Integer): AnsiString;
 var I, J, L : Integer;
 begin
-  if not TranslateStartStop(S, Start, Stop, L, I, J) then
+  L := Length(S);
+  if not TranslateStartStop(L, Start, Stop, I, J) then
     Result := '' else
     if (I = 1) and (J = L) then
       Result := S
@@ -3199,10 +3582,59 @@ begin
       Result := Copy(S, I, J - I + 1);
 end;
 
+function CopyRangeExW(const S: WideString; const Start, Stop: Integer): WideString;
+var I, J, L : Integer;
+begin
+  L := Length(S);
+  if not TranslateStartStop(L, Start, Stop, I, J) then
+    Result := '' else
+    if (I = 1) and (J = L) then
+      Result := S
+    else
+      Result := Copy(S, I, J - I + 1);
+end;
+
+function CopyRangeEx(const S: String; const Start, Stop: Integer): String;
+var I, J, L : Integer;
+begin
+  L := Length(S);
+  if not TranslateStartStop(L, Start, Stop, I, J) then
+    Result := '' else
+    if (I = 1) and (J = L) then
+      Result := S
+    else
+      Result := Copy(S, I, J - I + 1);
+end;
+
+function CopyFromExA(const S: AnsiString; const Start: Integer): AnsiString;
+var I, L : Integer;
+begin
+  L := Length(S);
+  if not TranslateStart(L, Start, I) then
+    Result := '' else
+    if I <= 1 then
+      Result := S
+    else
+      Result := Copy(S, I, L - I + 1);
+end;
+
+function CopyFromExW(const S: WideString; const Start: Integer): WideString;
+var I, L : Integer;
+begin
+  L := Length(S);
+  if not TranslateStart(L, Start, I) then
+    Result := '' else
+    if I <= 1 then
+      Result := S
+    else
+      Result := Copy(S, I, L - I + 1);
+end;
+
 function CopyFromEx(const S: String; const Start: Integer): String;
 var I, L : Integer;
 begin
-  if not TranslateStart(S, Start, L, I) then
+  L := Length(S);
+  if not TranslateStart(L, Start, I) then
     Result := '' else
     if I <= 1 then
       Result := S
@@ -3215,14 +3647,43 @@ end;
 {                                                                              }
 { Trim                                                                         }
 {                                                                              }
-function StrTrimLeft(const S: AnsiString; const C: CharSet): AnsiString;
-var F, L : Integer;
+function WideCharInCharSet(const A: WideChar; const C: CharSet): Boolean;
+begin
+  if Ord(A) >= $100 then
+    Result := False
+  else
+    Result := AnsiChar(Ord(A)) in C;
+end;
+
+function StrTrimLeftA(const S: AnsiString; const C: CharSet): AnsiString;
+var
+  F, L : Integer;
 begin
   L := Length(S);
   F := 1;
   while (F <= L) and (S[F] in C) do
     Inc(F);
-  Result := CopyFrom(S, F);
+  Result := CopyFromA(S, F);
+end;
+
+function StrTrimLeftW(const S: WideString; const C: CharSet): WideString;
+var
+  F, L : Integer;
+begin
+  L := Length(S);
+  F := 1;
+  while (F <= L) and WideCharInCharSet(S[F], C) do
+    Inc(F);
+  Result := CopyFromW(S, F);
+end;
+
+function StrTrimLeft(const S: String; const C: CharSet): String;
+begin
+  {$IFDEF StringIsUnicode}
+  Result := StrTrimLeftW(S, C);
+  {$ELSE}
+  Result := StrTrimLeftA(S, C);
+  {$ENDIF}
 end;
 
 {$IFDEF CLR}
@@ -3277,16 +3738,34 @@ begin
   F := 1;
   while (F <= M) and StrMatchNoCase(S, TrimStr, F) do
     Inc(F, L);
-  Result := CopyFrom(S, F);
+  Result := CopyFromA(S, F);
 end;
 
-function StrTrimRight(const S: AnsiString; const C: CharSet): AnsiString;
+function StrTrimRightA(const S: AnsiString; const C: CharSet): AnsiString;
 var F : Integer;
 begin
   F := Length(S);
   while (F >= 1) and (S[F] in C) do
     Dec(F);
-  Result := CopyLeft(S, F);
+  Result := CopyLeftA(S, F);
+end;
+
+function StrTrimRightW(const S: WideString; const C: CharSet): WideString;
+var F : Integer;
+begin
+  F := Length(S);
+  while (F >= 1) and WideCharInCharSet(S[F], C) do
+    Dec(F);
+  Result := CopyLeftW(S, F);
+end;
+
+function StrTrimRight(const S: String; const C: CharSet): String;
+begin
+  {$IFDEF StringIsUnicode}
+  Result := StrTrimRightW(S, C);
+  {$ELSE}
+  Result := StrTrimRightA(S, C);
+  {$ENDIF}
 end;
 
 procedure StrTrimRightInPlace(var S : AnsiString; const C: CharSet);
@@ -3308,10 +3787,10 @@ begin
   F := Length(S) - L  + 1;
   while (F >= 1) and StrMatchNoCase(S, TrimStr, F) do
     Dec(F, L);
-  Result := CopyLeft(S, F + L - 1);
+  Result := CopyLeftA(S, F + L - 1);
 end;
 
-function StrTrim(const S: AnsiString; const C: CharSet): AnsiString;
+function StrTrimA(const S: AnsiString; const C: CharSet): AnsiString;
 var F, G, L : Integer;
 begin
   L := Length(S);
@@ -3321,7 +3800,29 @@ begin
   G := L;
   while (G >= F) and (S[G] in C) do
     Dec(G);
-  Result := CopyRange(S, F, G);
+  Result := CopyRangeA(S, F, G);
+end;
+
+function StrTrimW(const S: WideString; const C: CharSet): WideString;
+var F, G, L : Integer;
+begin
+  L := Length(S);
+  F := 1;
+  while (F <= L) and WideCharInCharSet(S[F], C) do
+    Inc(F);
+  G := L;
+  while (G >= F) and WideCharInCharSet(S[G], C) do
+    Dec(G);
+  Result := CopyRangeW(S, F, G);
+end;
+
+function StrTrim(const S: String; const C: CharSet): String;
+begin
+  {$IFDEF StringIsUnicode}
+  Result := StrTrimW(S, C);
+  {$ELSE}
+  Result := StrTrimA(S, C);
+  {$ENDIF}
 end;
 
 procedure StrTrimInPlace(var S : AnsiString; const C: CharSet);
@@ -3343,7 +3844,7 @@ end;
 { Dup                                                                          }
 {                                                                              }
 {$IFNDEF CLR}
-function DupBuf(const Buf; const BufSize: Integer; const Count: Integer): AnsiString;
+function DupBufA(const Buf; const BufSize: Integer; const Count: Integer): AnsiString;
 var P : PAnsiChar;
     I : Integer;
 begin
@@ -3361,7 +3862,7 @@ begin
     end;
 end;
 
-function DupBuf(const Buf; const BufSize: Integer): AnsiString;
+function DupBufA(const Buf; const BufSize: Integer): AnsiString;
 begin
   if BufSize <= 0 then
     Result := ''
@@ -3374,7 +3875,7 @@ end;
 {$ENDIF}
 
 {$IFDEF CLR}
-function DupStr(const S: AnsiString; const Count: Integer): AnsiString;
+function DupStrA(const S: AnsiString; const Count: Integer): AnsiString;
 var L, I, J : Integer;
 begin
   L := Length(S);
@@ -3389,14 +3890,14 @@ begin
     end;
 end;
 {$ELSE}
-function DupStr(const S: AnsiString; const Count: Integer): AnsiString;
+function DupStrA(const S: AnsiString; const Count: Integer): AnsiString;
 var L : Integer;
 begin
   L := Length(S);
   if L = 0 then
     Result := ''
   else
-    Result := DupBuf(Pointer(S)^, L, Count);
+    Result := DupBufA(Pointer(S)^, L, Count);
 end;
 {$ENDIF}
 
@@ -3414,7 +3915,7 @@ begin
     Result[I] := Ch;
 end;
 {$ELSE}
-function DupChar(const Ch: AnsiChar; const Count: Integer): AnsiString;
+function DupCharA(const Ch: AnsiChar; const Count: Integer): AnsiString;
 begin
   if Count <= 0 then
     begin
@@ -3426,10 +3927,42 @@ begin
 end;
 {$ENDIF}
 
-function DupSpace(const Count: Integer): AnsiString;
+function DupCharW(const Ch: WideChar; const Count: Integer): WideString;
+var I : Integer;
 begin
-  Result := DupChar(AsciiSP, Count);
+  if Count <= 0 then
+    begin
+      Result := '';
+      exit;
+    end;
+  SetLength(Result, Count);
+  for I := 1 to Count do
+    Result[I] := Ch;
 end;
+
+function DupChar(const Ch: Char; const Count: Integer): String;
+var I : Integer;
+begin
+  if Count <= 0 then
+    begin
+      Result := '';
+      exit;
+    end;
+  SetLength(Result, Count);
+  for I := 1 to Count do
+    Result[I] := Ch;
+end;
+
+function DupSpaceA(const Count: Integer): AnsiString;
+begin
+  Result := DupCharA(AsciiSP, Count);
+end;
+
+function DupSpaceW(const Count: Integer): WideString;
+begin
+  Result := DupCharW(WideSP, Count);
+end;
+
 
 
 
@@ -3437,7 +3970,7 @@ end;
 { Pad                                                                          }
 {                                                                              }
 {$IFDEF CLR}
-function StrPadLeft(const S: AnsiString; const PadChar: AnsiChar;
+function StrPadLeftA(const S: AnsiString; const PadChar: AnsiChar;
     const Len: Integer; const Cut: Boolean): AnsiString;
 var L, P, M, I : Integer;
 begin
@@ -3470,7 +4003,7 @@ begin
       Result[P + I] := S[I];
 end;
 {$ELSE}
-function StrPadLeft(const S: AnsiString; const PadChar: AnsiChar;
+function StrPadLeftA(const S: AnsiString; const PadChar: AnsiChar;
     const Len: Integer; const Cut: Boolean): AnsiString;
 var F, L, P, M : Integer;
     I, J       : PAnsiChar;
@@ -3515,7 +4048,7 @@ end;
 {$ENDIF}
 
 {$IFDEF CLR}
-function StrPadRight(const S: AnsiString; const PadChar: AnsiChar;
+function StrPadRightA(const S: AnsiString; const PadChar: AnsiChar;
     const Len: Integer; const Cut: Boolean): AnsiString;
 var L, P, M, I : Integer;
 begin
@@ -3549,7 +4082,7 @@ begin
       Result[L - P + I] := PadChar;
 end;
 {$ELSE}
-function StrPadRight(const S: AnsiString; const PadChar: AnsiChar;
+function StrPadRightA(const S: AnsiString; const PadChar: AnsiChar;
     const Len: Integer; const Cut: Boolean): AnsiString;
 var F, L, P, M : Integer;
     I, J       : PAnsiChar;
@@ -3592,8 +4125,28 @@ begin
 end;
 {$ENDIF}
 
-function StrPad(const S: AnsiString; const PadChar: AnsiChar; const Len: Integer;
+function StrPadA(const S: AnsiString; const PadChar: AnsiChar; const Len: Integer;
     const Cut: Boolean): AnsiString;
+var I : Integer;
+begin
+  I := Len - Length(S);
+  Result := DupCharA(PadChar, I div 2) + S + DupCharA(PadChar, (I + 1) div 2);
+  if Cut then
+    SetLength(Result, Len);
+end;
+
+function StrPadW(const S: WideString; const PadChar: WideChar; const Len: Integer;
+    const Cut: Boolean): WideString;
+var I : Integer;
+begin
+  I := Len - Length(S);
+  Result := DupCharW(PadChar, I div 2) + S + DupCharW(PadChar, (I + 1) div 2);
+  if Cut then
+    SetLength(Result, Len);
+end;
+
+function StrPad(const S: String; const PadChar: Char; const Len: Integer;
+    const Cut: Boolean): String;
 var I : Integer;
 begin
   I := Len - Length(S);
@@ -3613,16 +4166,16 @@ function StrBetweenChar(const S: AnsiString;
 var I, J : Integer;
 begin
   Result := '';
-  I := PosChar(FirstDelim, S);
+  I := PosCharA(FirstDelim, S);
   if (I = 0) and not FirstOptional then
     exit;
-  J := PosChar(SecondDelim, S, I + 1);
+  J := PosCharA(SecondDelim, S, I + 1);
   if J = 0 then
     if not SecondOptional then
       exit
     else
       J := Length(S) + 1;
-  Result := CopyRange(S, I + 1, J - 1);
+  Result := CopyRangeA(S, I + 1, J - 1);
 end;
 
 function StrBetweenChar(const S: AnsiString;
@@ -3631,16 +4184,16 @@ function StrBetweenChar(const S: AnsiString;
 var I, J : Integer;
 begin
   Result := '';
-  I := PosChar(FirstDelim, S);
+  I := PosCharA(FirstDelim, S);
   if (I = 0) and not FirstOptional then
     exit;
-  J := PosChar(SecondDelim, S, I + 1);
+  J := PosCharA(SecondDelim, S, I + 1);
   if J = 0 then
     if not SecondOptional then
       exit
     else
       J := Length(S) + 1;
-  Result := CopyRange(S, I + 1, J - 1);
+  Result := CopyRangeA(S, I + 1, J - 1);
 end;
 
 function StrBetween(const S: AnsiString; const FirstDelim: AnsiString;
@@ -3650,17 +4203,17 @@ function StrBetween(const S: AnsiString; const FirstDelim: AnsiString;
 var I, J : Integer;
 begin
   Result := '';
-  I := PosStr(FirstDelim, S, 1, FirstDelimCaseSensitive);
+  I := PosStrA(FirstDelim, S, 1, FirstDelimCaseSensitive);
   if (I = 0) and not FirstOptional then
     exit;
   Inc(I, Length(FirstDelim));
-  J := PosChar(SecondDelim, S, I);
+  J := PosCharA(SecondDelim, S, I);
   if J = 0 then
     if not SecondOptional then
       exit
     else
       J := Length(S) + 1;
-  Result := CopyRange(S, I, J - 1);
+  Result := CopyRangeA(S, I, J - 1);
 end;
 
 function StrBetween(const S: AnsiString;
@@ -3670,31 +4223,31 @@ function StrBetween(const S: AnsiString;
 var I, J : Integer;
 begin
   Result := '';
-  I := PosStr(FirstDelim, S, 1, FirstDelimCaseSensitive);
+  I := PosStrA(FirstDelim, S, 1, FirstDelimCaseSensitive);
   if (I = 0) and not FirstOptional then
     exit;
   Inc(I, Length(FirstDelim));
-  J := PosStr(SecondDelim, S, I, SecondDelimCaseSensitive);
+  J := PosStrA(SecondDelim, S, I, SecondDelimCaseSensitive);
   if J = 0 then
     if not SecondOptional then
       exit
     else
       J := Length(S) + 1;
-  Result := CopyRange(S, I, J - 1);
+  Result := CopyRangeA(S, I, J - 1);
 end;
 
 function StrBefore(const S, D: AnsiString; const Optional: Boolean;
     const CaseSensitive: Boolean): AnsiString;
 var I : Integer;
 begin
-  I := PosStr(D, S, 1, CaseSensitive);
+  I := PosStrA(D, S, 1, CaseSensitive);
   if I = 0 then
     if Optional then
       Result := S
     else
       Result := ''
   else
-    Result := CopyLeft(S, I - 1);
+    Result := CopyLeftA(S, I - 1);
 end;
 
 function StrBeforeRev(const S, D: AnsiString; const Optional: Boolean;
@@ -3708,62 +4261,62 @@ begin
     else
       Result := ''
   else
-    Result := CopyLeft(S, I - 1);
+    Result := CopyLeftA(S, I - 1);
 end;
 
 function StrBeforeChar(const S: AnsiString; const D: CharSet;
     const Optional: Boolean): AnsiString;
 var I : Integer;
 begin
-  I := PosChar(D, S);
+  I := PosCharA(D, S);
   if I = 0 then
     if Optional then
       Result := S
     else
       Result := ''
   else
-    Result := CopyLeft(S, I - 1);
+    Result := CopyLeftA(S, I - 1);
 end;
 
 function StrBeforeChar(const S: AnsiString; const D: AnsiChar;
     const Optional: Boolean): AnsiString;
 var I : Integer;
 begin
-  I := PosChar(D, S);
+  I := PosCharA(D, S);
   if I = 0 then
     if Optional then
       Result := S
     else
       Result := ''
   else
-    Result := CopyLeft(S, I - 1);
+    Result := CopyLeftA(S, I - 1);
 end;
 
 function StrBeforeCharRev(const S: AnsiString; const D: CharSet;
     const Optional: Boolean): AnsiString;
 var I : Integer;
 begin
-  I := PosCharRev(D, S);
+  I := PosCharRevA(D, S);
   if I = 0 then
     if Optional then
       Result := S
     else
       Result := ''
   else
-    Result := CopyLeft(S, I - 1);
+    Result := CopyLeftA(S, I - 1);
 end;
 
 function StrAfter(const S, D: AnsiString; const Optional: Boolean): AnsiString;
 var I : Integer;
 begin
-  I := PosStr(D, S);
+  I := PosStrA(D, S);
   if I = 0 then
     if Optional then
       Result := S
     else
       Result := ''
   else
-    Result := CopyFrom(S, I + Length(D));
+    Result := CopyFromA(S, I + Length(D));
 end;
 
 function StrAfterRev(const S, D: AnsiString; const Optional: Boolean): AnsiString;
@@ -3776,75 +4329,75 @@ begin
     else
       Result := ''
   else
-    Result := CopyFrom(S, I + Length(D));
+    Result := CopyFromA(S, I + Length(D));
 end;
 
 function StrAfterChar(const S: AnsiString; const D: CharSet): AnsiString;
 var I : Integer;
 begin
-  I := PosChar(D, S);
+  I := PosCharA(D, S);
   if I = 0 then
     Result := ''
   else
-    Result := CopyFrom(S, I + 1);
+    Result := CopyFromA(S, I + 1);
 end;
 
 function StrAfterChar(const S: AnsiString; const D: AnsiChar): AnsiString;
 var I : Integer;
 begin
-  I := PosChar(D, S);
+  I := PosCharA(D, S);
   if I = 0 then
     Result := ''
   else
-    Result := CopyFrom(S, I + 1);
+    Result := CopyFromA(S, I + 1);
 end;
 
 function StrCopyToChar(const S: AnsiString; const D: CharSet;
     const Optional: Boolean): AnsiString;
 var I : Integer;
 begin
-  I := PosChar(D, S);
+  I := PosCharA(D, S);
   if I = 0 then
     if Optional then
       Result := S
     else
       Result := ''
   else
-    Result := CopyLeft(S, I);
+    Result := CopyLeftA(S, I);
 end;
 
 function StrCopyToChar(const S: AnsiString; const D: AnsiChar;
     const Optional: Boolean): AnsiString;
 var I : Integer;
 begin
-  I := PosChar(D, S);
+  I := PosCharA(D, S);
   if I = 0 then
     if Optional then
       Result := S
     else
       Result := ''
   else
-    Result := CopyLeft(S, I);
+    Result := CopyLeftA(S, I);
 end;
 
 function StrCopyFromChar(const S: AnsiString; const D: CharSet): AnsiString;
 var I : Integer;
 begin
-  I := PosChar(D, S);
+  I := PosCharA(D, S);
   if I = 0 then
     Result := ''
   else
-    Result := CopyFrom(S, I);
+    Result := CopyFromA(S, I);
 end;
 
 function StrCopyFromChar(const S: AnsiString; const D: AnsiChar): AnsiString;
 var I : Integer;
 begin
-  I := PosChar(D, S);
+  I := PosCharA(D, S);
   if I = 0 then
     Result := ''
   else
-    Result := CopyFrom(S, I);
+    Result := CopyFromA(S, I);
 end;
 
 function StrRemoveCharDelimited(var S: AnsiString;
@@ -3852,13 +4405,13 @@ function StrRemoveCharDelimited(var S: AnsiString;
 var I, J : Integer;
 begin
   Result := '';
-  I := PosChar(FirstDelim, S);
+  I := PosCharA(FirstDelim, S);
   if I = 0 then
     exit;
-  J := PosChar(SecondDelim, S, I + 1);
+  J := PosCharA(SecondDelim, S, I + 1);
   if J = 0 then
     exit;
-  Result := CopyRange(S, I + 1, J - 1);
+  Result := CopyRangeA(S, I + 1, J - 1);
   Delete(S, I, J - I + 1);
 end;
 
@@ -3928,7 +4481,7 @@ function StrReplaceChar(const Find, Replace: AnsiChar;
 var I, J : Integer;
 begin
   Result := S;
-  I := PosChar(Find, S);
+  I := PosCharA(Find, S);
   if I = 0 then
     exit;
   for J := I to Length(S) do
@@ -3936,13 +4489,12 @@ begin
       Result[J] := Replace;
 end;
 {$ELSE}
-function StrReplaceChar(const Find, Replace: AnsiChar;
-    const S: AnsiString): AnsiString;
+function StrReplaceCharA(const Find, Replace: AnsiChar; const S: AnsiString): AnsiString;
 var P, Q : PAnsiChar;
     I, J : Integer;
 begin
   Result := S;
-  I := PosChar(Find, S);
+  I := PosCharA(Find, S);
   if I = 0 then
     exit;
   UniqueString(Result);
@@ -3960,9 +4512,19 @@ begin
 end;
 {$ENDIF}
 
-{$IFDEF CLR}
-function StrReplaceChar(const Find: CharSet; const Replace: AnsiChar;
-    const S: AnsiString): AnsiString;
+function StrReplaceCharW(const Find, Replace: WideChar; const S: WideString): WideString;
+var I, J : Integer;
+begin
+  Result := S;
+  I := PosCharW(Find, S);
+  if I = 0 then
+    exit;
+  for J := I to Length(S) do
+    if S[J] = Find then
+      Result[J] := Replace;
+end;
+
+function StrReplaceChar(const Find, Replace: Char; const S: String): String;
 var I, J : Integer;
 begin
   Result := S;
@@ -3970,17 +4532,31 @@ begin
   if I = 0 then
     exit;
   for J := I to Length(S) do
+    if S[J] = Find then
+      Result[J] := Replace;
+end;
+
+{$IFDEF CLR}
+function StrReplaceChar(const Find: CharSet; const Replace: AnsiChar;
+    const S: AnsiString): AnsiString;
+var I, J : Integer;
+begin
+  Result := S;
+  I := PosCharA(Find, S);
+  if I = 0 then
+    exit;
+  for J := I to Length(S) do
     if S[J] in Find then
       Result[J] := Replace;
 end;
 {$ELSE}
-function StrReplaceChar(const Find: CharSet; const Replace: AnsiChar;
+function StrReplaceCharA(const Find: CharSet; const Replace: AnsiChar;
     const S: AnsiString): AnsiString;
 var P, Q : PAnsiChar;
     I, J : Integer;
 begin
   Result := S;
-  I := PosChar(Find, S);
+  I := PosCharA(Find, S);
   if I = 0 then
     exit;
   UniqueString(Result);
@@ -4074,7 +4650,7 @@ begin
       Result := S;
       exit;
     end;
-  I := PosStr(Find, S, 1, CaseSensitive);
+  I := PosStrA(Find, S, 1, CaseSensitive);
   if I = 0 then // not found
     begin
       Result := S;
@@ -4088,7 +4664,7 @@ begin
       Matches[C] := I;
       Inc(C);
       Inc(I, FindLen);
-      I := PosStr(Find, S, I, CaseSensitive);
+      I := PosStrA(Find, S, I, CaseSensitive);
     until (I = 0) or (C = 4096);
     if I = 0 then
       K := Length(S)
@@ -4105,7 +4681,7 @@ function StrReplace(const Find: CharSet; const Replace, S: AnsiString): AnsiStri
 var Matches    : StrReplaceMatchArray;
     C, I, J, K : Integer;
 begin
-  I := PosChar(Find, S, 1);
+  I := PosCharA(Find, S, 1);
   if I = 0 then // not found
     begin
       Result := S;
@@ -4119,7 +4695,7 @@ begin
       Matches[C] := I;
       Inc(C);
       Inc(I);
-      I := PosChar(Find, S, I);
+      I := PosCharA(Find, S, I);
     until (I = 0) or (C = 4096);
     if I = 0 then
       K := Length(S)
@@ -4289,13 +4865,13 @@ function StrSplitAt(const S: AnsiString; const C: AnsiString;
 var I : Integer;
     T : AnsiString;
 begin
-  I := PosStr(C, S, 1, CaseSensitive);
+  I := PosStrA(C, S, 1, CaseSensitive);
   Result := I > 0;
   if Result then
     begin
       T := S;
       Left := Copy(T, 1, I - 1);
-      Right := CopyFrom(T, I + Length(C));
+      Right := CopyFromA(T, I + Length(C));
     end else
     begin
       if Optional then
@@ -4311,13 +4887,13 @@ function StrSplitAtChar(const S: AnsiString; const C: AnsiChar;
 var I : Integer;
     T : AnsiString;
 begin
-  I := PosChar(C, S);
+  I := PosCharA(C, S);
   Result := I > 0;
   if Result then
     begin
       T := S; // add reference to S (in case it is also Left or Right)
       Left := Copy(T, 1, I - 1);
-      Right := CopyFrom(T, I + 1);
+      Right := CopyFromA(T, I + 1);
     end else
     begin
       if Optional then
@@ -4333,13 +4909,13 @@ function StrSplitAtChar(const S: AnsiString; const C: CharSet;
 var I : Integer;
     T : AnsiString;
 begin
-  I := PosChar(C, S);
+  I := PosCharA(C, S);
   Result := I > 0;
   if Result then
     begin
       T := S;
       Left := Copy(T, 1, I - 1);
-      Right := CopyFrom(T, I + 1);
+      Right := CopyFromA(T, I + 1);
     end else
     begin
       if Optional then
@@ -4370,7 +4946,7 @@ begin
   L := 0;
   I := 1;
   repeat
-    I := PosStr(D, S, I, True);
+    I := PosStrA(D, S, I, True);
     if I = 0 then
       break;
     Inc(L);
@@ -4387,13 +4963,13 @@ begin
   L := 0;
   I := 1;
   repeat
-    J := PosStr(D, S, I, True);
+    J := PosStrA(D, S, I, True);
     if J = 0 then
       begin
-        Result[L] := CopyFrom(S, I);
+        Result[L] := CopyFromA(S, I);
         break;
       end;
-    Result[L] := CopyRange(S, I, J - 1);
+    Result[L] := CopyRangeA(S, I, J - 1);
     Inc(L);
     I := J + M;
   until False;
@@ -4412,7 +4988,7 @@ begin
   L := 0;
   I := 1;
   repeat
-    I := PosChar(D, S, I);
+    I := PosCharA(D, S, I);
     if I = 0 then
       break;
     Inc(L);
@@ -4429,13 +5005,13 @@ begin
   L := 0;
   I := 1;
   repeat
-    J := PosChar(D, S, I);
+    J := PosCharA(D, S, I);
     if J = 0 then
       begin
-        Result[L] := CopyFrom(S, I);
+        Result[L] := CopyFromA(S, I);
         break;
       end;
-    Result[L] := CopyRange(S, I, J - 1);
+    Result[L] := CopyRangeA(S, I, J - 1);
     Inc(L);
     I := J + 1;
   until False;
@@ -4454,7 +5030,7 @@ begin
   L := 0;
   I := 1;
   repeat
-    I := PosChar(D, S, I);
+    I := PosCharA(D, S, I);
     if I = 0 then
       break;
     Inc(L);
@@ -4471,13 +5047,13 @@ begin
   L := 0;
   I := 1;
   repeat
-    J := PosChar(D, S, I);
+    J := PosCharA(D, S, I);
     if J = 0 then
       begin
-        Result[L] := CopyFrom(S, I);
+        Result[L] := CopyFromA(S, I);
         break;
       end;
-    Result[L] := CopyRange(S, I, J - 1);
+    Result[L] := CopyRangeA(S, I, J - 1);
     Inc(L);
     I := J + 1;
   until False;
@@ -4672,7 +5248,7 @@ end;
 
 function StrQuote(const S: AnsiString; const Quote: AnsiChar): AnsiString;
 begin
-  Result := Quote + StrReplace(Quote, DupChar(Quote, 2), S) + Quote;
+  Result := Quote + StrReplace(Quote, DupCharA(Quote, 2), S) + Quote;
 end;
 
 function StrUnquote(const S: AnsiString): AnsiString;
@@ -4689,7 +5265,7 @@ begin
   Quote := PAnsiChar(Pointer(S))^;
   {$ENDIF}
   Result := StrRemoveSurroundingQuotes(S, csQuotes);
-  Result := StrReplace(DupChar(Quote, 2), Quote, Result);
+  Result := StrReplace(DupCharA(Quote, 2), Quote, Result);
 end;
 
 function StrMatchQuotedStr(const S: AnsiString; const ValidQuotes: CharSet;
@@ -4708,7 +5284,7 @@ begin
   I := Index + 1;
   R := False;
   repeat
-    I := PosChar(Quote, S, I);
+    I := PosCharA(Quote, S, I);
     if I = 0 then // no closing quote
       begin
         Result := 0;
@@ -4747,7 +5323,7 @@ begin
   I := OpenQuotePos;
   OpenQuote := S[I];
   repeat
-    I := PosChar(OpenQuote, S, I + 1);
+    I := PosCharA(OpenQuote, S, I + 1);
     if I = 0 then
       begin
         Result := 0;
@@ -4779,7 +5355,7 @@ begin
   Brackets := [OpenBracket, CloseBracket];
   C := 1;
   repeat
-    I := PosChar(Brackets, S, I + 1);
+    I := PosCharA(Brackets, S, I + 1);
     if I = 0 then
       exit;
     if S[I] = OpenBracket then
@@ -4803,7 +5379,7 @@ var I, J   : Integer;
 begin
   Result := '';
   J := 1;
-  I := PosChar(C, S);
+  I := PosCharA(C, S);
   while I > 0 do
     begin
       if TwoDigitHex then
@@ -4814,15 +5390,15 @@ begin
         AsciiConvertUpper(HexStr)
       else
         AsciiConvertLower(HexStr);
-      Result := Result + CopyRange(S, J, I - 1) +
+      Result := Result + CopyRangeA(S, J, I - 1) +
                 EscPrefix + HexStr + EscSuffix;
       J := I + 1;
-      I := PosChar(C, S, J);
+      I := PosCharA(C, S, J);
     end;
   if J = 1 then
     Result := S
   else
-    Result := Result + CopyFrom(S, J);
+    Result := Result + CopyFromA(S, J);
 end;
 
 function StrHexUnescape(const S: AnsiString; const EscPrefix: AnsiString;
@@ -4840,10 +5416,10 @@ begin
   // Replace
   J := 1;
   repeat
-    I := PosStr(EscPrefix, S, J, CaseSensitive);
+    I := PosStrA(EscPrefix, S, J, CaseSensitive);
     if I > 0 then
       begin
-        Result := Result + CopyRange(S, J, I - 1);
+        Result := Result + CopyRangeA(S, J, I - 1);
         Inc(I, M);
         if (I <= L) and IsHexAnsiChar(S[I]) then
           begin
@@ -4864,7 +5440,7 @@ begin
   if (I = 0) and (J = 0) then
     Result := S
   else
-    Result := Result + CopyFrom(S, J);
+    Result := Result + CopyFromA(S, J);
 end;
 
 function StrCharEscape(const S: AnsiString; const C: Array of AnsiChar;
@@ -4899,18 +5475,18 @@ begin
   // Replace
   Result := '';
   J := 1;
-  I := PosChar(F, S);
+  I := PosCharA(F, S);
   while I > 0 do
     begin
-      Result := Result + CopyRange(S, J, I - 1) +
+      Result := Result + CopyRangeA(S, J, I - 1) +
                 EscPrefix + EscSeq[Lookup[S[I]]];
       J := I + 1;
-      I := PosChar(F, S, J);
+      I := PosCharA(F, S, J);
     end;
   if J = 1 then
     Result := S
   else
-    Result := Result + CopyFrom(S, J);
+    Result := Result + CopyFromA(S, J);
 end;
 
 function StrCharUnescape(const S: AnsiString; const EscPrefix: AnsiString;
@@ -4934,7 +5510,7 @@ begin
   Result := '';
   J := 1;
   repeat
-    I := PosStr(EscPrefix, S, J, PrefixCaseSensitive);
+    I := PosStrA(EscPrefix, S, J, PrefixCaseSensitive);
     if I > 0 then
       begin
         G := -1;
@@ -4948,7 +5524,7 @@ begin
                   break;
                 end;
           end;
-        Result := Result + CopyRange(S, J, I - 1);
+        Result := Result + CopyRangeA(S, J, I - 1);
         if G >= 0 then
           Result := Result + Replace[G] else
           if not AlwaysDropPrefix then
@@ -4959,7 +5535,7 @@ begin
   if (I = 0) and (J = 0) then
     Result := S
   else
-    Result := Result + CopyFrom(S, J);
+    Result := Result + CopyFromA(S, J);
 end;
 
 function StrCStyleEscape(const S: AnsiString): AnsiString;
@@ -5008,7 +5584,7 @@ function StrExclPrefix(const S: AnsiString; const Prefix: AnsiString;
   const CaseSensitive: Boolean): AnsiString;
 begin
   if StrMatchLeft(S, Prefix, CaseSensitive) then
-    Result := CopyFrom(S, Length(Prefix) + 1)
+    Result := CopyFromA(S, Length(Prefix) + 1)
   else
     Result := S;
 end;
@@ -5507,14 +6083,11 @@ end;
 {                                                                              }
 function StrToFloatDef(const S: String; const Default: Extended): Extended;
 begin
-  try
-    Result := StrToFloat(S);
-  except
+  if not TryStrToFloat(S, Result) then
     Result := Default;
-  end;
 end;
 
-function BooleanToStr(const B: Boolean): AnsiString;
+function BooleanToStrW(const B: Boolean): WideString;
 begin
   if B then
     Result := 'True'
@@ -5522,7 +6095,23 @@ begin
     Result := 'False';
 end;
 
-function StrToBoolean(const S: AnsiString): Boolean;
+function BooleanToStrA(const B: Boolean): AnsiString;
+begin
+  if B then
+    Result := 'True'
+  else
+    Result := 'False';
+end;
+
+function BooleanToStr(const B: Boolean): String;
+begin
+  if B then
+    Result := 'True'
+  else
+    Result := 'False';
+end;
+
+function StrToBooleanA(const S: AnsiString): Boolean;
 begin
   Result := StrEqualNoCase(S, 'True');
 end;
@@ -6173,7 +6762,7 @@ end;
 constructor TAnsiStringBuilder.Create(const S: AnsiString);
 begin
   inherited Create;
-  SetAsString(S);
+  SetAsAnsiString(S);
 end;
 
 constructor TAnsiStringBuilder.Create(const Capacity: Integer);
@@ -6193,7 +6782,7 @@ begin
     end;
 end;
 
-function TAnsiStringBuilder.GetAsString: AnsiString;
+function TAnsiStringBuilder.GetAsAnsiString: AnsiString;
 begin
   if FLength = System.Length(FString) then
     Result := FString // return reference instead of copy
@@ -6201,10 +6790,19 @@ begin
     Result := Copy(FString, 1, FLength);
 end;
 
-procedure TAnsiStringBuilder.SetAsString(const S: AnsiString);
+procedure TAnsiStringBuilder.SetAsAnsiString(const S: AnsiString);
 begin
   FString := S;
   FLength := System.Length(S);
+end;
+
+function TAnsiStringBuilder.GetAsString: String;
+begin
+  {$IFDEF StringIsUnicode}
+  Result := String(GetAsAnsiString);
+  {$ELSE}
+  Result := GetAsAnsiString;
+  {$ENDIF}
 end;
 
 procedure TAnsiStringBuilder.Clear;
@@ -6288,6 +6886,22 @@ begin
   P := Pointer(FString);
   Inc(P, N);
   FillMem(P^, Count, Ord(C));
+  FLength := L;
+end;
+
+procedure TAnsiStringBuilder.Append(const BufPtr: Pointer; const Size: Integer);
+var L, N : Integer;
+    P    : PAnsiChar;
+begin
+  if Size <= 0 then
+    exit;
+  N := FLength;
+  L := N + Size;
+  if L > System.Length(FString) then
+    EnsureCapacity(L);
+  P := Pointer(FString);
+  Inc(P, N);
+  MoveMem(BufPtr^, P^, Size);
   FLength := L;
 end;
 
@@ -6386,7 +7000,7 @@ begin
     EnsureCapacity(L);
   P := Pointer(FString);
   Inc(P, N);
-  MoveMem(Pointer(S)^, P^, M);
+  MoveMem(Pointer(S)^, P^, M * 2);
   FLength := L;
 end;
 
@@ -6407,7 +7021,7 @@ begin
   Inc(P, N);
   for I := 1 to Count do
     begin
-      MoveMem(Pointer(S)^, P^, M);
+      MoveMem(Pointer(S)^, P^, M * 2);
       Inc(P, M);
     end;
   FLength := L;
@@ -6460,7 +7074,7 @@ begin
     EnsureCapacity(L);
   P := Pointer(FString);
   Inc(P, N);
-  MoveMem(Pointer(S.FString)^, P^, M);
+  MoveMem(Pointer(S.FString)^, P^, M * 2);
   FLength := L;
 end;
 
@@ -6479,7 +7093,8 @@ end;
 {                                                                              }
 { Test cases                                                                   }
 {                                                                              }
-{$IFDEF DEBUG}{$ASSERTIONS ON}
+{$IFDEF STRINGS_SELFTEST}
+{$ASSERTIONS ON}
 procedure SelfTest;
 var C    : AnsiChar;
     S, T : AnsiString;
@@ -6506,47 +7121,47 @@ begin
   Assert(not StrIsInteger('-'), 'StrIsInteger');
 
   { CopyRange                                                                  }
-  Assert(CopyRange('', 1, 2) =  '', 'CopyRange');
-  Assert(CopyRange('', -1, -2) = '', 'CopyRange');
-  Assert(CopyRange('1234567890', 5, 7) = '567', 'CopyRange');
-  Assert(CopyRange('1234567890', 1, 1) = '1', 'CopyRange');
-  Assert(CopyRange('1234567890', 0, 11) = '1234567890', 'CopyRange');
-  Assert(CopyRange('1234567890', 7, 4) = '', 'CopyRange');
-  Assert(CopyRange('1234567890', 1, 0) = '', 'CopyRange');
-  Assert(CopyRange('1234567890', -2, 3) = '123', 'CopyRange');
-  Assert(CopyRange('1234567890', 2, -1) = '', 'CopyRange');
-  Assert(CopyRange('1234567890', -4, -2) = '', 'CopyRange');
+  Assert(CopyRangeA('', 1, 2) =  '', 'CopyRange');
+  Assert(CopyRangeA('', -1, -2) = '', 'CopyRange');
+  Assert(CopyRangeA('1234567890', 5, 7) = '567', 'CopyRange');
+  Assert(CopyRangeA('1234567890', 1, 1) = '1', 'CopyRange');
+  Assert(CopyRangeA('1234567890', 0, 11) = '1234567890', 'CopyRange');
+  Assert(CopyRangeA('1234567890', 7, 4) = '', 'CopyRange');
+  Assert(CopyRangeA('1234567890', 1, 0) = '', 'CopyRange');
+  Assert(CopyRangeA('1234567890', -2, 3) = '123', 'CopyRange');
+  Assert(CopyRangeA('1234567890', 2, -1) = '', 'CopyRange');
+  Assert(CopyRangeA('1234567890', -4, -2) = '', 'CopyRange');
 
   { CopyFrom                                                                   }
-  Assert(CopyFrom('a', 0) = 'a', 'CopyFrom');
-  Assert(CopyFrom('a', -1) = 'a', 'CopyFrom');
-  Assert(CopyFrom('', 1) = '', 'CopyFrom');
-  Assert(CopyFrom('', -2) = '', 'CopyFrom');
-  Assert(CopyFrom('1234567890', 8) = '890', 'CopyFrom');
-  Assert(CopyFrom('1234567890', 11) = '', 'CopyFrom');
-  Assert(CopyFrom('1234567890', 0) = '1234567890', 'CopyFrom');
-  Assert(CopyFrom('1234567890', -2) = '1234567890', 'CopyFrom');
+  Assert(CopyFromA('a', 0) = 'a', 'CopyFrom');
+  Assert(CopyFromA('a', -1) = 'a', 'CopyFrom');
+  Assert(CopyFromA('', 1) = '', 'CopyFrom');
+  Assert(CopyFromA('', -2) = '', 'CopyFrom');
+  Assert(CopyFromA('1234567890', 8) = '890', 'CopyFrom');
+  Assert(CopyFromA('1234567890', 11) = '', 'CopyFrom');
+  Assert(CopyFromA('1234567890', 0) = '1234567890', 'CopyFrom');
+  Assert(CopyFromA('1234567890', -2) = '1234567890', 'CopyFrom');
 
   { CopyLeft                                                                   }
-  Assert(CopyLeft('a', 0) = '', 'CopyLeft');
-  Assert(CopyLeft('a', -1) = '', 'CopyLeft');
-  Assert(CopyLeft('', 1) = '', 'CopyLeft');
-  Assert(CopyLeft('b', 1) = 'b', 'CopyLeft');
-  Assert(CopyLeft('', -1) = '', 'CopyLeft');
-  Assert(CopyLeft('1234567890', 3) = '123', 'CopyLeft');
-  Assert(CopyLeft('1234567890', 11) = '1234567890', 'CopyLeft');
-  Assert(CopyLeft('1234567890', 0) = '', 'CopyLeft');
-  Assert(CopyLeft('1234567890', -2) = '', 'CopyLeft');
+  Assert(CopyLeftA('a', 0) = '', 'CopyLeft');
+  Assert(CopyLeftA('a', -1) = '', 'CopyLeft');
+  Assert(CopyLeftA('', 1) = '', 'CopyLeft');
+  Assert(CopyLeftA('b', 1) = 'b', 'CopyLeft');
+  Assert(CopyLeftA('', -1) = '', 'CopyLeft');
+  Assert(CopyLeftA('1234567890', 3) = '123', 'CopyLeft');
+  Assert(CopyLeftA('1234567890', 11) = '1234567890', 'CopyLeft');
+  Assert(CopyLeftA('1234567890', 0) = '', 'CopyLeft');
+  Assert(CopyLeftA('1234567890', -2) = '', 'CopyLeft');
 
   { CopyRight                                                                  }
-  Assert(CopyRight('a', 0) = '', 'CopyRight');
-  Assert(CopyRight('a', -1) = '', 'CopyRight');
-  Assert(CopyRight('', 1) = '', 'CopyRight');
-  Assert(CopyRight('', -2) = '', 'CopyRight');
-  Assert(CopyRight('1234567890', 3) = '890', 'CopyRight');
-  Assert(CopyRight('1234567890', 11) = '1234567890', 'CopyRight');
-  Assert(CopyRight('1234567890', 0) = '', 'CopyRight');
-  Assert(CopyRight('1234567890', -2) = '', 'CopyRight');
+  Assert(CopyRightA('a', 0) = '', 'CopyRight');
+  Assert(CopyRightA('a', -1) = '', 'CopyRight');
+  Assert(CopyRightA('', 1) = '', 'CopyRight');
+  Assert(CopyRightA('', -2) = '', 'CopyRight');
+  Assert(CopyRightA('1234567890', 3) = '890', 'CopyRight');
+  Assert(CopyRightA('1234567890', 11) = '1234567890', 'CopyRight');
+  Assert(CopyRightA('1234567890', 0) = '', 'CopyRight');
+  Assert(CopyRightA('1234567890', -2) = '', 'CopyRight');
 
   { CopyEx                                                               }
   Assert(CopyEx('', 1, 1) = '');
@@ -6650,22 +7265,22 @@ begin
   Assert(StrCompare('a', '') = 1, 'StrCompareNoCase');
 
   { Match                                                                      }
-  Assert(not StrMatch('', '', 1), 'StrMatch');
-  Assert(not StrMatch('', 'a', 1), 'StrMatch');
-  Assert(not StrMatch('a', '', 1), 'StrMatch');
-  Assert(not StrMatch('a', 'A', 1), 'StrMatch');
-  Assert(StrMatch('A', 'A', 1), 'StrMatch');
-  Assert(not StrMatch('abcdef', 'xx', 1), 'StrMatch');
-  Assert(StrMatch('xbcdef', 'x', 1), 'StrMatch');
-  Assert(StrMatch('abcdxxxxx', 'xxxxx', 5), 'StrMatch');
-  Assert(StrMatch('abcdef', 'abcdef', 1), 'StrMatch');
+  Assert(not StrMatchA('', '', 1), 'StrMatch');
+  Assert(not StrMatchA('', 'a', 1), 'StrMatch');
+  Assert(not StrMatchA('a', '', 1), 'StrMatch');
+  Assert(not StrMatchA('a', 'A', 1), 'StrMatch');
+  Assert(StrMatchA('A', 'A', 1), 'StrMatch');
+  Assert(not StrMatchA('abcdef', 'xx', 1), 'StrMatch');
+  Assert(StrMatchA('xbcdef', 'x', 1), 'StrMatch');
+  Assert(StrMatchA('abcdxxxxx', 'xxxxx', 5), 'StrMatch');
+  Assert(StrMatchA('abcdef', 'abcdef', 1), 'StrMatch');
   Assert(not StrMatchNoCase('abcdef', 'xx', 1), 'StrMatchNoCase');
   Assert(StrMatchNoCase('xbCDef', 'xBCd', 1), 'StrMatchNoCase');
   Assert(StrMatchNoCase('abcdxxX-xx', 'Xxx-xX', 5), 'StrMatchNoCase');
-  Assert(StrMatch('abcde', 'abcd', 1), 'StrMatch');
-  Assert(StrMatch('abcde', 'abc', 1), 'StrMatch');
-  Assert(StrMatch('abcde', 'ab', 1), 'StrMatch');
-  Assert(StrMatch('abcde', 'a', 1), 'StrMatch');
+  Assert(StrMatchA('abcde', 'abcd', 1), 'StrMatch');
+  Assert(StrMatchA('abcde', 'abc', 1), 'StrMatch');
+  Assert(StrMatchA('abcde', 'ab', 1), 'StrMatch');
+  Assert(StrMatchA('abcde', 'a', 1), 'StrMatch');
   Assert(StrMatchNoCase(' abC-Def{', ' AbC-def{', 1), 'StrMatchNoCase');
   Assert(StrMatchLeft('ABC1D', 'aBc1', False), 'StrMatchLeft');
   Assert(StrMatchLeft('aBc1D', 'aBc1', True), 'StrMatchLeft');
@@ -6684,71 +7299,71 @@ begin
   Assert(StrMatchLen('dcba', ['a', 'b', 'c'], 1) = 0, 'StrMatchLen');
 
   { Pos                                                                        }
-  Assert(PosStr('', 'ABCABC') = 0, 'PosStr');
-  Assert(PosStr('', 'a') = 0, 'PosStr');
-  Assert(PosStr('A', '') = 0, 'PosStr');
-  Assert(PosStr('A', 'ABCABC') = 1, 'PosStr');
-  Assert(PosStr('A', 'ABCABC', 2) = 4, 'PosStr');
-  Assert(PosStr('ab', 'a') = 0, 'PosStr');
-  Assert(PosStr('ab', 'ab') = 1, 'PosStr');
-  Assert(PosStr('ab', 'zxab') = 3, 'PosStr');
-  Assert(PosStr('ab', '') = 0, 'PosStr');
-  Assert(PosStr('ab', 'axdba') = 0, 'PosStr');
-  Assert(PosStr('a', 'AbAc', 1, False) = 1, 'PosStr');
-  Assert(PosStr('ba', 'ABAcabac', 1, False) = 2, 'PosStr');
-  Assert(PosStr('a', 'abac', 2) = 3, 'PosStr');
-  Assert(PosStr('ab', 'abacabac', 2) = 5, 'PosStr');
+  Assert(PosStrA('', 'ABCABC') = 0, 'PosStr');
+  Assert(PosStrA('', 'a') = 0, 'PosStr');
+  Assert(PosStrA('A', '') = 0, 'PosStr');
+  Assert(PosStrA('A', 'ABCABC') = 1, 'PosStr');
+  Assert(PosStrA('A', 'ABCABC', 2) = 4, 'PosStr');
+  Assert(PosStrA('ab', 'a') = 0, 'PosStr');
+  Assert(PosStrA('ab', 'ab') = 1, 'PosStr');
+  Assert(PosStrA('ab', 'zxab') = 3, 'PosStr');
+  Assert(PosStrA('ab', '') = 0, 'PosStr');
+  Assert(PosStrA('ab', 'axdba') = 0, 'PosStr');
+  Assert(PosStrA('a', 'AbAc', 1, False) = 1, 'PosStr');
+  Assert(PosStrA('ba', 'ABAcabac', 1, False) = 2, 'PosStr');
+  Assert(PosStrA('a', 'abac', 2) = 3, 'PosStr');
+  Assert(PosStrA('ab', 'abacabac', 2) = 5, 'PosStr');
   Assert(PosStrRev('A', 'ABCABC') = 4, 'PosStrRev');
   Assert(PosStrRev('A', 'ABCABCA') = 7, 'PosStrRev');
   Assert(PosStrRev('CA', 'ABCABCA') = 6, 'PosStrRev');
   Assert(PosStrRev('ab', 'abacabac') = 5, 'PosStrRev');
   Assert(PosNStr('AB', 'ABCABCDAB', 3) = 8, 'PosNStr');
-  Assert(PosChar([], 'a') = 0, 'PosChar');
-  Assert(PosChar(['a'], 'a') = 1, 'PosChar');
-  Assert(PosChar(['a'], '') = 0, 'PosChar');
-  Assert(PosChar(['a'], 'aa') = 1, 'PosChar');
-  Assert(PosChar(['a'], 'ba') = 2, 'PosChar');
-  Assert(PosChar(['a'], 'zx') = 0, 'PosChar');
-  Assert(PosChar(AnsiChar('a'), 'a') = 1, 'PosChar');
-  Assert(PosChar(AnsiChar('a'), '') = 0, 'PosChar');
-  Assert(PosChar(AnsiChar('a'), 'aa') = 1, 'PosChar');
-  Assert(PosChar(AnsiChar('a'), 'ba') = 2, 'PosChar');
-  Assert(PosChar(AnsiChar('a'), 'zx') = 0, 'PosChar');
-  Assert(PosChar(['a'], 'abac', 2) = 3, 'PosChar');
-  Assert(PosCharRev(AnsiChar('a'), 'abac') = 3, 'PosCharRev');
-  Assert(PosCharRev(['a'..'z'], 'abac') = 4, 'PosCharRev');
-  Assert(PosNotChar(AnsiChar('a'), 'abac') = 2, 'PosNotChar');
-  Assert(PosNotChar(['a'..'z'], 'abac1a') = 5, 'PosNotChar');
+  Assert(PosCharA([], 'a') = 0, 'PosChar');
+  Assert(PosCharA(['a'], 'a') = 1, 'PosChar');
+  Assert(PosCharA(['a'], '') = 0, 'PosChar');
+  Assert(PosCharA(['a'], 'aa') = 1, 'PosChar');
+  Assert(PosCharA(['a'], 'ba') = 2, 'PosChar');
+  Assert(PosCharA(['a'], 'zx') = 0, 'PosChar');
+  Assert(PosCharA(AnsiChar('a'), 'a') = 1, 'PosChar');
+  Assert(PosCharA(AnsiChar('a'), '') = 0, 'PosChar');
+  Assert(PosCharA(AnsiChar('a'), 'aa') = 1, 'PosChar');
+  Assert(PosCharA(AnsiChar('a'), 'ba') = 2, 'PosChar');
+  Assert(PosCharA(AnsiChar('a'), 'zx') = 0, 'PosChar');
+  Assert(PosCharA(['a'], 'abac', 2) = 3, 'PosChar');
+  Assert(PosCharRevA(AnsiChar('a'), 'abac') = 3, 'PosCharRev');
+  Assert(PosCharRevA(['a'..'z'], 'abac') = 4, 'PosCharRev');
+  Assert(PosNotCharA(AnsiChar('a'), 'abac') = 2, 'PosNotChar');
+  Assert(PosNotCharA(['a'..'z'], 'abac1a') = 5, 'PosNotChar');
 
   { Trim                                                                       }
   {$IFNDEF CLR}
-  Assert(StrTrimLeft('   123   ') = '123   ', 'TrimLeft');
+  Assert(StrTrimLeftA('   123   ') = '123   ', 'TrimLeft');
   Assert(StrTrimLeftStrNoCase('   123   ', '  ') = ' 123   ', 'TrimLeftStrNoCase');
   Assert(StrTrimRight('   123   ') = '   123', 'TrimRight');
   Assert(StrTrimRightStrNoCase('   123   ', '  ') = '   123 ', 'TrimRightStrNoCase');
-  Assert(StrTrim('   123   ', [' ']) = '123', 'Trim');
-  Assert(StrTrim('', [' ']) = '', 'Trim');
-  Assert(StrTrim('X', [' ']) = 'X', 'Trim');
+  Assert(StrTrimA('   123   ', [' ']) = '123', 'Trim');
+  Assert(StrTrimA('', [' ']) = '', 'Trim');
+  Assert(StrTrimA('X', [' ']) = 'X', 'Trim');
   {$ENDIF}
 
   { Dup                                                                        }
-  Assert(DupStr('xy', 3) = 'xyxyxy', 'Dup');
-  Assert(DupStr('', 3) = '', 'Dup');
-  Assert(DupStr('a', 0) = '', 'Dup');
-  Assert(DupStr('a', -1) = '', 'Dup');
+  Assert(DupStrA('xy', 3) = 'xyxyxy', 'Dup');
+  Assert(DupStrA('', 3) = '', 'Dup');
+  Assert(DupStrA('a', 0) = '', 'Dup');
+  Assert(DupStrA('a', -1) = '', 'Dup');
   C := 'x';
-  Assert(DupChar(C, 6) = 'xxxxxx', 'Dup');
-  Assert(DupChar(C, 0) = '', 'Dup');
-  Assert(DupChar(C, -1) = '', 'Dup');
+  Assert(DupCharA(C, 6) = 'xxxxxx', 'Dup');
+  Assert(DupCharA(C, 0) = '', 'Dup');
+  Assert(DupCharA(C, -1) = '', 'Dup');
 
   { Pad                                                                        }
-  Assert(StrPadLeft('xxx', 'y', 6) = 'yyyxxx', 'PadLeft');
-  Assert(StrPadLeft('xxx', 'y', 2, True) = 'xx', 'PadLeft');
-  Assert(StrPadLeft('x', ' ', 3, True) = '  x', 'PadLeft');
-  Assert(StrPadLeft('xabc', ' ', 3, True) = 'xab', 'PadLeft');
-  Assert(StrPadRight('xxx', 'y', 6) = 'xxxyyy', 'PadRight');
-  Assert(StrPadRight('xxx', 'y', 2, True) = 'xx', 'PadRight');
-  Assert(StrPad('xxx', 'y', 7) = 'yyxxxyy', 'Pad');
+  Assert(StrPadLeftA('xxx', 'y', 6) = 'yyyxxx', 'PadLeft');
+  Assert(StrPadLeftA('xxx', 'y', 2, True) = 'xx', 'PadLeft');
+  Assert(StrPadLeftA('x', ' ', 3, True) = '  x', 'PadLeft');
+  Assert(StrPadLeftA('xabc', ' ', 3, True) = 'xab', 'PadLeft');
+  Assert(StrPadRightA('xxx', 'y', 6) = 'xxxyyy', 'PadRight');
+  Assert(StrPadRightA('xxx', 'y', 2, True) = 'xx', 'PadRight');
+  Assert(StrPadA('xxx', 'y', 7) = 'yyxxxyy', 'Pad');
 
   { Prefix/Suffix                                                              }
   S := 'ABC';
@@ -6762,7 +7377,7 @@ begin
   Assert(S = 'ABC', 'StrEnsureNoSuffix');
   for I := 0 to 256 do
     begin
-      T := DupChar('A', I);
+      T := DupCharA('A', I);
       S := T;
       StrEnsurePrefix(S, '\');
       Assert(S = '\' + T, 'StrEnsurePrefix');
@@ -6870,11 +7485,11 @@ begin
   Assert(S = 'XYZGIJ<N', 'StrRemoveCharDelimited');
 
   { Replace                                                                    }
-  Assert(StrReplaceChar(AnsiChar('X'), AnsiChar('A'), '') = '', 'StrReplaceChar');
-  Assert(StrReplaceChar(AnsiChar('X'), AnsiChar('A'), 'XXX') = 'AAA', 'StrReplaceChar');
-  Assert(StrReplaceChar(AnsiChar('X'), AnsiChar('A'), 'X') = 'A', 'StrReplaceChar');
-  Assert(StrReplaceChar(AnsiChar('X'), AnsiChar('!'), 'ABCXXBXAC') = 'ABC!!B!AC', 'StrReplaceChar');
-  Assert(StrReplaceChar(['A', 'B'], AnsiChar('C'), 'ABCDABCD') = 'CCCDCCCD', 'StrReplaceChar');
+  Assert(StrReplaceCharA(AnsiChar('X'), AnsiChar('A'), '') = '', 'StrReplaceChar');
+  Assert(StrReplaceCharA(AnsiChar('X'), AnsiChar('A'), 'XXX') = 'AAA', 'StrReplaceChar');
+  Assert(StrReplaceCharA(AnsiChar('X'), AnsiChar('A'), 'X') = 'A', 'StrReplaceChar');
+  Assert(StrReplaceCharA(AnsiChar('X'), AnsiChar('!'), 'ABCXXBXAC') = 'ABC!!B!AC', 'StrReplaceChar');
+  Assert(StrReplaceCharA(['A', 'B'], AnsiChar('C'), 'ABCDABCD') = 'CCCDCCCD', 'StrReplaceChar');
   Assert(StrReplace('', 'A', 'ABCDEF') = 'ABCDEF', 'StrReplace');
   Assert(StrReplace('B', 'A', 'ABCDEFEDCBA') = 'AACDEFEDCAA', 'StrReplace');
   Assert(StrReplace('BC', '', 'ABCDEFEDCBA') = 'ADEFEDCBA', 'StrReplace');
@@ -6899,9 +7514,9 @@ begin
   Assert(StrReplace('a', 'b', 'bababa') = 'bbbbbb', 'StrReplace');
   Assert(StrReplace('a', '', 'bababa') = 'bbb', 'StrReplace');
   Assert(StrReplace('a', '', 'aaa') = '', 'StrReplace');
-  S := DupStr('ABCDEFGH', 1000000);
+  S := DupStrA('ABCDEFGH', 1000000);
   S := StrReplace('BC', 'X', S);
-  Assert(S = DupStr('AXDEFGH', 1000000), 'StrReplace');
+  Assert(S = DupStrA('AXDEFGH', 1000000), 'StrReplace');
   Assert(StrRemoveDup('BBBAABABBA', 'B') = 'BAABABA', 'StrRemoveDup');
   Assert(StrRemoveDup('azaazzel', 'a') = 'azazzel', 'StrRemoveDup');
   Assert(StrRemoveDup('BBBAABABBA', 'A') = 'BBBABABBA', 'StrRemoveDup');

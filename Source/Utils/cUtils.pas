@@ -100,20 +100,15 @@
 {                                                                              }
 { Supported compilers:                                                         }
 {                                                                              }
-{   Borland Delphi 5/6/7/2005/2006/2007/2009 Win32 i386                        }
-{   Borland Delphi 8/2005/2006/2009 .NET                                       }
-{   FreePascal 2 Win32 i386                                                    }
-{   FreePascal 2 Linux i386                                                    }
-{   FreePascal 2 OSX x64-64                                                    }
-{                                                                              }
-{   Borland Delphi 5 Win32 i386                                                }
-{   Borland Delphi 6 Win32 i386                                                }
-{   Borland Delphi 7 Win32 i386         4.45  2009/10/09                       }
-{   Borland Delphi 2005 Win32 i386                                             }
-{   Borland Delphi 2006 Win32 i386                                             }
-{   Borland Delphi 2007 Win32 i386      4.45  2009/10/09                       }
-{   Borland Delphi 2009 Win32 i386                                             }
-{   Borland Delphi 2009 .NET            4.45  2009/10/09                       }
+{   Delphi 5 Win32 i386                                                        }
+{   Delphi 6 Win32 i386                                                        }
+{   Delphi 7 Win32 i386                 4.45  2009/10/09                       }
+{   Delphi 8 .NET                                                              }
+{   Delphi 2005 Win32 i386                                                     }
+{   Delphi 2006 Win32 i386                                                     }
+{   Delphi 2007 Win32 i386              4.45  2009/10/09                       }
+{   Delphi 2009 Win32 i386              4.46  2011/09/27                       }
+{   Delphi 2009 .NET                    4.45  2009/10/09                       }
 {   FreePascal 2 Win32 i386                                                    }
 {   FreePascal 2.0.4 Linux i386                                                }
 {   FreePascal 2.4.0 OSX x86-64         4.46  2010/06/27                       }
@@ -127,9 +122,18 @@
 {******************************************************************************}
 
 {$INCLUDE cDefines.inc}
-{$IFDEF FREEPASCAL}{$IFDEF DEBUG}
-  {$WARNINGS OFF}{$HINTS OFF}
-{$ENDIF}{$ENDIF}
+
+{$IFDEF FREEPASCAL}
+  {$WARNINGS OFF}
+  {$HINTS OFF}
+{$ENDIF}
+
+{$IFDEF DEBUG}
+{$IFDEF SELFTEST}
+  {$DEFINE UTILS_SELFTEST}
+{$ENDIF}
+{$ENDIF}
+
 unit cUtils;
 
 interface
@@ -144,7 +148,7 @@ const
   LibraryMajorVersion = 4;
   LibraryMinorVersion = 0;
   LibraryName         = 'Fundamentals ' + LibraryVersion;
-  LibraryCopyright    = 'Copyright (c) 1998-2010 David J Butler';
+  LibraryCopyright    = 'Copyright (c) 1998-2011 David J Butler';
 
 
 
@@ -719,6 +723,7 @@ function  LongWordToHexWideString(const A: LongWord; const Digits: Integer = 0; 
 function  LongWordToHexString(const A: LongWord; const Digits: Integer = 0; const LowerCase: Boolean = False): String; {$IFDEF UseInline}inline;{$ENDIF}
 
 function  AnsiStringToInt(const A: AnsiString): Integer;
+function  TryAnsiStringToInt(const A: AnsiString; out B: Integer): Boolean;
 function  AnsiStringToIntDef(const A: AnsiString; const Default: Integer): Integer;
 function  WideStringToInt(const A: WideString): Integer;
 function  WideStringToIntDef(const A: WideString; const Default: Integer): Integer;
@@ -1524,7 +1529,7 @@ function GenericBinarySearch(const Data: Pointer; const Count: Integer;
 {                                                                              }
 { Test cases                                                                   }
 {                                                                              }
-{$IFDEF DEBUG}
+{$IFDEF UTILS_SELFTEST}
 procedure SelfTest;
 {$ENDIF}
 
@@ -3870,11 +3875,6 @@ var L, I, D : Integer;
     T : LongWord;
     C : AnsiChar;
 begin
-  if A = 0 then
-    begin
-      Result := '0';
-      exit;
-    end;
   // calculate length
   L := 0;
   T := A;
@@ -3883,6 +3883,8 @@ begin
       T := T div 16;
       Inc(L);
     end;
+  if L = 0 then
+    L := 1;
   if Digits > L then
     L := Digits;
   // convert
@@ -3912,11 +3914,6 @@ var L, I, D : Integer;
     T : LongWord;
     C : WideChar;
 begin
-  if A = 0 then
-    begin
-      Result := '0';
-      exit;
-    end;
   // calculate length
   L := 0;
   T := A;
@@ -3925,6 +3922,8 @@ begin
       T := T div 16;
       Inc(L);
     end;
+  if L = 0 then
+    L := 1;
   if Digits > L then
     L := Digits;
   // convert
@@ -3947,6 +3946,75 @@ begin
       Result[L - I] := '0';
       Inc(I);
     end;
+end;
+
+function TryAnsiStringToInt(const A: AnsiString; out B: Integer): Boolean;
+var S, L, I, J : Integer;
+    R : Int64;
+begin
+  L := Length(A);
+  if L = 0 then
+    begin
+      B := 0;
+      Result := False;
+      exit;
+    end;
+  I := 1;
+  // check sign
+  if A[I] = '-' then
+    begin
+      Inc(I);
+      S := -1;
+    end
+  else
+    S := 1;
+  // skip leading zeros
+  while (I <= L) and (A[I] = '0') do
+    Inc(I);
+  if I > L then
+    begin
+      B := 0;
+      Result := True;
+      exit;
+    end;
+  // validate digits and convert
+  J := I;
+  R := 0;
+  while J <= L do
+    if A[J] in ['0'..'9'] then
+      begin
+        R := R * 10 + AnsiCharToInt(A[J]);
+        Inc(J);
+        if R > MaxInteger then
+          begin
+            if S < 0 then
+              B := MinInteger
+            else
+              B := MaxInteger;
+            Result := False;
+            exit;
+          end;
+      end
+    else
+      begin
+        B := 0;
+        Result := False;
+        exit;
+      end;
+  // apply sign and check range
+  if S < 0 then
+    begin
+      R := -R;
+      if R < MinInteger then
+        begin
+          B := MinInteger;
+          Result := False;
+          exit;
+        end;
+    end;
+  // return integer result
+  B := Integer(R);
+  Result := True;
 end;
 
 function AnsiStringToInt(const A: AnsiString): Integer;
@@ -15801,7 +15869,7 @@ end;
 {                                                                              }
 { Test cases                                                                   }
 {                                                                              }
-{$IFDEF DEBUG}
+{$IFDEF UTILS_SELFTEST}
 {$ASSERTIONS ON}
 procedure Test_Misc;
 var L, H : Cardinal;
