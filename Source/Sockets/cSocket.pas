@@ -2,7 +2,7 @@
 {                                                                              }
 {   Library:          Fundamentals 4.00                                        }
 {   File name:        cSocket.pas                                              }
-{   File version:     4.05                                                     }
+{   File version:     4.06                                                     }
 {   Description:      System independent socket class.                         }
 {                                                                              }
 {   Copyright:        Copyright © 2001-2011, David J Butler                    }
@@ -42,6 +42,7 @@
 {   2008/12/29  4.03  Revision for Fundamentals 4.                             }
 {   2010/09/12  4.04  Revision.                                                }
 {   2011/09/15  4.05  Debug logging.                                           }
+{   2011/10/13  4.06  Change to Recv error handling.                           }
 {                                                                              }
 { Supported compilers:                                                         }
 {                                                                              }
@@ -55,9 +56,9 @@
 
 {$IFDEF DEBUG}
 {$IFDEF SELFTEST}
-  {$DEFINE SELFTEST_SOCKET}
-  {$DEFINE SELFTEST_SOCKET_IP4}
-  {.DEFINE SELFTEST_SOCKET_IP4_INTERNET}
+  {$DEFINE SOCKET_SELFTEST}
+  {$DEFINE SOCKET_SELFTEST_IP4}
+  {.DEFINE SOCKET_SELFTEST_IP4_INTERNET}
 {$ENDIF}
 {$ENDIF}
 
@@ -281,7 +282,7 @@ type
 {                                                                              }
 { Test cases                                                                   }
 {                                                                              }
-{$IFDEF SELFTEST_SOCKET}
+{$IFDEF SOCKET_SELFTEST}
 procedure SelfTest;
 {$ENDIF}
 
@@ -1150,7 +1151,7 @@ begin
   if Result < 0 then
     begin
       ErrorCode := cSocketLib.SocketGetLastError;
-      if ErrorCode <> EWOULDBLOCK then
+      if (ErrorCode <> EWOULDBLOCK) and (ErrorCode <> 0) then
         raise ESocketLib.Create('Socket recv failed', ErrorCode);
     end;
 end;
@@ -1162,7 +1163,7 @@ begin
   if Result < 0 then
     begin
       ErrorCode := cSocketLib.SocketGetLastError;
-      if ErrorCode <> EWOULDBLOCK then
+      if (ErrorCode <> EWOULDBLOCK) and (ErrorCode <> 0) then
         raise ESocketLib.Create('Socket recv failed', ErrorCode);
     end;
 end;
@@ -1184,7 +1185,7 @@ begin
           exit;
         end;
       {$ENDIF}
-      if ErrorCode <> EWOULDBLOCK then
+      if (ErrorCode <> EWOULDBLOCK) and (ErrorCode <> 0) then
         raise ESocketLib.Create('Socket recv failed', ErrorCode);
     end;
 end;
@@ -1239,10 +1240,10 @@ end;
 {                                                                              }
 { Test cases                                                                   }
 {                                                                              }
-{$IFDEF SELFTEST_SOCKET}
+{$IFDEF SOCKET_SELFTEST}
 {$ASSERTIONS ON}
 
-{$IFDEF SELFTEST_SOCKET_IP4}
+{$IFDEF SOCKET_SELFTEST_IP4}
 procedure SelfTestIP4TCP;
 var T, S, C : TSysSocket;
     A : TIP4Addr;
@@ -1340,7 +1341,7 @@ begin
     S.Free;
   end;
 
-  {$IFDEF SELFTEST_SOCKET_IP4_INTERNET}
+  {$IFDEF SOCKET_SELFTEST_IP4_INTERNET}
   C := TSysSocket.Create(iaIP4, ipTCP, False, INVALID_SOCKETHANDLE);
   try
     C.SetBlocking(True);
@@ -1363,7 +1364,7 @@ end;
 
 procedure SelfTest;
 begin
-  {$IFDEF SELFTEST_SOCKET_IP4}
+  {$IFDEF SOCKET_SELFTEST_IP4}
   SelfTestIP4TCP;
   {$ENDIF}
 end;

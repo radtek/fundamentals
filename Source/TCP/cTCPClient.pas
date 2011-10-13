@@ -2,7 +2,7 @@
 {                                                                              }
 {   Library:          Fundamentals 4.00                                        }
 {   File name:        cTCPClient.pas                                           }
-{   File version:     4.10                                                     }
+{   File version:     4.11                                                     }
 {   Description:      TCP client.                                              }
 {                                                                              }
 {   Copyright:        Copyright (c) 2007-2011, David J Butler                  }
@@ -47,6 +47,7 @@
 {   2011/06/25  0.08  Improved logging.                                        }
 {   2011/09/03  4.09  Revise for Fundamentals 4.                               }
 {   2011/09/10  4.10  Synchronised events option.                              }
+{   2011/10/06  4.11  Remove wait condition on startup.                        }
 {                                                                              }
 {******************************************************************************}
 
@@ -685,7 +686,7 @@ type
     FTLSClient : TTLSClient;
 
     procedure TLSClientTransportLayerSendProc(const Sender: TTLSConnection; const Buffer; const Size: Integer);
-    procedure TLSClientLog(Sender: TTLSConnection; LogType: TTLSLogType; LogMsg: AnsiString; LogLevel: Integer);
+    procedure TLSClientLog(Sender: TTLSConnection; LogType: TTLSLogType; LogMsg: String; LogLevel: Integer);
     procedure TLSClientStateChange(Sender: TTLSConnection; State: TTLSConnectionState);
 
   public
@@ -748,7 +749,7 @@ begin
   ConnectionPutWriteData(Buffer, Size);
 end;
 
-procedure TTCPClientTLSConnectionProxy.TLSClientLog(Sender: TTLSConnection; LogType: TTLSLogType; LogMsg: AnsiString; LogLevel: Integer);
+procedure TTCPClientTLSConnectionProxy.TLSClientLog(Sender: TTLSConnection; LogType: TTLSLogType; LogMsg: String; LogLevel: Integer);
 begin
   {$IFDEF TCP_DEBUG}
   Log(tlDebug, 'TLS:%s', [LogMsg], LogLevel + 1);
@@ -1836,7 +1837,7 @@ const
   // milliseconds to wait for thread to startup,
   // this usually happens within 1 ms but could pause for a few seconds if the
   // system is busy
-  ThreadStartupTimeOut = 15000; // 15 seconds
+  ThreadStartupTimeOut = 1500000; // 15 seconds
 
 procedure TF4TCPClient.DoStart;
 var
@@ -1856,8 +1857,9 @@ begin
   if IsStarting then
     begin
       // this thread is not doing startup, wait for other thread to complete startup
-      if WaitState(TCPClientStates_All - [csStarting], ThreadStartupTimeOut) = csStarting then
-        raise ETCPClient.Create(SError_StartupFailed); // timed out waiting for startup
+      // REMOVED WAIT
+      // if WaitState(TCPClientStates_All - [csStarting], ThreadStartupTimeOut) = csStarting then
+      //   raise ETCPClient.Create(SError_StartupFailed); // timed out waiting for startup
       exit;
     end;
   Assert(not FActive);
@@ -1875,8 +1877,9 @@ begin
   // start thread
   StartThread;
   // wait for thread to complete startup
-  if WaitState(TCPClientStates_All - [csStarting], ThreadStartupTimeOut) = csStarting then
-    raise ETCPClient.Create(SError_StartupFailed); // timed out waiting for thread
+  // REMOVED WAIT
+  // if WaitState(TCPClientStates_All - [csStarting], ThreadStartupTimeOut) = csStarting then
+  //  raise ETCPClient.Create(SError_StartupFailed); // timed out waiting for thread
   // started (connection object initialised)
   TriggerActive;
 end;

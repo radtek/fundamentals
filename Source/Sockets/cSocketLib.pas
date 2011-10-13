@@ -74,8 +74,8 @@
 
 {$IFDEF DEBUG}
 {$IFDEF SELFTEST}
-  {$DEFINE SELFTEST_SOCKETLIB}
-  {.DEFINE SELFTEST_SOCKETLIB_IP6}
+  {$DEFINE SOCKETLIB_SELFTEST}
+  {.DEFINE SOCKETLIB_SELFTEST_IP6}
 {$ENDIF}
 {$ENDIF}
 
@@ -649,7 +649,7 @@ function  GetSocketAvailableToRecv(const SocketHandle: TSocketHandle): Integer;
 {                                                                              }
 { Test cases                                                                   }
 {                                                                              }
-{$IFDEF SELFTEST_SOCKETLIB}
+{$IFDEF SOCKETLIB_SELFTEST}
 procedure SelfTest;
 {$ENDIF}
 
@@ -2755,7 +2755,7 @@ end;
 {                                                                              }
 { Test cases                                                                   }
 {                                                                              }
-{$IFDEF SELFTEST_SOCKETLIB}
+{$IFDEF SOCKETLIB_SELFTEST}
 {$ASSERTIONS ON}
 procedure SelfTest;
 var S : AnsiString;
@@ -2837,7 +2837,7 @@ begin
   W := LocalIPAddressesStrA;
   Assert(Length(W) > 0,                           'LocalIPAddresses');
 
-  {$IFDEF SELFTEST_SOCKETLIB_IP6}
+  {$IFDEF SOCKETLIB_SELFTEST_IP6}
   Assert(not IsIPAddress('', B),                  'IsIP6Address');
   Assert(IsIPAddress('::1', B),                   'IsIP6Address');
   Assert(IN6ADDR_IsLocalHost(B),                  'IN6ADDR_IsLocalHost');
@@ -2884,7 +2884,7 @@ begin
   Assert(CloseSocket(H) = 0,                      'CloseSocket');
   Assert(SocketGetLastError = 0,                  'CloseSocket');
 
-  {$IFDEF SELFTEST_SOCKETLIB_IP6}
+  {$IFDEF SOCKETLIB_SELFTEST_IP6}
   H := AllocateSocketHandle(iaIP6, ipTCP);
   Assert(H <> 0,                                  'AllocateSocketHandle');
   Assert(SocketGetLastError = 0,                  'AllocateSocketHandle');

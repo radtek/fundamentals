@@ -36,10 +36,11 @@
 {   E-mail:           fundamentals.library@gmail.com                           }
 {                                                                              }
 { Revision history:                                                            }
-{   2010/12/15  0.01  Test case for TLS client/server.                         }
-{   2011/01/02  0.02  Test case for large buffers.                             }
-{   2011/04/22  0.03  Simple buffer test cases.                                }
-{   2011/04/22  4.04  Test case for multiple connections.                      }
+{   2010/12/15  0.01  Test for TLS client/server.                              }
+{   2011/01/02  0.02  Test for large buffers.                                  }
+{   2011/04/22  0.03  Simple buffer tests.                                     }
+{   2011/04/22  4.04  Test for multiple connections.                           }
+{   2011/10/13  4.05  SSL3 tests.                                              }
 {                                                                              }
 { Todo:                                                                        }
 { - Test case socks proxy                                                      }
@@ -65,15 +66,15 @@
 
 {$IFDEF TCP_SELFTEST}
 {$IFDEF TCPSERVER_TLS}
-  {$DEFINE TCPSERVER_SELFTEST}
-  {$DEFINE TCPSERVER_SELFTEST_TLS}
+  {.DEFINE TCPSERVER_SELFTEST}
+  {.DEFINE TCPSERVER_SELFTEST_TLS}
 {$ENDIF}
 {$ENDIF}
 
 {$IFDEF TCP_SELFTEST}
   {$DEFINE TCPCLIENT_SELFTEST}
   {.DEFINE TCPCLIENT_SELFTEST_TLS_LOCAL_PROXY}
-  {.DEFINE TCPCLIENT_SELFTEST_TLS_WEB}
+  {$DEFINE TCPCLIENT_SELFTEST_TLS_WEB}
   {.DEFINE TCPCLIENT_SELFTEST_WEB}
 {$ENDIF}
 
@@ -87,10 +88,10 @@
 {$ENDIF}
 
 {$IFDEF TCPCLIENT_TLS}
-  {$DEFINE TCP_TLS}
+  {$DEFINE TCP_USES_TLS}
 {$ENDIF}
 {$IFDEF TCPSERVER_TLS}
-  {$DEFINE TCP_TLS}
+  {$DEFINE TCP_USES_TLS}
 {$ENDIF}
 
 unit cTCPTests;
@@ -118,7 +119,7 @@ uses
   SyncObjs,
   cUtils,
   cSocketLib,
-  {$IFDEF TCP_TLS}
+  {$IFDEF TCP_USES_TLS} 
   cTLSHandshake,
   cTLSConnection,
   cTLSClient,
@@ -293,7 +294,7 @@ begin
   {$IFDEF TCP_SELFTEST_LOG_TO_CONSOLE}
   Lock.Acquire;
   try
-    Writeln(LogMsg);
+    Writeln(LogLevel:2, ' ', LogMsg);
   finally
     Lock.Release;
   end;
@@ -440,8 +441,13 @@ end;
 {$ENDIF}
 
 {$IFDEF TCPCLIENT_SELFTEST_TLS_WEB}
-// Test TLS with google.com
-procedure SelfTestTLS2(const TLSClientOptions: TTLSClientOptions);
+// Test TLS with web site
+const
+  TLSTest2Host = 'www.google.com';
+  // TLSTest2Host = 'tls.woodgrovebank.com';
+  // TLSTest2Host = 'www.gmail.com';
+
+procedure SelfTestTLS2(const TLSClientOptions: TTCPClientTLSOptions);
 var C : TF4TCPClient;
     I, L : Integer;
     S : AnsiString;
@@ -453,12 +459,12 @@ begin
     // init
     C.OnLog := A.ClientLog;
     C.TLSEnabled := True;
-    C.TLSClientOptions := TLSClientOptions;
+    C.TLSOptions := TLSClientOptions;
     C.LocalHost := '0.0.0.0';
-    C.Host := 'www.google.com';
+    C.Host := TLSTest2Host;
     C.Port := '443';
     C.TLSEnabled := True;
-    C.TLSClientOptions := TLSClientOptions;
+    C.TLSOptions := TLSClientOptions;
     // start
     C.Active := True;
     Assert(C.Active);
@@ -479,8 +485,8 @@ begin
     // send
     S :=
         'GET / HTTP/1.1'#13#10 +
-        'Host: www.google.com'#13#10 +
-        'Date: 17 Dec 2010 12:34:56 GMT'#13#10 +
+        'Host: ' + TLSTest2Host + #13#10 +
+        'Date: 11 Oct 2011 12:34:56 GMT'#13#10 +
         #13#10;
     C.Connection.Write(S[1], Length(S));
     C.WaitTransmit(5000);
@@ -492,7 +498,7 @@ begin
     Assert(C.Connection.Read(S[1], L) = L);
     Assert(Copy(S, 1, 6) = 'HTTP/1');
     // close
-    C.ShutdownAndWait(1000, 1000);
+    C.BlockingShutdown(1000, 1000);
     Assert(C.Connection.State = cnsClosed);
     // stop
     C.Active := False;
@@ -512,12 +518,16 @@ begin
   {$ENDIF}
   {$IFDEF TCPCLIENT_TLS}
   {$IFDEF TCPCLIENT_SELFTEST_TLS_LOCAL_PROXY}
-  // SelfTestTLS1([tlscoDontUseSSL3, tlscoDontUseTLS10, tlscoDontUseTLS11]); // TLS 1.2 - not supported by stunnel
-  // SelfTestTLS1([tlscoDontUseSSL3, tlscoDontUseTLS10, tlscoDontUseTLS12]); // TLS 1.1 - not supported by stunnel
-  SelfTestTLS1([tlscoDontUseSSL3, tlscoDontUseTLS11, tlscoDontUseTLS12]); // TLS 1.0
+  // SelfTestTLS1([ctoDontUseSSL3, ctoDontUseTLS10, ctoDontUseTLS11]); // TLS 1.2 - not supported by stunnel
+  // SelfTestTLS1([ctoDontUseSSL3, ctoDontUseTLS10, ctoDontUseTLS12]); // TLS 1.1 - not supported by stunnel
+  SelfTestTLS1([ctoDontUseSSL3, ctoDontUseTLS11, ctoDontUseTLS12]); // TLS 1.0
   {$ENDIF}
   {$IFDEF TCPCLIENT_SELFTEST_TLS_WEB}
-  SelfTestTLS2([tlscoDontUseSSL3, tlscoDontUseTLS11, tlscoDontUseTLS12]); // TLS 1.0
+  // SelfTestTLS2([]);
+  //SelfTestTLS2([ctoDontUseTLS10, ctoDontUseTLS11, ctoDontUseTLS12]); // SSL 3
+  SelfTestTLS2([ctoDontUseSSL3,  ctoDontUseTLS11, ctoDontUseTLS12]); // TLS 1.0
+  //SelfTestTLS2([ctoDontUseSSL3,  ctoDontUseTLS10, ctoDontUseTLS12]); // TLS 1.1
+  //SelfTestTLS2([ctoDontUseSSL3,  ctoDontUseTLS10, ctoDontUseTLS11]); // TLS 1.2
   {$ENDIF}
   {$ENDIF}
 end;
@@ -837,12 +847,12 @@ end;
 procedure SelfTest_ClientServer;
 begin
   SelfTestClientServer(tmSimple, 5,  True);
-  SelfTestClientServer(tmSimple, 50, False);
+  SelfTestClientServer(tmSimple, 30, False);
   {$IFDEF TCPCLIENTSERVER_SELFTEST_TLS}
-  SelfTestClientServer(tmTLS, 1, True, [ctoDontUseSSL3, ctoDontUseTLS10, ctoDontUseTLS11]); // TLS 1.2
-  SelfTestClientServer(tmTLS, 1, True, [ctoDontUseSSL3, ctoDontUseTLS10, ctoDontUseTLS12]); // TLS 1.1
-  SelfTestClientServer(tmTLS, 1, True, [ctoDontUseSSL3, ctoDontUseTLS11, ctoDontUseTLS12]); // TLS 1.0
   // SelfTestClientServer(tmTLS, 1, True, [ctoDontUseTLS10, ctoDontUseTLS11, ctoDontUseTLS12]); // SSL 3.0
+  SelfTestClientServer(tmTLS, 1, True, [ctoDontUseSSL3,  ctoDontUseTLS10, ctoDontUseTLS11]); // TLS 1.2
+  SelfTestClientServer(tmTLS, 1, True, [ctoDontUseSSL3,  ctoDontUseTLS10, ctoDontUseTLS12]); // TLS 1.1
+  SelfTestClientServer(tmTLS, 1, True, [ctoDontUseSSL3,  ctoDontUseTLS11, ctoDontUseTLS12]); // TLS 1.0
   {$ENDIF}
 end;
 {$ENDIF}

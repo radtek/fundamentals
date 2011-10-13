@@ -2,7 +2,7 @@
 {                                                                              }
 {   Library:          Fundamentals 4.00                                        }
 {   File name:        cTCPConnection.pas                                       }
-{   File version:     4.19                                                     }
+{   File version:     4.20                                                     }
 {   Description:      TCP connection.                                          }
 {                                                                              }
 {   Copyright:        Copyright (c) 2007-2011, David J Butler                  }
@@ -55,7 +55,8 @@
 {   2011/07/31  0.16  Defer close from proxy until after read.                 }
 {   2011/09/03  4.17  Revise for Fundamentals 4.                               }
 {   2011/09/10  4.18  Improve locking granularity.                             }
-{   2011/09/15  4.19  Improve polling efficiency.                              } 
+{   2011/09/15  4.19  Improve polling efficiency.                              }
+{   2011/10/06  4.20  Fix TCPTick frequency.                                   } 
 {                                                                              }
 {******************************************************************************}
 
@@ -491,7 +492,7 @@ end;
 {                                                                              }
 function TCPGetTick: LongWord;
 begin
-  Result := Trunc(Frac(Now) * $FFFFFFFF);
+  Result := Trunc(Frac(Now) * $5265C00);
 end;
 
 {$IFOPT Q+}{$DEFINE QOn}{$ELSE}{$UNDEF QOn}{$ENDIF}{$Q-}
@@ -1064,7 +1065,6 @@ begin
   {$IFDEF TCP_DEBUG}
   Log(tlDebug, 'Start');
   {$ENDIF}
-
   Lock;
   try
     TCPConnectionTransferReset(FReadTransferState);
