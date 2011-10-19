@@ -1,0 +1,8 @@
+{$INCLUDE cDefines.inc}
+
+{$IFDEF DEBUG}
+{$IFDEF SELFTEST}
+  {$DEFINE SQL_SELFTEST}
+{$ENDIF}
+{$ENDIF}
+
