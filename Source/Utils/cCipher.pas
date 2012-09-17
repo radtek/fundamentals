@@ -243,10 +243,10 @@ function  Decrypt(
 {                                                                              }
 { Test cases                                                                   }
 {                                                                              }
-{$IFDEF DEBUG}{$IFDEF SELFTEST}
+{$IFDEF CIPHER_SELFTEST}
 procedure SelfTest;
 procedure Profile;
-{$ENDIF}{$ENDIF}
+{$ENDIF}
 
 
 
@@ -254,6 +254,9 @@ implementation
 
 uses
   { Fundamentals }
+  {$IFDEF CIPHER_SELFTEST}
+  cUtils,
+  {$ENDIF}
   cHugeInt,
   { Cipher }
   cCipherUtils;
@@ -1331,7 +1334,7 @@ end;
 {                                                                              }
 { Test cases                                                                   }
 {                                                                              }
-{$IFDEF DEBUG}{$IFDEF SELFTEST}
+{$IFDEF CIPHER_SELFTEST}
 {$ASSERTIONS ON}
 type
   TCipherTestCase = record
@@ -1632,7 +1635,7 @@ var
 
 procedure SelfTestTestCases;
 var I : Integer;
-    B : array[0..1023] of Char;
+    B : array[0..1023] of AnsiChar;
     L : Integer;
     C : AnsiString;
     M : AnsiString;
@@ -1642,7 +1645,7 @@ begin
       try
         if Assigned(GetCipherInfo(Cipher)) then
           begin
-            M := IntToStr(I);
+            M := IntToStringA(I);
             L := Length(PlainText);
             Move(PAnsiChar(PlainText)^, B[0], L);
             L := Encrypt(Cipher, Mode, cpNone, KeyBits, Pointer(Key), Length(Key),
@@ -1683,7 +1686,7 @@ end;
 procedure Profile;
 begin
 end;
-{$ENDIF}{$ENDIF}
+{$ENDIF}
 
 
 

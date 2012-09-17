@@ -35,19 +35,19 @@
 {                                                                              }
 { Revision history:                                                            }
 {                                                                              }
-{   19/04/2002  0.01  Initial version                                          }
-{   21/04/2002  0.02  Added case and decomposition functions                   }
-{   26/04/2002  0.03  Added WidePos, WideReplace and Append functions.         }
-{   28/10/2002  3.04  Refactored for Fundamentals 3.                           }
-{   07/09/2003  3.05  Revision.                                                }
-{   10/01/2004  3.06  Removed dependancy on cUtils unit.                       }
-{   10/01/2004  3.07  Changes to allow smart-linking by the compiler.          }
+{   2002/04/19  0.01  Initial version                                          }
+{   2002/04/21  0.02  Added case and decomposition functions                   }
+{   2002/04/26  0.03  Added WidePos, WideReplace and Append functions.         }
+{   2002/10/28  3.04  Refactored for Fundamentals 3.                           }
+{   2003/09/07  3.05  Revision.                                                }
+{   2004/01/10  3.06  Removed dependancy on cUtils unit.                       }
+{   2004/01/10  3.07  Changes to allow smart-linking by the compiler.          }
 {                     Typically this saves 100-200K on the executable size.    }
-{   01/04/2004  3.08  Compilable with FreePascal-1.92 Win32 i386.              }
-{   22/08/2004  3.09  Compilable with Delphi 8.                                }
-{   14/07/2005  4.10  Compilable with FreePascal 2 Win32 i386.                 }
-{   17/07/2005  4.11  Merged cUnicode and cUnicodeChar units.                  }
-{   27/08/2005  4.12  Revised for Fundamentals 4.                              }
+{   2004/04/01  3.08  Compilable with FreePascal-1.92 Win32 i386.              }
+{   2004/08/22  3.09  Compilable with Delphi 8.                                }
+{   2005/07/14  4.10  Compilable with FreePascal 2 Win32 i386.                 }
+{   2005/07/17  4.11  Merged cUnicode and cUnicodeChar units.                  }
+{   2005/08/27  4.12  Revised for Fundamentals 4.                              }
 {                                                                              }
 { Supported compilers:                                                         }
 {                                                                              }
@@ -67,9 +67,18 @@
 {******************************************************************************}
 
 {$INCLUDE cDefines.inc}
-{$IFDEF FREEPASCAL}{$IFDEF DEBUG}
-  {$WARNINGS OFF}{$HINTS OFF}
-{$ENDIF}{$ENDIF}
+
+{$IFDEF FREEPASCAL}
+  {$WARNINGS OFF}
+  {$HINTS OFF}
+{$ENDIF}
+
+{$IFDEF DEBUG}
+{$IFDEF SELFTEST}
+  {$DEFINE UNICODE_SELFTEST}
+{$ENDIF}
+{$ENDIF}
+
 unit cUnicode;
 
 interface
@@ -313,9 +322,9 @@ function  WideSplit(const S, D: WideString): WideStringArray;
 {                                                                              }
 { Self-testing code                                                            }
 {                                                                              }
-{$IFDEF DEBUG}{$IFDEF SELFTEST}
+{$IFDEF UNICODE_SELFTEST}
 procedure SelfTest;
-{$ENDIF}{$ENDIF}
+{$ENDIF}
 
 
 
@@ -9448,7 +9457,7 @@ end;
 {                                                                              }
 { Self-testing code                                                            }
 {                                                                              }
-{$IFDEF DEBUG}{$IFDEF SELFTEST}
+{$IFDEF UNICODE_SELFTEST}
 {$ASSERTIONS ON}
 procedure SelfTest;
 var S : WideString;
@@ -9518,7 +9527,7 @@ begin
   Assert(WideZPosAnsiChar('Q', 'XYZABCAACDEF') = -1, 'WideZPosAnsiChar');
   {$ENDIF}
 end;
-{$ENDIF}{$ENDIF}
+{$ENDIF}
 
 
 

@@ -2,10 +2,10 @@
 {                                                                              }
 {   Library:          Fundamentals 4.00                                        }
 {   File name:        cFileUtils.pas                                           }
-{   File version:     4.10                                                     }
+{   File version:     4.11                                                     }
 {   Description:      File name and file system functions                      }
 {                                                                              }
-{   Copyright:        Copyright © 2002-2010, David J Butler                    }
+{   Copyright:        Copyright © 2002-2012, David J Butler                    }
 {                     All rights reserved.                                     }
 {                     Redistribution and use in source and binary forms, with  }
 {                     or without modification, are permitted provided that     }
@@ -45,6 +45,7 @@
 {   2009/06/05  4.08  File access functions.                                   }
 {   2009/07/30  4.09  File access functions.                                   }
 {   2010/06/27  4.10  Compilable with FreePascal 2.4.0 OSX x86-64              }
+{   2012/03/26  4.11  Unicode update.                                          }
 {                                                                              }
 { Supported compilers:                                                         }
 {                                                                              }
@@ -55,12 +56,14 @@
 {******************************************************************************}
 
 {$INCLUDE cDefines.inc}
+
 {$IFDEF FREEPASCAL}
   {$WARNINGS OFF}{$HINTS OFF}
 {$ENDIF}
 {$IFDEF DELPHI6_UP}
   {$WARN SYMBOL_PLATFORM OFF}
 {$ENDIF}
+
 unit cFileUtils;
 
 interface
@@ -78,45 +81,91 @@ uses
 { Path functions                                                               }
 {                                                                              }
 const
-  PathSeperator = {$IFDEF UNIX}  '/' {$ENDIF}
+  PathSeparator = {$IFDEF UNIX}  '/' {$ENDIF}
                   {$IFDEF MSWIN} '\' {$ENDIF};
 
-function  PathHasDriveLetter(const Path: AnsiString): Boolean;
-function  PathIsDriveLetter(const Path: AnsiString): Boolean;
-function  PathIsDriveRoot(const Path: AnsiString): Boolean;
-function  PathIsRoot(const Path: AnsiString): Boolean;
-function  PathIsUNCPath(const Path: AnsiString): Boolean;
-function  PathIsAbsolute(const Path: AnsiString): Boolean;
-function  PathIsDirectory(const Path: AnsiString): Boolean;
-function  PathInclSuffix(const Path: AnsiString;
-          const PathSep: AnsiChar = PathSeperator): AnsiString;
-function  PathExclSuffix(const Path: AnsiString;
-          const PathSep: AnsiChar = PathSeperator): AnsiString;
-procedure PathEnsureSuffix(var Path: AnsiString;
-          const PathSep: AnsiChar = PathSeperator);
-procedure PathEnsureNoSuffix(var Path: AnsiString;
-          const PathSep: AnsiChar = PathSeperator);
-function  PathCanonical(const Path: AnsiString;
-          const PathSep: AnsiChar = PathSeperator): AnsiString;
-function  PathExpand(const Path: AnsiString; const BasePath: AnsiString = '';
-          const PathSep: AnsiChar = PathSeperator): AnsiString;
+function  PathHasDriveLetterA(const Path: AnsiString): Boolean;
+function  PathHasDriveLetter(const Path: String): Boolean;
 
-function  PathLeftElement(const Path: AnsiString;
-          const PathSep: AnsiChar = PathSeperator): AnsiString;
-procedure PathSplitLeftElement(const Path: AnsiString;
+function  PathIsDriveLetterA(const Path: AnsiString): Boolean;
+function  PathIsDriveLetter(const Path: String): Boolean;
+
+function  PathIsDriveRootA(const Path: AnsiString): Boolean;
+function  PathIsDriveRoot(const Path: String): Boolean;
+
+function  PathIsRootA(const Path: AnsiString): Boolean;
+function  PathIsRoot(const Path: String): Boolean;
+
+function  PathIsUNCPathA(const Path: AnsiString): Boolean;
+function  PathIsUNCPath(const Path: String): Boolean;
+
+function  PathIsAbsoluteA(const Path: AnsiString): Boolean;
+function  PathIsAbsolute(const Path: String): Boolean;
+
+function  PathIsDirectoryA(const Path: AnsiString): Boolean;
+function  PathIsDirectory(const Path: String): Boolean;
+
+function  PathInclSuffixA(const Path: AnsiString;
+          const PathSep: AnsiChar = PathSeparator): AnsiString;
+function  PathInclSuffix(const Path: String;
+          const PathSep: Char = PathSeparator): String;
+
+function  PathExclSuffixA(const Path: AnsiString;
+          const PathSep: AnsiChar = PathSeparator): AnsiString;
+function  PathExclSuffix(const Path: String;
+          const PathSep: Char = PathSeparator): String;
+
+procedure PathEnsureSuffixA(var Path: AnsiString;
+          const PathSep: AnsiChar = PathSeparator);
+procedure PathEnsureSuffix(var Path: String;
+          const PathSep: Char = PathSeparator);
+
+procedure PathEnsureNoSuffixA(var Path: AnsiString;
+          const PathSep: AnsiChar = PathSeparator);
+procedure PathEnsureNoSuffix(var Path: String;
+          const PathSep: Char = PathSeparator);
+
+function  PathCanonicalA(const Path: AnsiString;
+          const PathSep: AnsiChar = PathSeparator): AnsiString;
+function  PathCanonical(const Path: String;
+          const PathSep: Char = PathSeparator): String;
+
+function  PathExpandA(const Path: AnsiString; const BasePath: AnsiString = '';
+          const PathSep: AnsiChar = PathSeparator): AnsiString;
+function  PathExpand(const Path: String; const BasePath: String = '';
+          const PathSep: Char = PathSeparator): String;
+
+function  PathLeftElementA(const Path: AnsiString;
+          const PathSep: AnsiChar = PathSeparator): AnsiString;
+function  PathLeftElement(const Path: String;
+          const PathSep: Char = PathSeparator): String;
+
+procedure PathSplitLeftElementA(const Path: AnsiString;
           var LeftElement, RightPath: AnsiString;
-          const PathSep: AnsiChar = PathSeperator);
+          const PathSep: AnsiChar = PathSeparator);
+procedure PathSplitLeftElement(const Path: String;
+          var LeftElement, RightPath: String;
+          const PathSep: Char = PathSeparator);
 
-procedure DecodeFilePath(const FilePath: AnsiString;
+procedure DecodeFilePathA(const FilePath: AnsiString;
           var Path, FileName: AnsiString;
-          const PathSep: AnsiChar = PathSeperator);
+          const PathSep: AnsiChar = PathSeparator);
+procedure DecodeFilePath(const FilePath: String;
+          var Path, FileName: String;
+          const PathSep: Char = PathSeparator);
 
-function  FileNameValid(const FileName: AnsiString): AnsiString;
-function  FilePath(const FileName, Path: AnsiString; const BasePath: AnsiString = '';
-          const PathSep: AnsiChar = PathSeperator): AnsiString;
+function  FileNameValidA(const FileName: AnsiString): AnsiString;
+function  FileNameValid(const FileName: String): String;
 
-function  DirectoryExpand(const Path: AnsiString; const BasePath: AnsiString = '';
-          const PathSep: AnsiChar = PathSeperator): AnsiString;
+function  FilePathA(const FileName, Path: AnsiString; const BasePath: AnsiString = '';
+          const PathSep: AnsiChar = PathSeparator): AnsiString;
+function  FilePath(const FileName, Path: String; const BasePath: String = '';
+          const PathSep: Char = PathSeparator): String;
+
+function  DirectoryExpandA(const Path: AnsiString; const BasePath: AnsiString = '';
+          const PathSep: AnsiChar = PathSeparator): AnsiString;
+function  DirectoryExpand(const Path: String; const BasePath: String = '';
+          const PathSep: Char = PathSeparator): String;
 
 function  UnixPathToWinPath(const Path: AnsiString): AnsiString;
 function  WinPathToUnixPath(const Path: AnsiString): AnsiString;
@@ -240,15 +289,16 @@ procedure FileCloseEx(
           const FileHandle: TFileHandle);
 
 function  FileExistsA(const FileName: AnsiString): Boolean;
-function  FileGetSizeA(const FileName: AnsiString): Int64;
-function  FileGetDateTimeA(const FileName: AnsiString): TDateTime;
-function  FileGetDateTime2A(const FileName: AnsiString): TDateTime;
-function  FileIsReadOnlyA(const FileName: AnsiString): Boolean;
+function  FileExists(const FileName: String): Boolean;
 
-procedure FileDeleteExA(
-          const FileName: AnsiString);
-procedure FileRenameExA(
-          const OldFileName, NewFileName: AnsiString);
+function  FileGetSize(const FileName: String): Int64;
+
+function  FileGetDateTime(const FileName: String): TDateTime;
+function  FileGetDateTime2(const FileName: String): TDateTime;
+function  FileIsReadOnly(const FileName: String): Boolean;
+
+procedure FileDeleteEx(const FileName: String);
+procedure FileRenameEx(const OldFileName, NewFileName: String);
 
 function  ReadFileBufA(
           const FileName: AnsiString;
@@ -275,26 +325,26 @@ procedure AppendFileStrA(
           const FileCreationMode: TFileCreationMode = fcOpenAlways;
           const FileOpenWait: PFileOpenWait = nil);
 
-function  DirectoryEntryExistsA(const Name: AnsiString): Boolean;
-function  DirectoryEntrySizeA(const Name: AnsiString): Int64;
+function  DirectoryEntryExists(const Name: String): Boolean;
+function  DirectoryEntrySize(const Name: String): Int64;
 
-function  DirectoryExistsA(const DirectoryName: AnsiString): Boolean;
-function  DirectoryGetDateTimeA(const DirectoryName: AnsiString): TDateTime;
-procedure DirectoryCreateA(const DirectoryName: AnsiString);
+function  DirectoryExists(const DirectoryName: String): Boolean;
+function  DirectoryGetDateTime(const DirectoryName: String): TDateTime;
+procedure DirectoryCreate(const DirectoryName: String);
 
 
 {                                                                              }
 { File / Directory operations                                                  }
 {   MoveFile first attempts a rename, then a copy and delete.                  }
 {                                                                              }
-function  GetFirstFileNameMatching(const FileMask: AnsiString): AnsiString;
+function  GetFirstFileNameMatching(const FileMask: String): String;
 function  DirEntryGetAttr(const FileName: AnsiString): Integer;
 function  DirEntryIsDirectory(const FileName: AnsiString): Boolean;
-function  FileHasAttr(const FileName: AnsiString; const Attr: Word): Boolean;
+function  FileHasAttr(const FileName: String; const Attr: Word): Boolean;
 
-procedure CopyFile(const FileName, DestName: AnsiString);
-procedure MoveFile(const FileName, DestName: AnsiString);
-function  DeleteFiles(const FileMask: AnsiString): Boolean;
+procedure CopyFile(const FileName, DestName: String);
+procedure MoveFile(const FileName, DestName: String);
+function  DeleteFiles(const FileMask: String): Boolean;
 
 
 
@@ -332,6 +382,7 @@ implementation
 uses
   { Fundamentals }
   cUtils,
+  cDynArrays,
   cStrings
   {$IFDEF UNIX}
   , BaseUnix
@@ -342,7 +393,7 @@ uses
   {$ENDIF}
   {$ENDIF};
 
-  
+
 
 {$IFDEF DELPHI6_UP}
   {$WARN SYMBOL_DEPRECATED OFF}
@@ -365,13 +416,15 @@ resourcestring
   SInvalidFileName         = 'Invalid file name';
   SInvalidPath             = 'Invalid path';
   SFileDeleteError         = 'File delete error: %s';
+  SInvalidFileAccess       = 'Invalid file access';
+  SInvalidFileSharing      = 'Invalid file sharing';
 
 
 
 {                                                                              }
 { Path functions                                                               }
 {                                                                              }
-function PathHasDriveLetter(const Path: AnsiString): Boolean;
+function PathHasDriveLetterA(const Path: AnsiString): Boolean;
 var P: PAnsiChar;
 begin
   Result := False;
@@ -386,24 +439,61 @@ begin
   Result := True;
 end;
 
-function PathIsDriveLetter(const Path: AnsiString): Boolean;
+function PathHasDriveLetter(const Path: String): Boolean;
+begin
+  Result := False;
+  if Length(Path) < 2 then
+    exit;
+  case Path[1] of
+    'A'..'Z', 'a'..'z' : ;
+  else
+    exit;
+  end;
+  if Path[2] <> ':' then
+    exit;
+  Result := True;
+end;
+
+function PathIsDriveLetterA(const Path: AnsiString): Boolean;
+begin
+  Result := (Length(Path) = 2) and PathHasDriveLetterA(Path);
+end;
+
+function PathIsDriveLetter(const Path: String): Boolean;
 begin
   Result := (Length(Path) = 2) and PathHasDriveLetter(Path);
 end;
 
-function PathIsDriveRoot(const Path: AnsiString): Boolean;
+function PathIsDriveRootA(const Path: AnsiString): Boolean;
+begin
+  Result := (Length(Path) = 3) and PathHasDriveLetterA(Path) and
+            (Path[3] = '\');
+end;
+
+function PathIsDriveRoot(const Path: String): Boolean;
 begin
   Result := (Length(Path) = 3) and PathHasDriveLetter(Path) and
             (Path[3] = '\');
 end;
 
-function PathIsRoot(const Path: AnsiString): Boolean;
+function PathIsRootA(const Path: AnsiString): Boolean;
 begin
   Result := ((Length(Path) = 1) and (Path[1] in csSlash)) or
-            PathIsDriveRoot(Path);
+            PathIsDriveRootA(Path);
 end;
 
-function PathIsUNCPath(const Path: AnsiString): Boolean;
+function PathIsRoot(const Path: String): Boolean;
+begin
+  Result := PathIsDriveRoot(Path);
+  if Result then
+    exit;
+  if Length(Path) = 1 then
+    case Path[1] of
+      '/', '\' : Result := True;
+    end;
+end;
+
+function PathIsUNCPathA(const Path: AnsiString): Boolean;
 var P: PAnsiChar;
 begin
   Result := False;
@@ -418,25 +508,51 @@ begin
   Result := True;
 end;
 
-function PathIsAbsolute(const Path: AnsiString): Boolean;
+function PathIsUNCPath(const Path: String): Boolean;
+begin
+  Result := False;
+  if Length(Path) < 2 then
+    exit;
+  if Path[1] <> '\' then
+    exit;
+  if Path[2] <> '\' then
+    exit;
+  Result := True;
+end;
+
+function PathIsAbsoluteA(const Path: AnsiString): Boolean;
 begin
   if Path = '' then
     Result := False else
-  if PathHasDriveLetter(Path) then
+  if PathHasDriveLetterA(Path) then
     Result := True else
   if PAnsiChar(Pointer(Path))^ in ['\', '/'] then
     Result := True else
     Result := False;
 end;
 
-function PathIsDirectory(const Path: AnsiString): Boolean;
+function PathIsAbsolute(const Path: String): Boolean;
+begin
+  if Path = '' then
+    Result := False else
+  if PathHasDriveLetter(Path) then
+    Result := True
+  else
+    case Path[1] of
+      '\', '/' : Result := True;
+    else
+      Result := False;
+    end;
+end;
+
+function PathIsDirectoryA(const Path: AnsiString): Boolean;
 var L: Integer;
     P: PAnsiChar;
 begin
   L := Length(Path);
   if L = 0 then
     Result := False else
-  if (L = 2) and PathHasDriveLetter(Path) then
+  if (L = 2) and PathHasDriveLetterA(Path) then
     Result := True else
     begin
       P := Pointer(Path);
@@ -445,7 +561,23 @@ begin
     end;
 end;
 
-function PathInclSuffix(const Path: AnsiString; const PathSep: AnsiChar): AnsiString;
+function PathIsDirectory(const Path: String): Boolean;
+var L: Integer;
+begin
+  L := Length(Path);
+  if L = 0 then
+    Result := False else
+  if (L = 2) and PathHasDriveLetter(Path) then
+    Result := True
+  else
+    case Path[L] of
+      '/', '\' : Result := True;
+    else
+      Result := False;
+    end;
+end;
+
+function PathInclSuffixA(const Path: AnsiString; const PathSep: AnsiChar): AnsiString;
 var L: Integer;
     P: PAnsiChar;
 begin
@@ -461,17 +593,40 @@ begin
     end;
 end;
 
-procedure PathEnsureSuffix(var Path: AnsiString; const PathSep: AnsiChar);
+function PathInclSuffix(const Path: String; const PathSep: Char): String;
+var L: Integer;
+begin
+  L := Length(Path);
+  if L = 0 then
+    Result := '' else
+    begin
+      if Path[L] = PathSep then
+        Result := Path else
+        Result := Path + PathSep;
+    end;
+end;
+
+procedure PathEnsureSuffixA(var Path: AnsiString; const PathSep: AnsiChar);
+begin
+  Path := PathInclSuffixA(Path, PathSep);
+end;
+
+procedure PathEnsureSuffix(var Path: String; const PathSep: Char);
 begin
   Path := PathInclSuffix(Path, PathSep);
 end;
 
-procedure PathEnsureNoSuffix(var Path: AnsiString; const PathSep: AnsiChar);
+procedure PathEnsureNoSuffixA(var Path: AnsiString; const PathSep: AnsiChar);
+begin
+  Path := PathExclSuffixA(Path, PathSep);
+end;
+
+procedure PathEnsureNoSuffix(var Path: String; const PathSep: Char);
 begin
   Path := PathExclSuffix(Path, PathSep);
 end;
 
-function PathExclSuffix(const Path: AnsiString; const PathSep: AnsiChar): AnsiString;
+function PathExclSuffixA(const Path: AnsiString; const PathSep: AnsiChar): AnsiString;
 var L: Integer;
     P: PAnsiChar;
 begin
@@ -487,7 +642,20 @@ begin
     end;
 end;
 
-function PathCanonical(const Path: AnsiString; const PathSep: AnsiChar): AnsiString;
+function PathExclSuffix(const Path: String; const PathSep: Char): String;
+var L: Integer;
+begin
+  L := Length(Path);
+  if L = 0 then
+    Result := '' else
+    begin
+      if Path[L] = PathSep then
+        Result := Copy(Path, 1, L - 1) else
+        Result := Path;
+    end;
+end;
+
+function PathCanonicalA(const Path: AnsiString; const PathSep: AnsiChar): AnsiString;
 var L, M : Integer;
     I, J : Integer;
     P    : AnsiStringArray;
@@ -496,25 +664,25 @@ begin
   Result := Path;
   // \.\ references
   M := Length(Result);
-  Repeat
+  repeat
     L := M;
     if L = 0 then
       exit;
-    Result := StrReplace('\.\', '\', Result);
-    Result := StrReplace('/./', '/', Result);
+    Result := StrReplaceA('\.\', '\', Result);
+    Result := StrReplaceA('/./', '/', Result);
     M := Length(Result);
-  Until L = M;
+  until L = M;
   // .\ prefix
-  StrEnsureNoPrefix(Result, '.\');
-  StrEnsureNoPrefix(Result, './');
+  StrEnsureNoPrefixA(Result, '.\');
+  StrEnsureNoPrefixA(Result, './');
   // \. suffix
-  StrEnsureNoSuffix(Result, '\.');
-  StrEnsureNoSuffix(Result, '/.');
+  StrEnsureNoSuffixA(Result, '\.');
+  StrEnsureNoSuffixA(Result, '/.');
   // ..
-  if Pos('..', Result) > 0 then
+  if PosStrA('..', Result) > 0 then
     begin
-      P := StrSplitChar(Result, PathSep);
-      Repeat
+      P := StrSplitCharA(Result, PathSep);
+      repeat
         J := -1;
         For I := Length(P) - 1 downto 0 do
           if P[I] = '..' then
@@ -526,7 +694,7 @@ begin
           break;
         M := -1;
         For I := J - 1 downto 0 do
-          if (P[I] = '') or ((I = 0) and PathHasDriveLetter(P[I])) then
+          if (P[I] = '') or ((I = 0) and PathHasDriveLetterA(P[I])) then
             break else
           if P[I] <> '..' then
             begin
@@ -535,15 +703,15 @@ begin
             end;
         if M = -1 then
           break;
-        cUtils.Remove(P, J, 1);
-        cUtils.Remove(P, M, 1);
-      Until False;
-      Result := StrJoinChar(P, PathSep);
+        DynArrayRemoveA(P, J, 1);
+        DynArrayRemoveA(P, M, 1);
+      until False;
+      Result := StrJoinCharA(P, PathSep);
     end;
   // \..\ prefix
-  While StrMatchLeft(Result, '\..\') do
+  While StrMatchLeftA(Result, '\..\') do
     Delete(Result, 1, 3);
-  While StrMatchLeft(Result, '/../') do
+  While StrMatchLeftA(Result, '/../') do
     Delete(Result, 1, 3);
   if (Result = '\..') or (Result = '/..') then
     Result := '';
@@ -554,9 +722,9 @@ begin
   Q := Pointer(Result);
   if Q^ in ['A'..'Z', 'a'..'z'] then
     begin
-      if StrMatch(Result, ':\..\', 2) then
+      if StrMatchA(Result, ':\..\', 2) then
         Delete(Result, 4, 3) else
-      if (L = 5) and StrMatch(Result, ':\..', 2) then
+      if (L = 5) and StrMatchA(Result, ':\..', 2) then
         begin
           SetLength(Result, 2);
           exit;
@@ -581,8 +749,117 @@ begin
     end;
 end;
 
-function PathExpand(const Path: AnsiString; const BasePath: AnsiString;
+function PathCanonical(const Path: String; const PathSep: Char): String;
+var L, M : Integer;
+    I, J : Integer;
+    P    : StringArray;
+    Q    : PChar;
+    C    : Char;
+begin
+  Result := Path;
+  // \.\ references
+  M := Length(Result);
+  repeat
+    L := M;
+    if L = 0 then
+      exit;
+    Result := StrReplace('\.\', '\', Result);
+    Result := StrReplace('/./', '/', Result);
+    M := Length(Result);
+  until L = M;
+  // .\ prefix
+  StrEnsureNoPrefix(Result, '.\');
+  StrEnsureNoPrefix(Result, './');
+  // \. suffix
+  StrEnsureNoSuffix(Result, '\.');
+  StrEnsureNoSuffix(Result, '/.');
+  // ..
+  if PosStr('..', Result) > 0 then
+    begin
+      P := StrSplitChar(Result, PathSep);
+      repeat
+        J := -1;
+        For I := Length(P) - 1 downto 0 do
+          if P[I] = '..' then
+            begin
+              J := I;
+              break;
+            end;
+        if J = -1 then
+          break;
+        M := -1;
+        For I := J - 1 downto 0 do
+          if (P[I] = '') or ((I = 0) and PathHasDriveLetter(P[I])) then
+            break else
+          if P[I] <> '..' then
+            begin
+              M := I;
+              break;
+            end;
+        if M = -1 then
+          break;
+        DynArrayRemove(P, J, 1);
+        DynArrayRemove(P, M, 1);
+      until False;
+      Result := StrJoinChar(P, PathSep);
+    end;
+  // \..\ prefix
+  While StrMatchLeft(Result, '\..\') do
+    Delete(Result, 1, 3);
+  While StrMatchLeft(Result, '/../') do
+    Delete(Result, 1, 3);
+  if (Result = '\..') or (Result = '/..') then
+    Result := '';
+  L := Length(Result);
+  if L = 0 then
+    exit;
+  // X:\..\ prefix
+  Q := Pointer(Result);
+  C := Q^;
+  if ((C >= 'A') and (C <= 'Z')) or
+     ((C >= 'a') and (C <= 'z')) then
+    begin
+      if StrMatch(Result, ':\..\', 2) then
+        Delete(Result, 4, 3) else
+      if (L = 5) and StrMatch(Result, ':\..', 2) then
+        begin
+          SetLength(Result, 2);
+          exit;
+        end;
+      L := Length(Result);
+    end;
+  // single dot
+  Q := Pointer(Result);
+  if L = 1 then
+    begin
+      if Q^ = '.' then
+        Result := '';
+      exit;
+    end;
+  // final dot
+  Inc(Q, L - 2);
+  C := Q^;
+  if not ((C = '.') or (C = '\') or (C = '/') or (C = ':')) then
+    begin
+      Inc(Q);
+      if Q^ = '.' then
+        Delete(Result, L, 1);
+    end;
+end;
+
+function PathExpandA(const Path: AnsiString; const BasePath: AnsiString;
     const PathSep: AnsiChar): AnsiString;
+begin
+  if Path = '' then
+    Result := BasePath else
+  if PathIsAbsoluteA(Path) then
+    Result := Path else
+    Result := PathInclSuffixA(BasePath, PathSep) + Path;
+  Result := PathCanonicalA(Result, PathSep);
+end;
+
+function PathExpand(const Path: String; const BasePath: String;
+    const PathSep: Char): String;
 begin
   if Path = '' then
     Result := BasePath else
@@ -592,7 +869,16 @@ begin
   Result := PathCanonical(Result, PathSep);
 end;
 
-function PathLeftElement(const Path: AnsiString; const PathSep: AnsiChar): AnsiString;
+function PathLeftElementA(const Path: AnsiString; const PathSep: AnsiChar): AnsiString;
+var I: Integer;
+begin
+  I := PosCharA(PathSep, Path);
+  if I <= 0 then
+    Result := Path else
+    Result := Copy(Path, 1, I - 1);
+end;
+
+function PathLeftElement(const Path: String; const PathSep: Char): String;
 var I: Integer;
 begin
   I := PosChar(PathSep, Path);
@@ -601,8 +887,24 @@ begin
     Result := Copy(Path, 1, I - 1);
 end;
 
-procedure PathSplitLeftElement(const Path: AnsiString;
+procedure PathSplitLeftElementA(const Path: AnsiString;
     var LeftElement, RightPath: AnsiString; const PathSep: AnsiChar);
+var I: Integer;
+begin
+  I := PosCharA(PathSep, Path);
+  if I <= 0 then
+    begin
+      LeftElement := Path;
+      RightPath := '';
+    end else
+    begin
+      LeftElement := Copy(Path, 1, I - 1);
+      RightPath := CopyFromA(Path, I + 1);
+    end;
+end;
+
+procedure PathSplitLeftElement(const Path: String;
+    var LeftElement, RightPath: String; const PathSep: Char);
 var I: Integer;
 begin
   I := PosChar(PathSep, Path);
@@ -617,8 +919,24 @@ begin
     end;
 end;
 
-procedure DecodeFilePath(const FilePath: AnsiString; var Path, FileName: AnsiString;
+procedure DecodeFilePathA(const FilePath: AnsiString; var Path, FileName: AnsiString;
     const PathSep: AnsiChar);
+var I: Integer;
+begin
+  I := PosCharRevA(PathSep, FilePath);
+  if I <= 0 then
+    begin
+      Path := '';
+      FileName := FilePath;
+    end else
+    begin
+      Path := Copy(FilePath, 1, I);
+      FileName := CopyFromA(FilePath, I + 1);
+    end;
+end;
+
+procedure DecodeFilePath(const FilePath: String; var Path, FileName: String;
+    const PathSep: Char);
 var I: Integer;
 begin
   I := PosCharRev(PathSep, FilePath);
@@ -633,7 +951,16 @@ begin
     end;
 end;
 
-function FileNameValid(const FileName: AnsiString): AnsiString;
+function FileNameValidA(const FileName: AnsiString): AnsiString;
+begin
+  Result := StrReplaceCharA(['\', '/', ':', '>', '<', '*', '?'], '_', FileName);
+  if Result = '.' then
+    Result := '' else
+  if Result = '..' then
+    Result := '_';
+end;
+
+function FileNameValid(const FileName: String): String;
 begin
   Result := StrReplaceChar(['\', '/', ':', '>', '<', '*', '?'], '_', FileName);
   if Result = '.' then
@@ -642,9 +969,26 @@ begin
     Result := '_';
 end;
 
-function FilePath(const FileName, Path: AnsiString; const BasePath: AnsiString;
+function FilePathA(const FileName, Path: AnsiString; const BasePath: AnsiString;
     const PathSep: AnsiChar): AnsiString;
 var P, F: AnsiString;
+begin
+  F := FileNameValidA(FileName);
+  if F = '' then
+    begin
+      Result := '';
+      exit;
+    end;
+  P := PathExpandA(Path, BasePath, PathSep);
+  if P = '' then
+    Result := F
+  else
+    Result := PathInclSuffixA(P, PathSep) + F;
+end;
+
+function FilePath(const FileName, Path: String; const BasePath: String;
+    const PathSep: Char): String;
+var P, F: String;
 begin
   F := FileNameValid(FileName);
   if F = '' then
@@ -659,8 +1003,15 @@ begin
     Result := PathInclSuffix(P, PathSep) + F;
 end;
 
-function DirectoryExpand(const Path: AnsiString; const BasePath: AnsiString;
+function DirectoryExpandA(const Path: AnsiString; const BasePath: AnsiString;
     const PathSep: AnsiChar): AnsiString;
+begin
+  Result := PathExpandA(PathInclSuffixA(Path, PathSep),
+      PathInclSuffixA(BasePath, PathSep), PathSep);
+end;
+
+function DirectoryExpand(const Path: String; const BasePath: String;
+    const PathSep: Char): String;
 begin
   Result := PathExpand(PathInclSuffix(Path, PathSep),
       PathInclSuffix(BasePath, PathSep), PathSep);
@@ -668,27 +1019,27 @@ end;
 
 function UnixPathToWinPath(const Path: AnsiString): AnsiString;
 begin
-  Result := StrReplaceChar('/', '\',
-            StrReplaceChar(['\', ':', '<', '>', '|'], '_', Path));
+  Result := StrReplaceCharA('/', '\',
+            StrReplaceCharA(['\', ':', '<', '>', '|'], '_', Path));
 end;
 
 function WinPathToUnixPath(const Path: AnsiString): AnsiString;
 begin
   Result := Path;
-  if PathHasDriveLetter(Path) then
+  if PathHasDriveLetterA(Path) then
     begin
       // X: -> \X
       Result[2] := Result[1];
       Result[1] := '\';
     end else
-  if StrMatchLeft(Path, '\\.\') then
+  if StrMatchLeftA(Path, '\\.\') then
     // \\.\ -> \
     Delete(Result, 1, 3) else
-  if PathIsUncPath(Path) then
+  if PathIsUNCPathA(Path) then
     // \\ -> \
     Delete(Result, 1, 1);
-  Result := StrReplaceChar('\', '/',
-            StrReplaceChar(['/', ':', '<', '>', '|'], '_', Result));
+  Result := StrReplaceCharA('\', '/',
+            StrReplaceCharA(['/', ':', '<', '>', '|'], '_', Result));
 end;
 
 
@@ -700,10 +1051,27 @@ resourcestring
   SSystemError = 'System error #%s';
 
 {$IFDEF MSWIN}
+{$IFDEF StringIsUnicode}
 function GetLastOSErrorMessage: String;
 const MAX_ERRORMESSAGE_LENGTH = 256;
 var Err: LongWord;
-    Buf: Array[0..MAX_ERRORMESSAGE_LENGTH - 1] of Byte;
+    Buf: array[0..MAX_ERRORMESSAGE_LENGTH - 1] of Word;
+    Len: LongWord;
+begin
+  Err := Windows.GetLastError;
+  FillChar(Buf, Sizeof(Buf), #0);
+  Len := Windows.FormatMessageW(FORMAT_MESSAGE_FROM_SYSTEM, nil, Err, 0,
+      @Buf, MAX_ERRORMESSAGE_LENGTH, nil);
+  if Len = 0 then
+    Result := Format(SSystemError, [IntToStr(Err)])
+  else
+    Result := StrPas(PWideChar(@Buf));
+end;
+{$ELSE}
+function GetLastOSErrorMessage: String;
+const MAX_ERRORMESSAGE_LENGTH = 256;
+var Err: LongWord;
+    Buf: array[0..MAX_ERRORMESSAGE_LENGTH - 1] of Byte;
     Len: LongWord;
 begin
   Err := Windows.GetLastError;
@@ -715,6 +1083,7 @@ begin
   else
     Result := StrPas(PAnsiChar(@Buf));
 end;
+{$ENDIF}
 {$ELSE}
 {$IFDEF UNIX}
 {$IFDEF FREEPASCAL}
@@ -820,7 +1189,71 @@ end;
 {                                                                              }
 { File operations                                                              }
 {                                                                              }
+
 {$IFDEF MSWIN}
+function FileOpenFlagsToWinFileFlags(const FileOpenFlags: TFileOpenFlags): LongWord;
+var
+  FileFlags : LongWord;
+begin
+  FileFlags := 0;
+  if foDeleteOnClose in FileOpenFlags then
+    FileFlags := FileFlags or FILE_FLAG_DELETE_ON_CLOSE;
+  if foNoBuffering in FileOpenFlags then
+    FileFlags := FileFlags or FILE_FLAG_NO_BUFFERING;
+  if foWriteThrough in FileOpenFlags then
+    FileFlags := FileFlags or FILE_FLAG_WRITE_THROUGH;
+  if foRandomAccessHint in FileOpenFlags then
+    FileFlags := FileFlags or FILE_FLAG_RANDOM_ACCESS;
+  if foSequentialScanHint in FileOpenFlags then
+    FileFlags := FileFlags or FILE_FLAG_SEQUENTIAL_SCAN;
+  Result := FileFlags;
+end;
+
+function FileCreationModeToWinFileCreateDisp(const FileCreationMode: TFileCreationMode): LongWord;
+var
+  FileCreateDisp : LongWord;
+begin
+  case FileCreationMode of
+    fcCreateNew        : FileCreateDisp := CREATE_NEW;
+    fcCreateAlways     : FileCreateDisp := CREATE_ALWAYS;
+    fcOpenExisting     : FileCreateDisp := OPEN_EXISTING;
+    fcOpenAlways       : FileCreateDisp := OPEN_ALWAYS;
+    fcTruncateExisting : FileCreateDisp := TRUNCATE_EXISTING;
+  else
+    raise EFileError.Create(feInvalidParameter, SInvalidFileCreationMode);
+  end;
+  Result := FileCreateDisp;
+end;
+
+function FileSharingToWinFileShareMode(const FileSharing: TFileSharing): LongWord;
+var
+  FileShareMode : LongWord;
+begin
+  case FileSharing of
+    fsDenyNone      : FileShareMode := FILE_SHARE_READ or FILE_SHARE_WRITE or FILE_SHARE_DELETE;
+    fsDenyRead      : FileShareMode := FILE_SHARE_WRITE;
+    fsDenyWrite     : FileShareMode := FILE_SHARE_READ;
+    fsDenyReadWrite : FileShareMode := 0;
+    fsExclusive     : FileShareMode := 0;
+  else
+    raise EFileError.Create(feInvalidParameter, SInvalidFileSharing);
+  end;
+  Result := FileShareMode;
+end;
+
+function FileAccessToWinFileOpenAccess(const FileAccess: TFileAccess): LongWord;
+var
+  FileOpenAccess : LongWord;
+begin
+  case FileAccess of
+    faRead      : FileOpenAccess := GENERIC_READ;
+    faWrite     : FileOpenAccess := GENERIC_WRITE;
+    faReadWrite : FileOpenAccess := GENERIC_READ or GENERIC_WRITE;
+  else
+    raise EFileError.Create(feInvalidParameter, SInvalidFileAccess);
+  end;
+  Result := FileOpenAccess;
+end;
 {$ELSE}
 function FileOpenShareMode(
          const FileAccess: TFileAccess;
@@ -832,7 +1265,7 @@ begin
     faWrite     : FileShareMode := fmOpenWrite;
     faReadWrite : FileShareMode := fmOpenReadWrite;
   else
-    raise EFileError.Create(feInvalidParameter, 'Invalid requested file access');
+    raise EFileError.Create(feInvalidParameter, SInvalidFileAccess);
   end;
   case FileSharing of
     fsDenyNone      : FileShareMode := FileShareMode or fmShareDenyNone;
@@ -841,7 +1274,7 @@ begin
     fsDenyReadWrite : FileShareMode := FileShareMode or fmShareDenyRead or fmShareDenyWrite;
     fsExclusive     : FileShareMode := FileShareMode or fmShareExclusive;
   else
-    raise EFileError.Create(feInvalidParameter, 'Invalid requested file sharing');
+    raise EFileError.Create(feInvalidParameter, SInvalidFileSharing);
   end;
   Result := FileShareMode;
 end;
@@ -857,6 +1290,62 @@ begin
   FileClose(FileHandle);
   FileHandle := FileOpen(FileName, FileShareMode);
   Result := FileHandle;
+end;
+{$ENDIF}
+
+{$IFDEF MSWIN}
+procedure DoFileOpenWait(const FileOpenWait: PFileOpenWait; const WaitStart: LongWord; var Retry: Boolean);
+
+  function RandomRetryWait: Integer;
+  var Seed : Integer;
+  begin
+    if not FileOpenWait^.RetryRandomise then
+      Result := 0
+    else
+    if FileOpenWait^.RetryInterval < 0 then
+      Result := 0
+    else
+      Result := FileOpenWait^.RetryInterval div 8;
+    if Result = 0 then
+      exit;
+    Seed := Integer(GetTick);
+    Inc(Seed, Integer(FileOpenWait));
+    Result := Seed mod Result;
+  end;
+
+var
+  WaitTime : LongWord;
+  WaitResult : LongInt;
+begin
+  Assert(Assigned(FileOpenWait));
+
+  Retry := False;
+  if FileOpenWait^.Signal <> 0 then
+    begin
+      if FileOpenWait^.RetryInterval < 0 then
+        WaitTime := INFINITE
+      else
+        WaitTime := FileOpenWait^.RetryInterval + RandomRetryWait;
+      WaitResult := WaitForSingleObject(FileOpenWait^.Signal, WaitTime);
+      if WaitResult = WAIT_TIMEOUT then
+        Retry := True;
+    end
+  else
+  if Assigned(FileOpenWait^.Callback) then
+    begin
+      FileOpenWait^.Aborted := False;
+      FileOpenWait^.Callback(FileOpenWait);
+      if not FileOpenWait^.Aborted then
+        Retry := True;
+    end
+  else
+    begin
+      Sleep(FileOpenWait^.RetryInterval + RandomRetryWait);
+      Retry := True;
+    end;
+  if Retry then
+    if LongInt(Int64(GetTick) - Int64(WaitStart)) >= FileOpenWait^.Timeout then
+      Retry := False;
 end;
 {$ENDIF}
 
@@ -879,72 +1368,14 @@ var FileHandle     : Integer;
     Retry          : Boolean;
     WaitStart      : LongWord;
     WaitOpen       : Boolean;
-    WaitTime       : LongWord;
-    WaitResult     : LongInt;
     {$ENDIF}
-
-  function RandomRetryWait: Integer;
-  var Seed : Integer;
-  begin
-    if not FileOpenWait^.RetryRandomise then
-      Result := 0
-    else
-    if FileOpenWait^.RetryInterval < 0 then
-      Result := 0
-    else
-      Result := FileOpenWait^.RetryInterval div 8;
-    if Result = 0 then
-      exit;
-    Seed := Integer(GetTick);
-    Inc(Seed, Integer(FileOpenWait));
-    Result := Seed mod Result;
-  end;
 
 begin
   {$IFDEF MSWIN}
-  FileFlags := 0;
-  if foDeleteOnClose in FileOpenFlags then
-    FileFlags := FileFlags or FILE_FLAG_DELETE_ON_CLOSE;
-  if foNoBuffering in FileOpenFlags then
-    FileFlags := FileFlags or FILE_FLAG_NO_BUFFERING;
-  if foWriteThrough in FileOpenFlags then
-    FileFlags := FileFlags or FILE_FLAG_WRITE_THROUGH;
-  if foRandomAccessHint in FileOpenFlags then
-    FileFlags := FileFlags or FILE_FLAG_RANDOM_ACCESS;
-  if foSequentialScanHint in FileOpenFlags then
-    FileFlags := FileFlags or FILE_FLAG_SEQUENTIAL_SCAN;
-  case FileCreationMode of
-    fcCreateNew        : FileCreateDisp := CREATE_NEW;
-    fcCreateAlways     : FileCreateDisp := CREATE_ALWAYS;
-    fcOpenExisting     : FileCreateDisp := OPEN_EXISTING;
-    fcOpenAlways       : FileCreateDisp := OPEN_ALWAYS;
-    fcTruncateExisting : FileCreateDisp := TRUNCATE_EXISTING;
-  else
-    raise EFileError.Create(feInvalidParameter, SInvalidFileCreationMode);
-  end;
-  case FileAccess of
-    faRead      : FileShareMode := FILE_SHARE_READ;
-    faWrite     : FileShareMode := FILE_SHARE_WRITE;
-    faReadWrite : FileShareMode := FILE_SHARE_READ or FILE_SHARE_WRITE;
-  else
-    raise EFileError.Create(feInvalidParameter, 'Invalid requested file access');
-  end;
-  case FileSharing of
-    fsDenyNone      : ;
-    fsDenyRead      : ;
-    fsDenyWrite     : ;
-    fsDenyReadWrite : ;
-    fsExclusive     : ;
-  else
-    raise EFileError.Create(feInvalidParameter, 'Invalid requested file sharing');
-  end;
-  case FileAccess of
-    faRead      : FileOpenAccess := GENERIC_READ;
-    faWrite     : FileOpenAccess := GENERIC_WRITE;
-    faReadWrite : FileOpenAccess := GENERIC_READ or GENERIC_WRITE;
-  else
-    raise EFileError.Create(feInvalidParameter, 'Invalid requested file access');
-  end;
+  FileFlags := FileOpenFlagsToWinFileFlags(FileOpenFlags);
+  FileCreateDisp := FileCreationModeToWinFileCreateDisp(FileCreationMode);
+  FileShareMode := FileSharingToWinFileShareMode(FileSharing);
+  FileOpenAccess := FileAccessToWinFileOpenAccess(FileAccess);
   WaitOpen := False;
   WaitStart := 0;
   if Assigned(FileOpenWait) then
@@ -976,38 +1407,11 @@ begin
         ErrorSharing := False;
       end;
     if WaitOpen and ErrorSharing then
-      begin
-        if FileOpenWait^.Signal <> 0 then
-          begin
-            if FileOpenWait^.RetryInterval < 0 then
-              WaitTime := INFINITE
-            else
-              WaitTime := FileOpenWait^.RetryInterval + RandomRetryWait;
-            WaitResult := WaitForSingleObject(FileOpenWait^.Signal, WaitTime);
-            if WaitResult = WAIT_TIMEOUT then
-              Retry := True;
-          end
-        else
-        if Assigned(FileOpenWait^.Callback) then
-          begin
-            FileOpenWait^.Aborted := False;
-            FileOpenWait^.Callback(FileOpenWait);
-            if not FileOpenWait^.Aborted then
-              Retry := True;
-          end
-        else
-          begin
-            Sleep(FileOpenWait^.RetryInterval + RandomRetryWait);
-            Retry := True;
-          end;
-        if Retry then
-          if LongInt(Int64(GetTick) - Int64(WaitStart)) >= FileOpenWait^.Timeout then
-            Retry := False;
-      end;
+      DoFileOpenWait(FileOpenWait, WaitStart, Retry);
   until not Retry;
   if FileHandle < 0 then
     raise EFileError.CreateFmt(WinErrorCodeToFileError(ErrorCode), SCannotOpenFile,
-        [GetLastOSErrorMessage{GetOSErrorMessage(ErrorCode)}, FileName]);
+        [GetLastOSErrorMessage, FileName]);
   {$ELSE}
   FileShareMode := FileOpenShareMode(FileAccess, FileSharing);
   case FileCreationMode of
@@ -1118,7 +1522,37 @@ begin
   {$ENDIF}
 end;
 
-function FileGetSizeA(const FileName: AnsiString): Int64;
+function FileExists(const FileName: String): Boolean;
+{$IFDEF MSWIN}
+var Attr : LongWord;
+{$ELSE}
+var SRec : TSearchRec;
+{$ENDIF}
+begin
+  if FileName = '' then
+    raise EFileError.Create(feInvalidParameter, SInvalidFileName);
+  {$IFDEF MSWIN}
+  {$IFDEF StringIsUnicode}
+  Attr := GetFileAttributesW(PWideChar(FileName));
+  {$ELSE}
+  Attr := GetFileAttributesA(PAnsiChar(FileName));
+  {$ENDIF}
+  if Attr = $FFFFFFFF then
+    Result := False
+  else
+    Result := Attr and FILE_ATTRIBUTE_DIRECTORY = 0;
+  {$ELSE}
+  if FindFirst(FileName, faAnyFile, SRec) <> 0 then
+    Result := False
+  else
+    begin
+      Result := SRec.Attr and faDirectory = 0;
+      FindClose(SRec);
+    end;
+  {$ENDIF}
+end;
+
+function FileGetSize(const FileName: String): Int64;
 var SRec : TSearchRec;
 begin
   if FileName = '' then
@@ -1142,7 +1576,7 @@ begin
   end;
 end;
 
-function FileGetDateTimeA(const FileName: AnsiString): TDateTime;
+function FileGetDateTime(const FileName: String): TDateTime;
 var SRec : TSearchRec;
 begin
   if FileName = '' then
@@ -1159,7 +1593,7 @@ begin
     end;
 end;
 
-function FileGetDateTime2A(const FileName: AnsiString): TDateTime;
+function FileGetDateTime2(const FileName: String): TDateTime;
 var Age : LongInt;
 begin
   Age := FileAge(FileName);
@@ -1169,7 +1603,7 @@ begin
     Result := FileDateToDateTime(Age);
 end;
 
-function FileIsReadOnlyA(const FileName: AnsiString): Boolean;
+function FileIsReadOnly(const FileName: String): Boolean;
 var SRec : TSearchRec;
 begin
   if FileName = '' then
@@ -1183,7 +1617,7 @@ begin
     end;
 end;
 
-procedure FileDeleteExA(const FileName: AnsiString);
+procedure FileDeleteEx(const FileName: String);
 begin
   if FileName = '' then
     raise EFileError.Create(feInvalidParameter, SInvalidFileName);
@@ -1191,8 +1625,7 @@ begin
     raise EFileError.CreateFmt(feFileDeleteError, SFileDeleteError, [GetLastOSErrorMessage]);
 end;
 
-procedure FileRenameExA(
-          const OldFileName, NewFileName: AnsiString);
+procedure FileRenameEx(const OldFileName, NewFileName: String);
 begin
   RenameFile(OldFileName, NewFileName);
 end;
@@ -1210,7 +1643,7 @@ begin
   FileHandle := FileOpenExA(FileName, faRead, FileSharing,
       [foSequentialScanHint], FileCreationMode, FileOpenWait);
   try
-    FileSize := FileGetSizeA(FileName);
+    FileSize := FileGetSize(ToStringA(FileName));
     if FileSize = 0 then
       exit;
     if FileSize < 0 then
@@ -1237,7 +1670,7 @@ begin
   FileHandle := FileOpenExA(FileName, faRead, FileSharing,
       [foSequentialScanHint], FileCreationMode, FileOpenWait);
   try
-    FileSize := FileGetSizeA(FileName);
+    FileSize := FileGetSize(ToStringA(FileName));
     if FileSize < 0 then
       raise EFileError.CreateFmt(feFileSizeError, SFileSizeError, [FileName]);
     if FileSize > MaxInteger then
@@ -1287,7 +1720,7 @@ begin
   AppendFileA(FileName, Buf[1], BufSize, FileSharing, FileCreationMode, FileOpenWait);
 end;
 
-function DirectoryEntryExistsA(const Name: AnsiString): Boolean;
+function DirectoryEntryExists(const Name: String): Boolean;
 var SRec : TSearchRec;
 begin
   if FindFirst(Name, faAnyFile, SRec) <> 0 then
@@ -1299,7 +1732,7 @@ begin
     end;
 end;
 
-function DirectoryEntrySizeA(const Name: AnsiString): Int64;
+function DirectoryEntrySize(const Name: String): Int64;
 var SRec : TSearchRec;
 begin
   if FindFirst(Name, faAnyFile, SRec) <> 0 then
@@ -1323,7 +1756,7 @@ begin
     end;
 end;
 
-function DirectoryExistsA(const DirectoryName: AnsiString): Boolean;
+function DirectoryExists(const DirectoryName: String): Boolean;
 {$IFDEF MSWIN}
 var Attr : LongWord;
 {$ELSE}
@@ -1333,7 +1766,11 @@ begin
   if DirectoryName = '' then
     raise EFileError.Create(feInvalidParameter, SInvalidPath);
   {$IFDEF MSWIN}
+  {$IFDEF StringIsUnicode}
+  Attr := GetFileAttributesW(PWideChar(DirectoryName));
+  {$ELSE}
   Attr := GetFileAttributesA(PAnsiChar(DirectoryName));
+  {$ENDIF}
   if Attr = $FFFFFFFF then
     Result := False
   else
@@ -1349,7 +1786,7 @@ begin
   {$ENDIF}
 end;
 
-function DirectoryGetDateTimeA(const DirectoryName: AnsiString): TDateTime;
+function DirectoryGetDateTime(const DirectoryName: String): TDateTime;
 var SRec : TSearchRec;
 begin
   if DirectoryName = '' then
@@ -1366,7 +1803,7 @@ begin
     end;
 end;
 
-procedure DirectoryCreateA(const DirectoryName: AnsiString);
+procedure DirectoryCreate(const DirectoryName: String);
 begin
   if DirectoryName = '' then
     raise EFileError.Create(feInvalidParameter, SInvalidPath);
@@ -1379,19 +1816,19 @@ end;
 {                                                                              }
 { File operations                                                              }
 {                                                                              }
-function GetFirstFileNameMatching(const FileMask: AnsiString): AnsiString;
+function GetFirstFileNameMatching(const FileMask: String): String;
 var SRec : TSearchRec;
 begin
   Result := '';
   if FindFirst(FileMask, faAnyFile, SRec) = 0 then
     try
-      Repeat
+      repeat
         if SRec.Attr and faDirectory = 0 then
           begin
             Result := ExtractFilePath(FileMask) + SRec.Name;
             exit;
           end;
-      Until FindNext(SRec) <> 0;
+      until FindNext(SRec) <> 0;
     finally
       FindClose(SRec);
     end;
@@ -1400,11 +1837,11 @@ end;
 function DirEntryGetAttr(const FileName: AnsiString): Integer;
 var SRec : TSearchRec;
 begin
-  if (FileName = '') or PathIsDriveLetter(FileName) then
+  if (FileName = '') or PathIsDriveLetterA(FileName) then
     Result := -1 else
-  if PathIsRoot(FileName) then
+  if PathIsRootA(FileName) then
     Result := $0800 or faDirectory else
-  if FindFirst(PathExclSuffix(FileName), faAnyFile, SRec) = 0 then
+  if FindFirst(ToStringA(PathExclSuffixA(FileName)), faAnyFile, SRec) = 0 then
     begin
       Result := SRec.Attr;
       FindClose(SRec);
@@ -1416,11 +1853,11 @@ end;
 function DirEntryIsDirectory(const FileName: AnsiString): Boolean;
 var SRec : TSearchRec;
 begin
-  if (FileName = '') or PathIsDriveLetter(FileName) then
+  if (FileName = '') or PathIsDriveLetterA(FileName) then
     Result := False else
-  if PathIsRoot(FileName) then
+  if PathIsRootA(FileName) then
     Result := True else
-  if FindFirst(PathExclSuffix(FileName), faDirectory, SRec) = 0 then
+  if FindFirst(ToStringA(PathExclSuffixA(FileName)), faDirectory, SRec) = 0 then
     begin
       Result := SRec.Attr and faDirectory <> 0;
       FindClose(SRec);
@@ -1430,16 +1867,17 @@ begin
 end;
 
 {$IFDEF DELPHI6_UP}{$WARN SYMBOL_PLATFORM OFF}{$ENDIF}
-function FileHasAttr(const FileName: AnsiString; const Attr: Word): Boolean;
+function FileHasAttr(const FileName: String; const Attr: Word): Boolean;
 var A : Integer;
 begin
   A := FileGetAttr(FileName);
   Result := (A >= 0) and (A and Attr <> 0);
 end;
 
-procedure CopyFile(const FileName, DestName: AnsiString);
-const BufferSize = 16384;
-var DestFileName : AnsiString;
+procedure CopyFile(const FileName, DestName: String);
+const
+  BufferSize = 16384;
+var DestFileName : String;
     SourceHandle : Integer;
     DestHandle   : Integer;
     Buffer       : Array[0..BufferSize - 1] of Byte;
@@ -1471,8 +1909,8 @@ begin
   end;
 end;
 
-procedure MoveFile(const FileName, DestName: AnsiString);
-var Destination : AnsiString;
+procedure MoveFile(const FileName, DestName: String);
+var Destination : String;
     Attr        : Integer;
 begin
   Destination := ExpandFileName(DestName);
@@ -1487,16 +1925,16 @@ begin
     end;
 end;
 
-function DeleteFiles(const FileMask: AnsiString): Boolean;
+function DeleteFiles(const FileMask: String): Boolean;
 var SRec : TSearchRec;
-    Path : AnsiString;
+    Path : String;
 begin
   Result := FindFirst(FileMask, faAnyFile, SRec) = 0;
   if not Result then
     exit;
   try
     Path := ExtractFilePath(FileMask);
-    Repeat
+    repeat
       if (SRec.Name <> '') and (SRec.Name  <> '.') and (SRec.Name <> '..') and
          (SRec.Attr and (faVolumeID + faDirectory) = 0) then
         begin
@@ -1504,7 +1942,7 @@ begin
           if not Result then
             break;
         end;
-    Until FindNext(SRec) <> 0;
+    until FindNext(SRec) <> 0;
   finally
     FindClose(SRec);
   end;
@@ -1543,9 +1981,9 @@ end;
 function DriveFreeSpace(const Path: AnsiString): Int64;
 var D: Byte;
 begin
-  if PathHasDriveLetter(Path) then
+  if PathHasDriveLetterA(Path) then
     D := Ord(UpCase(PAnsiChar(Path)^)) - Ord('A') + 1 else
-  if PathIsUNCPath(Path) then
+  if PathIsUNCPathA(Path) then
     begin
       Result := -1;
       exit;
@@ -1565,6 +2003,14 @@ end;
 {$ASSERTIONS ON}
 procedure SelfTest;
 begin
+  // PathHasDriveLetter
+  Assert(PathHasDriveLetterA('A:'), 'PathHasDriveLetter');
+  Assert(PathHasDriveLetterA('a:'), 'PathHasDriveLetter');
+  Assert(PathHasDriveLetterA('A:\'), 'PathHasDriveLetter');
+  Assert(not PathHasDriveLetterA('a\'), 'PathHasDriveLetter');
+  Assert(not PathHasDriveLetterA('\a\'), 'PathHasDriveLetter');
+  Assert(not PathHasDriveLetterA('::'), 'PathHasDriveLetter');
+
   Assert(PathHasDriveLetter('A:'), 'PathHasDriveLetter');
   Assert(PathHasDriveLetter('a:'), 'PathHasDriveLetter');
   Assert(PathHasDriveLetter('A:\'), 'PathHasDriveLetter');
@@ -1572,12 +2018,35 @@ begin
   Assert(not PathHasDriveLetter('\a\'), 'PathHasDriveLetter');
   Assert(not PathHasDriveLetter('::'), 'PathHasDriveLetter');
 
+  // PathIsDriveLetter
+  Assert(PathIsDriveLetterA('B:'), 'PathIsDriveLetter');
+  Assert(not PathIsDriveLetterA('B:\'), 'PathIsDriveLetter');
+
   Assert(PathIsDriveLetter('B:'), 'PathIsDriveLetter');
   Assert(not PathIsDriveLetter('B:\'), 'PathIsDriveLetter');
+
+  // PathIsDriveRoot
+  Assert(PathIsDriveRootA('C:\'), 'PathIsDriveRoot');
+  Assert(not PathIsDriveRootA('C:'), 'PathIsDriveRoot');
+  Assert(not PathIsDriveRootA('C:\A'), 'PathIsDriveRoot');
 
   Assert(PathIsDriveRoot('C:\'), 'PathIsDriveRoot');
   Assert(not PathIsDriveRoot('C:'), 'PathIsDriveRoot');
   Assert(not PathIsDriveRoot('C:\A'), 'PathIsDriveRoot');
+
+  // PathIsAbsolute
+  Assert(PathIsAbsoluteA('\'), 'PathIsAbsolute');
+  Assert(PathIsAbsoluteA('\C'), 'PathIsAbsolute');
+  Assert(PathIsAbsoluteA('\C\'), 'PathIsAbsolute');
+  Assert(PathIsAbsoluteA('C:\'), 'PathIsAbsolute');
+  Assert(PathIsAbsoluteA('C:'), 'PathIsAbsolute');
+  Assert(PathIsAbsoluteA('\C\..\'), 'PathIsAbsolute');
+  Assert(not PathIsAbsoluteA(''), 'PathIsAbsolute');
+  Assert(not PathIsAbsoluteA('C'), 'PathIsAbsolute');
+  Assert(not PathIsAbsoluteA('C\'), 'PathIsAbsolute');
+  Assert(not PathIsAbsoluteA('C\D'), 'PathIsAbsolute');
+  Assert(not PathIsAbsoluteA('C\D\'), 'PathIsAbsolute');
+  Assert(not PathIsAbsoluteA('..\'), 'PathIsAbsolute');
 
   Assert(PathIsAbsolute('\'), 'PathIsAbsolute');
   Assert(PathIsAbsolute('\C'), 'PathIsAbsolute');
@@ -1592,6 +2061,16 @@ begin
   Assert(not PathIsAbsolute('C\D\'), 'PathIsAbsolute');
   Assert(not PathIsAbsolute('..\'), 'PathIsAbsolute');
 
+  // PathIsDirectory
+  Assert(PathIsDirectoryA('\'), 'PathIsDirectory');
+  Assert(PathIsDirectoryA('\C\'), 'PathIsDirectory');
+  Assert(PathIsDirectoryA('C:'), 'PathIsDirectory');
+  Assert(PathIsDirectoryA('C:\'), 'PathIsDirectory');
+  Assert(PathIsDirectoryA('C:\D\'), 'PathIsDirectory');
+  Assert(not PathIsDirectoryA(''), 'PathIsDirectory');
+  Assert(not PathIsDirectoryA('D'), 'PathIsDirectory');
+  Assert(not PathIsDirectoryA('C\D'), 'PathIsDirectory');
+
   Assert(PathIsDirectory('\'), 'PathIsDirectory');
   Assert(PathIsDirectory('\C\'), 'PathIsDirectory');
   Assert(PathIsDirectory('C:'), 'PathIsDirectory');
@@ -1601,6 +2080,15 @@ begin
   Assert(not PathIsDirectory('D'), 'PathIsDirectory');
   Assert(not PathIsDirectory('C\D'), 'PathIsDirectory');
 
+  // PathInclSuffix
+  Assert(PathInclSuffixA('', '\') = '', 'PathInclSuffix');
+  Assert(PathInclSuffixA('C', '\') = 'C\', 'PathInclSuffix');
+  Assert(PathInclSuffixA('C\', '\') = 'C\', 'PathInclSuffix');
+  Assert(PathInclSuffixA('C\D', '\') = 'C\D\', 'PathInclSuffix');
+  Assert(PathInclSuffixA('C\D\', '\') = 'C\D\', 'PathInclSuffix');
+  Assert(PathInclSuffixA('C:', '\') = 'C:\', 'PathInclSuffix');
+  Assert(PathInclSuffixA('C:\', '\') = 'C:\', 'PathInclSuffix');
+
   Assert(PathInclSuffix('', '\') = '', 'PathInclSuffix');
   Assert(PathInclSuffix('C', '\') = 'C\', 'PathInclSuffix');
   Assert(PathInclSuffix('C\', '\') = 'C\', 'PathInclSuffix');
@@ -1608,6 +2096,15 @@ begin
   Assert(PathInclSuffix('C\D\', '\') = 'C\D\', 'PathInclSuffix');
   Assert(PathInclSuffix('C:', '\') = 'C:\', 'PathInclSuffix');
   Assert(PathInclSuffix('C:\', '\') = 'C:\', 'PathInclSuffix');
+
+  // PathExclSuffix
+  Assert(PathExclSuffixA('', '\') = '', 'PathExclSuffix');
+  Assert(PathExclSuffixA('C', '\') = 'C', 'PathExclSuffix');
+  Assert(PathExclSuffixA('C\', '\') = 'C', 'PathExclSuffix');
+  Assert(PathExclSuffixA('C\D', '\') = 'C\D', 'PathExclSuffix');
+  Assert(PathExclSuffixA('C\D\', '\') = 'C\D', 'PathExclSuffix');
+  Assert(PathExclSuffixA('C:', '\') = 'C:', 'PathExclSuffix');
+  Assert(PathExclSuffixA('C:\', '\') = 'C:', 'PathExclSuffix');
 
   Assert(PathExclSuffix('', '\') = '', 'PathExclSuffix');
   Assert(PathExclSuffix('C', '\') = 'C', 'PathExclSuffix');
@@ -1617,77 +2114,85 @@ begin
   Assert(PathExclSuffix('C:', '\') = 'C:', 'PathExclSuffix');
   Assert(PathExclSuffix('C:\', '\') = 'C:', 'PathExclSuffix');
 
-  Assert(PathCanonical('', '\') = '', 'PathCanonical');
-  Assert(PathCanonical('.', '\') = '', 'PathCanonical');
-  Assert(PathCanonical('.\', '\') = '', 'PathCanonical');
-  Assert(PathCanonical('..\', '\') = '..\', 'PathCanonical');
-  Assert(PathCanonical('\..\', '\') = '\', 'PathCanonical');
-  Assert(PathCanonical('\X\..\..\', '\') = '\', 'PathCanonical');
-  Assert(PathCanonical('\..', '\') = '', 'PathCanonical');
-  Assert(PathCanonical('X', '\') = 'X', 'PathCanonical');
-  Assert(PathCanonical('\X', '\') = '\X', 'PathCanonical');
-  Assert(PathCanonical('X.', '\') = 'X', 'PathCanonical');
-  Assert(PathCanonical('.', '\') = '', 'PathCanonical');
-  Assert(PathCanonical('\X.', '\') = '\X', 'PathCanonical');
-  Assert(PathCanonical('\X.Y', '\') = '\X.Y', 'PathCanonical');
-  Assert(PathCanonical('\X.Y\', '\') = '\X.Y\', 'PathCanonical');
-  Assert(PathCanonical('\A\X..Y\', '\') = '\A\X..Y\', 'PathCanonical');
-  Assert(PathCanonical('\A\.Y\', '\') = '\A\.Y\', 'PathCanonical');
-  Assert(PathCanonical('\A\..Y\', '\') = '\A\..Y\', 'PathCanonical');
-  Assert(PathCanonical('\A\Y..\', '\') = '\A\Y..\', 'PathCanonical');
-  Assert(PathCanonical('\A\Y..', '\') = '\A\Y..', 'PathCanonical');
-  Assert(PathCanonical('X', '\') = 'X', 'PathCanonical');
-  Assert(PathCanonical('X\', '\') = 'X\', 'PathCanonical');
-  Assert(PathCanonical('X\Y\..', '\') = 'X', 'PathCanonical');
-  Assert(PathCanonical('X\Y\..\', '\') = 'X\', 'PathCanonical');
-  Assert(PathCanonical('\X\Y\..', '\') = '\X', 'PathCanonical');
-  Assert(PathCanonical('\X\Y\..\', '\') = '\X\', 'PathCanonical');
-  Assert(PathCanonical('\X\Y\..\..', '\') = '', 'PathCanonical');
-  Assert(PathCanonical('\X\Y\..\..\', '\') = '\', 'PathCanonical');
-  Assert(PathCanonical('\A\.\.\X\.\Y\..\.\..\.\', '\') = '\A\', 'PathCanonical');
-  Assert(PathCanonical('C:', '\') = 'C:', 'PathCanonical');
-  Assert(PathCanonical('C:\', '\') = 'C:\', 'PathCanonical');
-  Assert(PathCanonical('C:\A\..', '\') = 'C:', 'PathCanonical');
-  Assert(PathCanonical('C:\A\..\', '\') = 'C:\', 'PathCanonical');
-  Assert(PathCanonical('C:\..\', '\') = 'C:\', 'PathCanonical');
-  Assert(PathCanonical('C:\..', '\') = 'C:', 'PathCanonical');
-  Assert(PathCanonical('C:\A\..\..', '\') = 'C:', 'PathCanonical');
-  Assert(PathCanonical('C:\A\..\..\', '\') = 'C:\', 'PathCanonical');
-  Assert(PathCanonical('\A\B\..\C\D\..\', '\') = '\A\C\', 'PathCanonical');
-  Assert(PathCanonical('\A\B\..\C\D\..\..\', '\') = '\A\', 'PathCanonical');
-  Assert(PathCanonical('\A\B\..\C\D\..\..\..\', '\') = '\', 'PathCanonical');
-  Assert(PathCanonical('\A\B\..\C\D\..\..\..\..\', '\') = '\', 'PathCanonical');
+  // PathCanonical
+  Assert(PathCanonicalA('', '\') = '', 'PathCanonical');
+  Assert(PathCanonicalA('.', '\') = '', 'PathCanonical');
+  Assert(PathCanonicalA('.\', '\') = '', 'PathCanonical');
+  Assert(PathCanonicalA('..\', '\') = '..\', 'PathCanonical');
+  Assert(PathCanonicalA('\..\', '\') = '\', 'PathCanonical');
+  Assert(PathCanonicalA('\X\..\..\', '\') = '\', 'PathCanonical');
+  Assert(PathCanonicalA('\..', '\') = '', 'PathCanonical');
+  Assert(PathCanonicalA('X', '\') = 'X', 'PathCanonical');
+  Assert(PathCanonicalA('\X', '\') = '\X', 'PathCanonical');
+  Assert(PathCanonicalA('X.', '\') = 'X', 'PathCanonical');
+  Assert(PathCanonicalA('.', '\') = '', 'PathCanonical');
+  Assert(PathCanonicalA('\X.', '\') = '\X', 'PathCanonical');
+  Assert(PathCanonicalA('\X.Y', '\') = '\X.Y', 'PathCanonical');
+  Assert(PathCanonicalA('\X.Y\', '\') = '\X.Y\', 'PathCanonical');
+  Assert(PathCanonicalA('\A\X..Y\', '\') = '\A\X..Y\', 'PathCanonical');
+  Assert(PathCanonicalA('\A\.Y\', '\') = '\A\.Y\', 'PathCanonical');
+  Assert(PathCanonicalA('\A\..Y\', '\') = '\A\..Y\', 'PathCanonical');
+  Assert(PathCanonicalA('\A\Y..\', '\') = '\A\Y..\', 'PathCanonical');
+  Assert(PathCanonicalA('\A\Y..', '\') = '\A\Y..', 'PathCanonical');
+  Assert(PathCanonicalA('X', '\') = 'X', 'PathCanonical');
+  Assert(PathCanonicalA('X\', '\') = 'X\', 'PathCanonical');
+  Assert(PathCanonicalA('X\Y\..', '\') = 'X', 'PathCanonical');
+  Assert(PathCanonicalA('X\Y\..\', '\') = 'X\', 'PathCanonical');
+  Assert(PathCanonicalA('\X\Y\..', '\') = '\X', 'PathCanonical');
+  Assert(PathCanonicalA('\X\Y\..\', '\') = '\X\', 'PathCanonical');
+  Assert(PathCanonicalA('\X\Y\..\..', '\') = '', 'PathCanonical');
+  Assert(PathCanonicalA('\X\Y\..\..\', '\') = '\', 'PathCanonical');
+  Assert(PathCanonicalA('\A\.\.\X\.\Y\..\.\..\.\', '\') = '\A\', 'PathCanonical');
+  Assert(PathCanonicalA('C:', '\') = 'C:', 'PathCanonical');
+  Assert(PathCanonicalA('C:\', '\') = 'C:\', 'PathCanonical');
+  Assert(PathCanonicalA('C:\A\..', '\') = 'C:', 'PathCanonical');
+  Assert(PathCanonicalA('C:\A\..\', '\') = 'C:\', 'PathCanonical');
+  Assert(PathCanonicalA('C:\..\', '\') = 'C:\', 'PathCanonical');
+  Assert(PathCanonicalA('C:\..', '\') = 'C:', 'PathCanonical');
+  Assert(PathCanonicalA('C:\A\..\..', '\') = 'C:', 'PathCanonical');
+  Assert(PathCanonicalA('C:\A\..\..\', '\') = 'C:\', 'PathCanonical');
+  Assert(PathCanonicalA('\A\B\..\C\D\..\', '\') = '\A\C\', 'PathCanonical');
+  Assert(PathCanonicalA('\A\B\..\C\D\..\..\', '\') = '\A\', 'PathCanonical');
+  Assert(PathCanonicalA('\A\B\..\C\D\..\..\..\', '\') = '\', 'PathCanonical');
+  Assert(PathCanonicalA('\A\B\..\C\D\..\..\..\..\', '\') = '\', 'PathCanonical');
 
-  Assert(PathExpand('', '', '\') = '', 'PathExpand');
-  Assert(PathExpand('', '\', '\') = '\', 'PathExpand');
-  Assert(PathExpand('', '\C', '\') = '\C', 'PathExpand');
-  Assert(PathExpand('', '\C\', '\') = '\C\', 'PathExpand');
-  Assert(PathExpand('..\', '\C\', '\') = '\', 'PathExpand');
-  Assert(PathExpand('..', '\C\', '\') = '', 'PathExpand');
-  Assert(PathExpand('\..', '\C\', '\') = '', 'PathExpand');
-  Assert(PathExpand('\..\', '\C\', '\') = '\', 'PathExpand');
-  Assert(PathExpand('A', '..\', '\') = '..\A', 'PathExpand');
-  Assert(PathExpand('..\', '..\', '\') = '..\..\', 'PathExpand');
-  Assert(PathExpand('\', '', '\') = '\', 'PathExpand');
-  Assert(PathExpand('\', '\C', '\') = '\', 'PathExpand');
-  Assert(PathExpand('\A', '\C\', '\') = '\A', 'PathExpand');
-  Assert(PathExpand('\A\', '\C\', '\') = '\A\', 'PathExpand');
-  Assert(PathExpand('\A\B', '\C', '\') = '\A\B', 'PathExpand');
-  Assert(PathExpand('A\B', '\C', '\') = '\C\A\B', 'PathExpand');
-  Assert(PathExpand('A\B', '\C', '\') = '\C\A\B', 'PathExpand');
-  Assert(PathExpand('A\B', '\C\', '\') = '\C\A\B', 'PathExpand');
-  Assert(PathExpand('A\B', '\C\', '\') = '\C\A\B', 'PathExpand');
-  Assert(PathExpand('A\B', 'C\D', '\') = 'C\D\A\B', 'PathExpand');
-  Assert(PathExpand('..\A\B', 'C\D', '\') = 'C\A\B', 'PathExpand');
-  Assert(PathExpand('..\A\B', '\C\D', '\') = '\C\A\B', 'PathExpand');
-  Assert(PathExpand('..\..\A\B', 'C\D', '\') = 'A\B', 'PathExpand');
-  Assert(PathExpand('..\..\A\B', '\C\D', '\') = '\A\B', 'PathExpand');
-  Assert(PathExpand('..\..\..\A\B', '\C\D', '\') = '\A\B', 'PathExpand');
-  Assert(PathExpand('\..\A\B', '\C\D', '\') = '\A\B', 'PathExpand');
-  Assert(PathExpand('..\A\B', '\..\C\D', '\') = '\C\A\B', 'PathExpand');
-  Assert(PathExpand('..\A\B', '..\C\D', '\') = '..\C\A\B', 'PathExpand');
-  Assert(PathExpand('..\A\B', 'C:\C\D', '\') = 'C:\C\A\B', 'PathExpand');
-  Assert(PathExpand('..\A\B\', 'C:\C\D', '\') = 'C:\C\A\B\', 'PathExpand');
+  Assert(PathExpandA('', '', '\') = '', 'PathExpand');
+  Assert(PathExpandA('', '\', '\') = '\', 'PathExpand');
+  Assert(PathExpandA('', '\C', '\') = '\C', 'PathExpand');
+  Assert(PathExpandA('', '\C\', '\') = '\C\', 'PathExpand');
+  Assert(PathExpandA('..\', '\C\', '\') = '\', 'PathExpand');
+  Assert(PathExpandA('..', '\C\', '\') = '', 'PathExpand');
+  Assert(PathExpandA('\..', '\C\', '\') = '', 'PathExpand');
+  Assert(PathExpandA('\..\', '\C\', '\') = '\', 'PathExpand');
+  Assert(PathExpandA('A', '..\', '\') = '..\A', 'PathExpand');
+  Assert(PathExpandA('..\', '..\', '\') = '..\..\', 'PathExpand');
+  Assert(PathExpandA('\', '', '\') = '\', 'PathExpand');
+  Assert(PathExpandA('\', '\C', '\') = '\', 'PathExpand');
+  Assert(PathExpandA('\A', '\C\', '\') = '\A', 'PathExpand');
+  Assert(PathExpandA('\A\', '\C\', '\') = '\A\', 'PathExpand');
+  Assert(PathExpandA('\A\B', '\C', '\') = '\A\B', 'PathExpand');
+  Assert(PathExpandA('A\B', '\C', '\') = '\C\A\B', 'PathExpand');
+  Assert(PathExpandA('A\B', '\C', '\') = '\C\A\B', 'PathExpand');
+  Assert(PathExpandA('A\B', '\C\', '\') = '\C\A\B', 'PathExpand');
+  Assert(PathExpandA('A\B', '\C\', '\') = '\C\A\B', 'PathExpand');
+  Assert(PathExpandA('A\B', 'C\D', '\') = 'C\D\A\B', 'PathExpand');
+  Assert(PathExpandA('..\A\B', 'C\D', '\') = 'C\A\B', 'PathExpand');
+  Assert(PathExpandA('..\A\B', '\C\D', '\') = '\C\A\B', 'PathExpand');
+  Assert(PathExpandA('..\..\A\B', 'C\D', '\') = 'A\B', 'PathExpand');
+  Assert(PathExpandA('..\..\A\B', '\C\D', '\') = '\A\B', 'PathExpand');
+  Assert(PathExpandA('..\..\..\A\B', '\C\D', '\') = '\A\B', 'PathExpand');
+  Assert(PathExpandA('\..\A\B', '\C\D', '\') = '\A\B', 'PathExpand');
+  Assert(PathExpandA('..\A\B', '\..\C\D', '\') = '\C\A\B', 'PathExpand');
+  Assert(PathExpandA('..\A\B', '..\C\D', '\') = '..\C\A\B', 'PathExpand');
+  Assert(PathExpandA('..\A\B', 'C:\C\D', '\') = 'C:\C\A\B', 'PathExpand');
+  Assert(PathExpandA('..\A\B\', 'C:\C\D', '\') = 'C:\C\A\B\', 'PathExpand');
+
+  Assert(FilePathA('C', '..\X\Y', 'A\B', '\') = 'A\X\Y\C', 'FilePath');
+  Assert(FilePathA('C', '\X\Y', 'A\B', '\') = '\X\Y\C', 'FilePath');
+  Assert(FilePathA('C', '', 'A\B', '\') = 'A\B\C', 'FilePath');
+  Assert(FilePathA('', '\X\Y', 'A\B', '\') = '', 'FilePath');
+  Assert(FilePathA('C', 'X\Y', 'A\B', '\') = 'A\B\X\Y\C', 'FilePath');
+  Assert(FilePathA('C', 'X\Y', '', '\') = 'X\Y\C', 'FilePath');
 
   Assert(FilePath('C', '..\X\Y', 'A\B', '\') = 'A\X\Y\C', 'FilePath');
   Assert(FilePath('C', '\X\Y', 'A\B', '\') = '\X\Y\C', 'FilePath');
@@ -1696,16 +2201,16 @@ begin
   Assert(FilePath('C', 'X\Y', 'A\B', '\') = 'A\B\X\Y\C', 'FilePath');
   Assert(FilePath('C', 'X\Y', '', '\') = 'X\Y\C', 'FilePath');
 
-  Assert(DirectoryExpand('', '', '\') = '', 'DirectoryExpand');
-  Assert(DirectoryExpand('', '\X', '\') = '\X\', 'DirectoryExpand');
-  Assert(DirectoryExpand('\', '\X', '\') = '\', 'DirectoryExpand');
-  Assert(DirectoryExpand('\A', '\X', '\') = '\A\', 'DirectoryExpand');
-  Assert(DirectoryExpand('\A\', '\X', '\') = '\A\', 'DirectoryExpand');
-  Assert(DirectoryExpand('\A\B', '\X', '\') = '\A\B\', 'DirectoryExpand');
-  Assert(DirectoryExpand('A', '\X', '\') = '\X\A\', 'DirectoryExpand');
-  Assert(DirectoryExpand('A\', '\X', '\') = '\X\A\', 'DirectoryExpand');
-  Assert(DirectoryExpand('C:', '\X', '\') = 'C:\', 'DirectoryExpand');
-  Assert(DirectoryExpand('C:\', '\X', '\') = 'C:\', 'DirectoryExpand');
+  Assert(DirectoryExpandA('', '', '\') = '', 'DirectoryExpand');
+  Assert(DirectoryExpandA('', '\X', '\') = '\X\', 'DirectoryExpand');
+  Assert(DirectoryExpandA('\', '\X', '\') = '\', 'DirectoryExpand');
+  Assert(DirectoryExpandA('\A', '\X', '\') = '\A\', 'DirectoryExpand');
+  Assert(DirectoryExpandA('\A\', '\X', '\') = '\A\', 'DirectoryExpand');
+  Assert(DirectoryExpandA('\A\B', '\X', '\') = '\A\B\', 'DirectoryExpand');
+  Assert(DirectoryExpandA('A', '\X', '\') = '\X\A\', 'DirectoryExpand');
+  Assert(DirectoryExpandA('A\', '\X', '\') = '\X\A\', 'DirectoryExpand');
+  Assert(DirectoryExpandA('C:', '\X', '\') = 'C:\', 'DirectoryExpand');
+  Assert(DirectoryExpandA('C:\', '\X', '\') = 'C:\', 'DirectoryExpand');
 
   Assert(UnixPathToWinPath('/c/d.f') = '\c\d.f', 'UnixPathToWinPath');
   Assert(WinPathToUnixPath('\c\d.f') = '/c/d.f', 'WinPathToUnixPath');

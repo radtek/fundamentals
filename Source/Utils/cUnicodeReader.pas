@@ -2,10 +2,10 @@
 {                                                                              }
 {   Library:          Fundamentals 4.00                                        }
 {   File name:        cUnicodeReader.pas                                       }
-{   File version:     4.06                                                     }
+{   File version:     4.07                                                     }
 {   Description:      Unicode reader class                                     }
 {                                                                              }
-{   Copyright:        Copyright © 2002-2011, David J Butler                    }
+{   Copyright:        Copyright © 2002-2012, David J Butler                    }
 {                     All rights reserved.                                     }
 {                     Redistribution and use in source and binary forms, with  }
 {                     or without modification, are permitted provided that     }
@@ -35,12 +35,13 @@
 {                                                                              }
 { Revision history:                                                            }
 {                                                                              }
-{   19/04/2002  0.01  Initial version.                                         }
-{   28/10/2002  3.02  Refactored for Fundamentals 3.                           }
-{   29/10/2002  3.03  Bug fixes and improvements.                              }
-{   05/11/2002  3.04  Improved buffer handling.                                }
-{   02/01/2004  3.05  Changed reader's block size to 64K as suggested by Eb.   }
-{   27/08/2005  4.06  Revised for Fundamentals 4.                              }
+{   2002/04/19  0.01  Initial version.                                         }
+{   2002/10/28  3.02  Refactored for Fundamentals 3.                           }
+{   2002/10/29  3.03  Bug fixes and improvements.                              }
+{   2002/11/05  3.04  Improved buffer handling.                                }
+{   2004/01/02  3.05  Changed reader's block size to 64K as suggested by Eb.   }
+{   2005/08/27  4.06  Revised for Fundamentals 4.                              }
+{   2011/10/16  4.07  Changes for Unicode Delphi.                              }
 {                                                                              }
 { Supported compilers:                                                         }
 {                                                                              }
@@ -51,6 +52,7 @@
 {******************************************************************************}
 
 {$INCLUDE cDefines.inc}
+
 unit cUnicodeReader;
 
 interface
@@ -61,8 +63,8 @@ uses
 
   { Fundamentals }
   cUtils,
+  cStrings,
   cStreams,
-  cUnicode,
   cUnicodeCodecs;
 
 
@@ -104,12 +106,13 @@ type
     function  ReadChar: WideChar;
     function  ReadWide(const Buf: PWideChar; const Len: Integer): Integer;
     function  ReadWideStr(const Len: Integer): WideString;
+    function  ReadUnicodeStr(const Len: Integer): UnicodeString;
     function  ReadUTF8Str(const Len: Integer): AnsiString;
 
     procedure Skip(const Count: Integer);
-    function  SkipAll(const CharMatchFunc: WideCharMatchFunction): Integer;
+    function  SkipAll(const CharMatchFunc: TWideCharMatchFunction): Integer;
 
-    function  MatchChar(const CharMatchFunc: WideCharMatchFunction;
+    function  MatchChar(const CharMatchFunc: TWideCharMatchFunction;
               const Skip: Boolean): Boolean;
     function  MatchWideChar(const Ch: WideChar; const Skip: Boolean): Boolean;
 
@@ -117,10 +120,10 @@ type
               const Skip: Boolean): Boolean;
     function  MatchAnsiStrDelimited(const S: AnsiString;
               const CaseSensitive: Boolean;
-              const Delimiter: WideCharMatchFunction;
+              const Delimiter: TWideCharMatchFunction;
               const Skip: Boolean): Boolean;
 
-    function  MatchChars(const CharMatchFunc: WideCharMatchFunction): Integer;
+    function  MatchChars(const CharMatchFunc: TWideCharMatchFunction): Integer;
     function  MatchAnsiChars(const C: CharSet): Integer;
 
     function  LocateAnsiChar(const C: CharSet;
@@ -132,22 +135,22 @@ type
     function  SkipAndPeek(var Ch: WideChar): Boolean;
     function  GetPeekBuffer(const Len: Integer; var Buffer: PWideChar): Integer;
 
-    function  ReadChars(const CharMatchFunc: WideCharMatchFunction): WideString;
+    function  ReadChars(const CharMatchFunc: TWideCharMatchFunction): UnicodeString;
     function  ReadAnsiChars(const C: CharSet): AnsiString;
 
     function  SkipToAnsiChar(const C: CharSet;
               const SkipDelimiter: Boolean): Integer;
     function  ReadToAnsiChar(const C: CharSet;
-              const SkipDelimiter: Boolean = False): WideString;
+              const SkipDelimiter: Boolean = False): UnicodeString;
     function  ReadUTF8StrToAnsiChar(const C: CharSet;
               const SkipDelimiter: Boolean = False): AnsiString;
 
     function  ReadToAnsiStr(const S: AnsiString;
               const CaseSensitive: Boolean = True;
-              const SkipDelimiter: Boolean = False): WideString;
+              const SkipDelimiter: Boolean = False): UnicodeString;
     function  ReadUTF8StrToAnsiStr(const S: AnsiString;
               const CaseSensitive: Boolean = True;
-              const SkipDelimiter: Boolean = False): WideString;
+              const SkipDelimiter: Boolean = False): AnsiString;
   end;
   EUnicodeReader = class(Exception);
   EUnicodeReaderReadError = class(EUnicodeReader);
@@ -173,7 +176,7 @@ type
 type
   TUnicodeFileReader = class(TUnicodeReader)
   public
-    constructor Create(const FileName: AnsiString;
+    constructor Create(const FileName: String;
                 const Codec: TCustomUnicodeCodec = nil;
                 const CodecOwner: Boolean = True);
   end;
@@ -398,6 +401,29 @@ begin
   Inc(FBufPos, L);
 end;
 
+function TUnicodeReader.ReadUnicodeStr(const Len: Integer): UnicodeString;
+var L: Integer;
+    P: PWideChar;
+begin
+  if Len <= 0 then
+    begin
+      Result := '';
+      exit;
+    end;
+  // buffer
+  L := FBufLen - FBufPos;
+  if L < Len then
+    L := BufferChars(Len);
+  if L > Len then
+    L := Len;
+  // read
+  P := Pointer(FBuffer);
+  Inc(P, FBufPos);
+  SetLength(Result, L);
+  Move(P^, Pointer(Result)^, Sizeof(WideChar) * L);
+  Inc(FBufPos, L);
+end;
+
 function TUnicodeReader.ReadUTF8Str(const Len: Integer): AnsiString;
 var L: Integer;
     P: PWideChar;
@@ -432,7 +458,7 @@ begin
   Inc(FBufPos, Count);
 end;
 
-function TUnicodeReader.SkipAll(const CharMatchFunc: WideCharMatchFunction): Integer;
+function TUnicodeReader.SkipAll(const CharMatchFunc: TWideCharMatchFunction): Integer;
 var P: PWideChar;
     N, I: Integer;
 begin
@@ -460,7 +486,7 @@ begin
   Until False;
 end;
 
-function TUnicodeReader.MatchChar(const CharMatchFunc: WideCharMatchFunction;
+function TUnicodeReader.MatchChar(const CharMatchFunc: TWideCharMatchFunction;
     const Skip: Boolean): Boolean;
 var P: PWideChar;
 begin
@@ -521,14 +547,14 @@ begin
   // match
   P := Pointer(FBuffer);
   Inc(P, FBufPos);
-  Result := WidePMatchAnsiStr(S, P, CaseSensitive);
+  Result := StrZMatchStrAsciiAW(P, S, CaseSensitive);
   // skip
   if Skip and Result then
     Inc(FBufPos, L);
 end;
 
 function TUnicodeReader.MatchAnsiStrDelimited(const S: AnsiString;
-    const CaseSensitive: Boolean; const Delimiter: WideCharMatchFunction;
+    const CaseSensitive: Boolean; const Delimiter: TWideCharMatchFunction;
     const Skip: Boolean): Boolean;
 var L: Integer;
     P: PWideChar;
@@ -544,7 +570,7 @@ begin
   // match
   P := Pointer(FBuffer);
   Inc(P, FBufPos);
-  Result := WidePMatchAnsiStr(S, P, CaseSensitive);
+  Result := StrZMatchStrAsciiAW(P, S, CaseSensitive);
   if not Result then
     exit;
   Inc(P, L);
@@ -554,7 +580,7 @@ begin
     Inc(FBufPos, L);
 end;
 
-function TUnicodeReader.MatchChars(const CharMatchFunc: WideCharMatchFunction): Integer;
+function TUnicodeReader.MatchChars(const CharMatchFunc: TWideCharMatchFunction): Integer;
 var P: PWideChar;
     N, I: Integer;
 begin
@@ -597,7 +623,7 @@ begin
     P := Pointer(FBuffer);
     Inc(P, FBufPos + Result);
     For I := Result + 1 to N do
-      if (Ord(P^) > $FF) or not (Char(Byte(P^)) in C) then
+      if (Ord(P^) > $FF) or not (AnsiChar(Byte(P^)) in C) then
         exit else
         begin
           Inc(Result);
@@ -634,7 +660,7 @@ begin
     For I := Result + 1 to N do
       begin
         V := Ord(P^);
-        if (V <= $FF) and (Char(V) in C) then
+        if (V <= $FF) and (AnsiChar(Byte(V)) in C) then
           // found
           exit;
         Inc(Result);
@@ -671,7 +697,7 @@ begin
     P := Pointer(FBuffer);
     Inc(P, FBufPos + Result);
     For I := Result + 1 to N - M + 1 do
-      if WidePMatchAnsiStr(S, P, CaseSensitive) then
+      if StrZMatchStrAsciiAW(P, S, CaseSensitive) then
         // found
         exit else
         begin
@@ -756,7 +782,7 @@ begin
     Ch := WideChar(#0);
 end;
 
-function TUnicodeReader.ReadChars(const CharMatchFunc: WideCharMatchFunction): WideString;
+function TUnicodeReader.ReadChars(const CharMatchFunc: TWideCharMatchFunction): UnicodeString;
 var P: PWideChar;
     L: Integer;
 begin
@@ -813,7 +839,7 @@ begin
 end;
 
 function TUnicodeReader.ReadToAnsiChar(const C: CharSet;
-    const SkipDelimiter: Boolean): WideString;
+    const SkipDelimiter: Boolean): UnicodeString;
 var L, M: Integer;
 begin
   // locate
@@ -823,9 +849,10 @@ begin
     begin
       // read
       if L < 0 then
-        M := FBufLen - FBufPos else
+        M := FBufLen - FBufPos
+      else
         M := L;
-      Result := ReadWideStr(M);
+      Result := ReadUnicodeStr(M);
     end;
   // skip delimiter
   if (L >= 0) and SkipDelimiter then
@@ -853,7 +880,7 @@ begin
 end;
 
 function TUnicodeReader.ReadToAnsiStr(const S: AnsiString;
-    const CaseSensitive: Boolean; const SkipDelimiter: Boolean): WideString;
+    const CaseSensitive: Boolean; const SkipDelimiter: Boolean): UnicodeString;
 var L, M: Integer;
 begin
   // locate
@@ -865,7 +892,7 @@ begin
       if L < 0 then
         M := FBufLen - FBufPos else
         M := L;
-      Result := ReadWideStr(M);
+      Result := ReadUnicodeStr(M);
     end;
   // skip delimiter
   if (L >= 0) and SkipDelimiter then
@@ -873,7 +900,7 @@ begin
 end;
 
 function TUnicodeReader.ReadUTF8StrToAnsiStr(const S: AnsiString;
-    const CaseSensitive: Boolean; const SkipDelimiter: Boolean): WideString;
+    const CaseSensitive: Boolean; const SkipDelimiter: Boolean): AnsiString;
 var L, M: Integer;
 begin
   // locate
@@ -908,7 +935,7 @@ end;
 {                                                                              }
 { TUnicodeFileReader                                                           }
 {                                                                              }
-constructor TUnicodeFileReader.Create(const FileName: AnsiString;
+constructor TUnicodeFileReader.Create(const FileName: String;
     const Codec: TCustomUnicodeCodec; const CodecOwner: Boolean);
 begin
   inherited Create(TFileReader.Create(FileName), True, Codec, CodecOwner);
@@ -924,8 +951,11 @@ end;
 procedure SelfTest;
 var A : TUnicodeReader;
 begin
-  A := TUnicodeReader.Create(TStringReader.Create(#$41#$E2#$89#$A2#$CE#$91#$2E),
-      True, TUTF8Codec.Create, True);
+  A := TUnicodeReader.Create(
+      TLongStringReader.Create(#$41#$E2#$89#$A2#$CE#$91#$2E),
+      True,
+      TUTF8Codec.Create,
+      True);
   Assert(not A.EOF, 'UnicodeReader.EOF');
   Assert(A.PeekChar = #$0041, 'UnicodeReader.PeekChar');
   Assert(A.ReadChar = #$0041, 'UnicodeReader.ReadChar');

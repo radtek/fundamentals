@@ -70,7 +70,7 @@ type
   protected
     FErrorCode : Integer;
   public
-    constructor Create(const ErrorCode: Integer; const Msg: AnsiString);
+    constructor Create(const ErrorCode: Integer; const Msg: String);
     property ErrorCode: Integer read FErrorCode;
   end;
 
@@ -91,7 +91,7 @@ implementation
 {                                                                              }
 { Cipher errors                                                                }
 {                                                                              }
-constructor ECipher.Create(const ErrorCode: Integer; const Msg: AnsiString);
+constructor ECipher.Create(const ErrorCode: Integer; const Msg: String);
 begin
   FErrorCode := ErrorCode;
   inherited Create(Msg);

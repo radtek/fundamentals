@@ -2,10 +2,10 @@
 {                                                                              }
 {   Library:          Fundamentals 4.00                                        }
 {   File name:        cStreams.pas                                             }
-{   File version:     4.21                                                     }
+{   File version:     4.22                                                     }
 {   Description:      Reader, Writer and Stream classes                        }
 {                                                                              }
-{   Copyright:        Copyright © 1999-2011, David J Butler                    }
+{   Copyright:        Copyright © 1999-2012, David J Butler                    }
 {                     All rights reserved.                                     }
 {                     Redistribution and use in source and binary forms, with  }
 {                     or without modification, are permitted provided that     }
@@ -56,10 +56,11 @@
 {   2005/12/06  4.19  Compilable under FreePascal 2.0.1 Linux i386.            }
 {   2008/12/30  4.20  Revision.                                                }
 {   2010/06/27  4.21  Compilable with FreePascal 2.4.0 OSX x86-64              }
+{   2011/10/14  4.22  Compilable with Delphi XE.                               }
 {                                                                              }
 { Supported compilers:                                                         }
 {                                                                              }
-{   Borland Delphi 5/6/7/2005/2006/2007 Win32 i386                             }
+{   Borland Delphi 5-XE Win32 i386                                             }
 {   FreePascal 2 Win32 i386                                                    }
 {   FreePascal 2 Linux i386                                                    }
 {                                                                              }
@@ -69,6 +70,7 @@
 {$IFDEF FREEPASCAL}{$IFDEF DEBUG}
   {$WARNINGS OFF}{$HINTS OFF}
 {$ENDIF}{$ENDIF}
+
 unit cStreams;
 
 interface
@@ -155,10 +157,15 @@ type
     procedure RaiseSeekError;
 
     procedure ReadBuffer(var Buffer; const Size: Integer);
-    function  ReadStr(const Size: Integer): AnsiString; virtual;
-    function  ReadWideStr(const Length: Integer): WideString; virtual;
-    function  GetToEOF: AnsiString; virtual;
-    function  GetAsString: AnsiString; virtual;
+
+    function  ReadStrA(const Len: Integer): AnsiString; virtual;
+    function  ReadStrW(const Len: Integer): WideString; virtual;
+    function  ReadStrU(const Len: Integer): UnicodeString; virtual;
+    function  ReadStr(const Len: Integer): String;
+
+    function  GetToEOFA: AnsiString; virtual;
+
+    function  GetAsStringA: AnsiString; virtual;
 
     function  ReadByte: Byte; virtual;
     function  ReadWord: Word;
@@ -168,15 +175,22 @@ type
     function  ReadSingle: Single;
     function  ReadDouble: Double;
     function  ReadExtended: Extended;
+
     function  ReadPackedAnsiString: AnsiString;
     function  ReadPackedWideString: WideString;
-    function  ReadPackedString: String; {$IFDEF UseInline}inline;{$ENDIF}
+    function  ReadPackedUnicodeString: UnicodeString;
+    function  ReadPackedString: String;
+
     function  ReadPackedAnsiStringArray: AnsiStringArray;
     function  ReadPackedWideStringArray: WideStringArray;
+    function  ReadPackedUnicodeStringArray: UnicodeStringArray;
+    function  ReadPackedStringArray: StringArray;
 
-    function  Peek(var Buffer; const Size: Integer): Integer; virtual;
-    procedure PeekBuffer(var Buffer; const Size: Integer);
-    function  PeekStr(const Size: Integer): AnsiString; virtual;
+    function  Peek(out Buffer; const Size: Integer): Integer; virtual;
+    procedure PeekBuffer(out Buffer; const Size: Integer);
+
+    function  PeekStrA(const Len: Integer): AnsiString; virtual;
+    function  PeekStrU(const Len: Integer): UnicodeString; virtual;
 
     function  PeekByte: Byte; virtual;
     function  PeekWord: Word;
@@ -278,21 +292,41 @@ type
 
 
 {                                                                              }
-{ TStringReader                                                                }
-{   Memory reader implementation for a reference counted string (long string). }
+{ TLongStringReader                                                            }
+{   Memory reader implementation for a reference counted long string.          }
 {                                                                              }
 type
-  TStringReader = class(TMemoryReader)
+  TLongStringReader = class(TMemoryReader)
   protected
     FDataString : AnsiString;
 
-    procedure SetDataString(const S: AnsiString);
+    procedure SetDataString(const DataStr: AnsiString);
 
   public
-    constructor Create(const Data: AnsiString);
+    constructor Create(const DataStr: AnsiString);
 
     property  DataString: AnsiString read FDataString write SetDataString;
-    function  GetAsString: AnsiString; override;
+    function  GetAsStringA: AnsiString; override;
+  end;
+
+
+
+{                                                                              }
+{ TUnicodeStringReader                                                         }
+{   Memory reader implementation for a reference counted UnicodeString.        }
+{                                                                              }
+type
+  TUnicodeStringReader = class(TMemoryReader)
+  protected
+    FDataString : UnicodeString;
+
+    procedure SetDataString(const DataStr: UnicodeString);
+
+  public
+    constructor Create(const DataStr: UnicodeString);
+
+    property  DataString: UnicodeString read FDataString write SetDataString;
+    function  GetAsStringU: UnicodeString;
   end;
 
 
@@ -316,7 +350,7 @@ type
     function  GetSize: Int64; override;
 
   public
-    constructor Create(const FileName: AnsiString;
+    constructor Create(const FileName: String;
                 const AccessHint: TFileReaderAccessHint = frahNone); overload;
     constructor Create(const FileHandle: Integer; const HandleOwner: Boolean = False); overload;
     destructor Destroy; override;
@@ -329,7 +363,7 @@ type
   end;
   EFileReader = class(EReader);
 
-function  ReadFileToStr(const FileName: AnsiString): AnsiString;
+function  ReadFileToStrA(const FileName: String): AnsiString;
 
 
 
@@ -443,8 +477,8 @@ type
   protected
     FBufferSize  : Integer;
     FPos         : Int64;
-    FBuffer      : Array[0..1] of Pointer;
-    FBufUsed     : Array[0..1] of Integer;
+    FBuffer      : array[0..1] of Pointer;
+    FBufUsed     : array[0..1] of Integer;
     FBufNr       : Integer;
     FBufPos      : Integer;
 
@@ -479,7 +513,7 @@ type
 type
   TBufferedFileReader = class(TBufferedReader)
   public
-    constructor Create(const FileName: AnsiString; const BufferSize: Integer = 512); overload;
+    constructor Create(const FileName: String; const BufferSize: Integer = 512); overload;
     constructor Create(const FileHandle: Integer; const HandleOwner: Boolean = False;
                 const BufferSize: Integer = 512); overload;
   end;
@@ -493,7 +527,7 @@ type
 type
   TSplitBufferedFileReader = class(TSplitBufferedReader)
   public
-    constructor Create(const FileName: AnsiString; const BufferSize: Integer = 512);
+    constructor Create(const FileName: String; const BufferSize: Integer = 512);
   end;
 
 
@@ -538,8 +572,9 @@ type
     function  GetSize: Int64; override;
     procedure SetSize(const Size: Int64); override;
 
-    procedure SetAsString(const S: AnsiString); virtual;
-    procedure SetAsWideString(const S: WideString); virtual;
+    procedure SetAsStringA(const S: AnsiString); virtual;
+    procedure SetAsStringW(const S: WideString); virtual;
+    procedure SetAsStringU(const S: UnicodeString); virtual;
 
   public
     procedure RaiseWriteError;
@@ -548,12 +583,15 @@ type
     procedure Truncate; virtual;
     procedure Clear; virtual;
 
-    property  AsString: AnsiString write SetAsString;
-    property  AsWideString: WideString write SetAsWideString;
+    property  AsStringA: AnsiString write SetAsStringA;
+    property  AsStringW: WideString write SetAsStringW;
+    property  AsStringU: UnicodeString write SetAsStringU;
 
     procedure WriteBuffer(const Buffer; const Size: Integer);
-    procedure WriteStr(const Buffer: AnsiString); virtual;
-    procedure WriteWideStr(const Buffer: WideString); virtual;
+
+    procedure WriteStrA(const Buffer: AnsiString); virtual;
+    procedure WriteStrW(const Buffer: WideString); virtual;
+    procedure WriteStrU(const Buffer: UnicodeString); virtual;
 
     procedure WriteByte(const V: Byte); virtual;
     procedure WriteWord(const V: Word); virtual;
@@ -563,11 +601,16 @@ type
     procedure WriteSingle(const V: Single);
     procedure WriteDouble(const V: Double);
     procedure WriteExtended(const V: Extended);
+
     procedure WritePackedAnsiString(const V: AnsiString);
     procedure WritePackedWideString(const V: WideString);
-    procedure WritePackedString(const V: String); {$IFDEF UseInline}inline;{$ENDIF}
-    procedure WritePackedAnsiStringArray(const V: Array of AnsiString);
-    procedure WritePackedWideStringArray(const V: Array of WideString);
+    procedure WritePackedUnicodeString(const V: UnicodeString);
+    procedure WritePackedString(const V: String);
+
+    procedure WritePackedAnsiStringArray(const V: array of AnsiString);
+    procedure WritePackedWideStringArray(const V: array of WideString);
+    procedure WritePackedUnicodeStringArray(const V: array of UnicodeString);
+    procedure WritePackedStringArray(const V: array of String);
 
     procedure WriteBufLine(const Buffer; const Size: Integer;
               const NewLineType: TWriterNewLineType = nlCRLF);
@@ -594,7 +637,7 @@ type
       fwoWriteThrough);
   TFileWriter = class(AWriterEx)
   protected
-    FFileName    : AnsiString;
+    FFileName    : String;
     FHandle      : Integer;
     FHandleOwner : Boolean;
     FFileCreated : Boolean;
@@ -605,7 +648,7 @@ type
     procedure SetSize(const Size: Int64); override;
 
   public
-    constructor Create(const FileName: AnsiString;
+    constructor Create(const FileName: String;
                 const OpenMode: TFileWriterOpenMode = fwomCreateIfNotExist;
                 const Options: TFileWriterOptions = [];
                 const AccessHint: TFileWriterAccessHint = fwahNone); overload;
@@ -623,75 +666,75 @@ type
   end;
   EFileWriter = class(EWriter);
 
-procedure WriteStrToFile(const FileName: AnsiString; const S: AnsiString;
+procedure WriteStrToFile(const FileName: String; const S: AnsiString;
           const OpenMode: TFileWriterOpenMode = fwomCreate);
-procedure AppendStrToFile(const FileName: AnsiString; const S: AnsiString);
+procedure AppendStrToFile(const FileName: String; const S: AnsiString);
 
-procedure WriteWideStrToFile(const FileName: AnsiString; const S: WideString;
+procedure WriteWideStrToFile(const FileName: String; const S: WideString;
           const OpenMode: TFileWriterOpenMode = fwomCreate);
-procedure AppendWideStrToFile(const FileName: AnsiString; const S: WideString);
+procedure AppendWideStrToFile(const FileName: String; const S: WideString);
 
 
 
 {                                                                              }
-{ TStringWriter                                                                }
-{   Writer implementation for a dynamic string.                                }
+{ TLongStringWriter                                                            }
+{   Writer implementation for a long string.                                   }
 {                                                                              }
 type
-  TStringWriter = class(AWriterEx)
+  TLongStringWriter = class(AWriterEx)
   protected
-    FData : AnsiString;
-    FSize : Integer;
-    FPos  : Integer;
+    FDataStr : AnsiString;
+    FSize    : Integer;
+    FPos     : Integer;
 
     function  GetPosition: Int64; override;
     procedure SetPosition(const Position: Int64); override;
     function  GetSize: Int64; override;
     procedure SetSize(const Size: Int64); reintroduce; overload; override;
     procedure SetSize(const Size: Integer); reintroduce; overload;
-    function  GetAsString: AnsiString;
-    procedure SetAsString(const S: AnsiString); override;
+    function  GetAsStringA: AnsiString;
+    procedure SetAsStringA(const S: AnsiString); override;
 
   public
-    property  DataString: AnsiString read FData;
+    property  DataString: AnsiString read FDataStr;
     property  DataSize: Integer read FSize;
-    property  AsString: AnsiString read GetAsString write SetAsString;
+    property  AsStringA: AnsiString read GetAsStringA write SetAsStringA;
 
     function  Write(const Buffer; const Size: Integer): Integer; override;
 
-    procedure WriteStr(const Buffer: AnsiString); override;
+    procedure WriteStrA(const Buffer: AnsiString); override;
     procedure WriteByte(const V: Byte); override;
   end;
 
 
 
 {                                                                              }
-{ TWideStringWriter                                                            }
-{   Writer implementation for a wide string.                                   }
+{ TUnicodeStringWriter                                                         }
+{   Writer implementation for a UnicodeString.                                 }
 {                                                                              }
 type
-  TWideStringWriter = class(AWriterEx)
+  TUnicodeStringWriter = class(AWriterEx)
   protected
-    FData : WideString;
-    FSize : Integer;
-    FPos  : Integer;
+    FDataStr : WideString;
+    FSize    : Integer;
+    FPos     : Integer;
 
     function  GetPosition: Int64; override;
     procedure SetPosition(const Position: Int64); override;
     function  GetSize: Int64; override;
     procedure SetSize(const Size: Int64); reintroduce; overload; override;
     procedure SetSize(const Size: Integer); reintroduce; overload;
-    function  GetAsWideString: WideString;
-    procedure SetAsWideString(const S: WideString); override;
+    function  GetAsStringU: UnicodeString;
+    procedure SetAsStringU(const S: UnicodeString); override;
 
   public
-    property  DataString: WideString read FData;
+    property  DataString: WideString read FDataStr;
     property  DataSize: Integer read FSize;
-    property  AsWideString: WideString read GetAsWideString write SetAsWideString;
+    property  AsStringU: UnicodeString read GetAsStringU write SetAsStringU;
 
     function  Write(const Buffer; const Size: Integer): Integer; override;
-    procedure WriteStr(const Buffer: AnsiString); override;
-    procedure WriteWideStr(const Buffer: WideString); override;
+    procedure WriteStrA(const Buffer: AnsiString); override;
+    procedure WriteStrW(const Buffer: WideString); override;
     procedure WriteByte(const V: Byte); override;
     procedure WriteWord(const V: Word); override;
   end;
@@ -746,9 +789,9 @@ type
 
     procedure ReadBuffer(var Buffer; const Size: Integer);
     function  ReadByte: Byte;
-    function  ReadStr(const Size: Integer): AnsiString;
+    function  ReadStrA(const Size: Integer): AnsiString;
     procedure WriteBuffer(const Buffer; const Size: Integer);
-    procedure WriteStr(const S: AnsiString);
+    procedure WriteStrA(const S: AnsiString);
 
     procedure Assign(const Source: TObject); virtual;
     function  WriteTo(const Destination: AStream; const BlockSize: Integer = 0;
@@ -894,7 +937,7 @@ type
       fsoWriteThrough);
   TFileStream = class(TReaderWriter)
   protected
-    FFileName   : AnsiString;
+    FFileName   : String;
     FOpenMode   : TFileStreamOpenMode;
     FOptions    : TFileStreamOptions;
     FAccessHint : TFileStreamAccessHint;
@@ -909,13 +952,13 @@ type
     procedure EnsureCreateOnWrite;
 
   public
-    constructor Create(const FileName: AnsiString;
+    constructor Create(const FileName: String;
                 const OpenMode: TFileStreamOpenMode;
                 const Options: TFileStreamOptions = [];
                 const AccessHint: TFileStreamAccessHint = fsahNone); overload;
     constructor Create(const FileHandle: Integer; const HandleOwner: Boolean); overload;
 
-    property  FileName: AnsiString read FFileName;
+    property  FileName: String read FFileName;
     property  FileHandle: Integer read GetFileHandle;
     property  FileCreated: Boolean read GetFileCreated;
     procedure DeleteFile;
@@ -978,10 +1021,27 @@ resourcestring
   SSystemError = 'System error #%s';
 
 {$IFDEF MSWIN}
+{$IFDEF StringIsUnicode}
 function GetLastOSErrorMessage: String;
 const MAX_ERRORMESSAGE_LENGTH = 256;
 var Err: LongWord;
-    Buf: Array[0..MAX_ERRORMESSAGE_LENGTH - 1] of Byte;
+    Buf: array[0..MAX_ERRORMESSAGE_LENGTH - 1] of Word;
+    Len: LongWord;
+begin
+  Err := Windows.GetLastError;
+  FillChar(Buf, Sizeof(Buf), #0);
+  Len := Windows.FormatMessageW(FORMAT_MESSAGE_FROM_SYSTEM, nil, Err, 0,
+      @Buf, MAX_ERRORMESSAGE_LENGTH, nil);
+  if Len = 0 then
+    Result := Format(SSystemError, [IntToStr(Err)])
+  else
+    Result := StrPas(PWideChar(@Buf));
+end;
+{$ELSE}
+function GetLastOSErrorMessage: String;
+const MAX_ERRORMESSAGE_LENGTH = 256;
+var Err: LongWord;
+    Buf: array[0..MAX_ERRORMESSAGE_LENGTH - 1] of Byte;
     Len: LongWord;
 begin
   Err := Windows.GetLastError;
@@ -993,6 +1053,7 @@ begin
   else
     Result := StrPas(PAnsiChar(@Buf));
 end;
+{$ENDIF}
 {$ELSE}
 {$IFDEF UNIX}
 {$IFDEF FREEPASCAL}
@@ -1003,7 +1064,7 @@ end;
 {$ELSE}
 function GetLastOSErrorMessage: String;
 var Err: LongWord;
-    Buf: Array[0..1023] of AnsiChar;
+    Buf: array[0..1023] of AnsiChar;
 begin
   Err := BaseUnix.fpgeterrno;
   FillChar(Buf, Sizeof(Buf), #0);
@@ -1046,47 +1107,75 @@ begin
     RaiseReadError;
 end;
 
-function AReaderEx.ReadStr(const Size: Integer): AnsiString;
+function AReaderEx.ReadStrA(const Len: Integer): AnsiString;
 var L : Integer;
 begin
-  if Size <= 0 then
+  if Len <= 0 then
     begin
       Result := '';
       exit;
     end;
-  SetLength(Result, Size);
-  L := Read(Pointer(Result)^, Size);
+  SetLength(Result, Len);
+  L := Read(Pointer(Result)^, Len);
   if L <= 0 then
     begin
       Result := '';
       exit;
     end;
-  if L < Size then
+  if L < Len then
     SetLength(Result, L);
 end;
 
-function AReaderEx.ReadWideStr(const Length: Integer): WideString;
+function AReaderEx.ReadStrW(const Len: Integer): WideString;
 var L : Integer;
 begin
-  if Length <= 0 then
+  if Len <= 0 then
     begin
       Result := '';
       exit;
     end;
-  SetLength(Result, Length);
-  L := Read(Pointer(Result)^, Length * Sizeof(WideChar)) div Sizeof(WideChar);
+  SetLength(Result, Len);
+  L := Read(Pointer(Result)^, Len * Sizeof(WideChar)) div Sizeof(WideChar);
   if L <= 0 then
     begin
       Result := '';
       exit;
     end;
-  if L < Length then
+  if L < Len then
     SetLength(Result, L);
 end;
 
-function AReaderEx.GetToEOF: AnsiString;
+function AReaderEx.ReadStrU(const Len: Integer): UnicodeString;
+var L : Integer;
+begin
+  if Len <= 0 then
+    begin
+      Result := '';
+      exit;
+    end;
+  SetLength(Result, Len);
+  L := Read(Pointer(Result)^, Len * Sizeof(WideChar)) div Sizeof(WideChar);
+  if L <= 0 then
+    begin
+      Result := '';
+      exit;
+    end;
+  if L < Len then
+    SetLength(Result, L);
+end;
+
+function AReaderEx.ReadStr(const Len: Integer): String;
+begin
+  {$IFDEF StringIsUnicode}
+  Result := ReadStrU(Len);
+  {$ELSE}
+  Result := ReadStrA(Len);
+  {$ENDIF}
+end;
+
+function AReaderEx.GetToEOFA: AnsiString;
 var S    : Int64;
-    B    : Array[0..DefaultBufSize - 1] of Byte;
+    B    : array[0..DefaultBufSize - 1] of Byte;
     I, J : Integer;
     L, N : Integer;
     R    : Boolean;
@@ -1100,7 +1189,7 @@ begin
       L := 0; // actual size
       N := 0; // allocated size
       R := EOF;
-      While not R do
+      while not R do
         begin
           I := Read(B[0], DefaultBufSize);
           R := EOF;
@@ -1133,13 +1222,13 @@ begin
     end
   else
     // size known
-    Result := ReadStr(S - GetPosition);
+    Result := ReadStrA(S - GetPosition);
 end;
 
-function AReaderEx.GetAsString: AnsiString;
+function AReaderEx.GetAsStringA: AnsiString;
 begin
   SetPosition(0);
-  Result := GetToEOF;
+  Result := GetToEOFA;
 end;
 
 function AReaderEx.ReadByte: Byte;
@@ -1188,7 +1277,7 @@ begin
   L := ReadLongInt;
   if L < 0 then
     raise EReader.Create(SInvalidDataFormat);
-  Result := ReadStr(L);
+  Result := ReadStrA(L);
 end;
 
 function AReaderEx.ReadPackedWideString: WideString;
@@ -1197,13 +1286,22 @@ begin
   L := ReadLongInt;
   if L < 0 then
     raise EReader.Create(SInvalidDataFormat);
-  Result := ReadWideStr(L);
+  Result := ReadStrW(L);
+end;
+
+function AReaderEx.ReadPackedUnicodeString: UnicodeString;
+var L : Integer;
+begin
+  L := ReadLongInt;
+  if L < 0 then
+    raise EReader.Create(SInvalidDataFormat);
+  Result := ReadStrU(L);
 end;
 
 function AReaderEx.ReadPackedString: String;
 begin
-  {$IFDEF CharIsWide}
-  Result := ReadPackedWideString;
+  {$IFDEF StringIsUnicode}
+  Result := ReadPackedUnicodeString;
   {$ELSE}
   Result := ReadPackedAnsiString;
   {$ENDIF}
@@ -1216,7 +1314,7 @@ begin
   if L < 0 then
     raise EReader.Create(SInvalidDataFormat);
   SetLength(Result, L);
-  For I := 0 to L - 1 do
+  for I := 0 to L - 1 do
     Result[I] := ReadPackedAnsiString;
 end;
 
@@ -1227,11 +1325,33 @@ begin
   if L < 0 then
     raise EReader.Create(SInvalidDataFormat);
   SetLength(Result, L);
-  For I := 0 to L - 1 do
+  for I := 0 to L - 1 do
     Result[I] := ReadPackedWideString;
 end;
 
-function AReaderEx.Peek(var Buffer; const Size: Integer): Integer;
+function AReaderEx.ReadPackedUnicodeStringArray: UnicodeStringArray;
+var I, L : Integer;
+begin
+  L := ReadLongInt;
+  if L < 0 then
+    raise EReader.Create(SInvalidDataFormat);
+  SetLength(Result, L);
+  for I := 0 to L - 1 do
+    Result[I] := ReadPackedUnicodeString;
+end;
+
+function AReaderEx.ReadPackedStringArray: StringArray;
+var I, L : Integer;
+begin
+  L := ReadLongInt;
+  if L < 0 then
+    raise EReader.Create(SInvalidDataFormat);
+  SetLength(Result, L);
+  for I := 0 to L - 1 do
+    Result[I] := ReadPackedString;
+end;
+
+function AReaderEx.Peek(out Buffer; const Size: Integer): Integer;
 var P : Int64;
 begin
   P := GetPosition;
@@ -1240,7 +1360,7 @@ begin
     SetPosition(P);
 end;
 
-procedure AReaderEx.PeekBuffer(var Buffer; const Size: Integer);
+procedure AReaderEx.PeekBuffer(out Buffer; const Size: Integer);
 begin
   if Size <= 0 then
     exit;
@@ -1248,22 +1368,41 @@ begin
     RaiseReadError;
 end;
 
-function AReaderEx.PeekStr(const Size: Integer): AnsiString;
+function AReaderEx.PeekStrA(const Len: Integer): AnsiString;
 var L : Integer;
 begin
-  if Size <= 0 then
+  if Len <= 0 then
     begin
       Result := '';
       exit;
     end;
-  SetLength(Result, Size);
-  L := Peek(Pointer(Result)^, Size);
+  SetLength(Result, Len);
+  L := Peek(Pointer(Result)^, Len);
   if L <= 0 then
     begin
       Result := '';
       exit;
     end;
-  if L < Size then
+  if L < Len then
+    SetLength(Result, L);
+end;
+
+function AReaderEx.PeekStrU(const Len: Integer): UnicodeString;
+var L : Integer;
+begin
+  if Len <= 0 then
+    begin
+      Result := '';
+      exit;
+    end;
+  SetLength(Result, Len);
+  L := Peek(Pointer(Result)^, Len * SizeOf(WideChar)) div SizeOf(WideChar);
+  if L <= 0 then
+    begin
+      Result := '';
+      exit;
+    end;
+  if L < Len then
     SetLength(Result, L);
 end;
 
@@ -1296,7 +1435,7 @@ end;
 function AReaderEx.Match(const Buffer; const Size: Integer;
     const CaseSensitive: Boolean): Integer;
 var B : Pointer;
-    F : Array[0..DefaultBufSize - 1] of Byte;
+    F : array[0..DefaultBufSize - 1] of Byte;
     M : Boolean;
     R : Boolean;
 begin
@@ -1391,7 +1530,7 @@ function AReaderEx.SkipAll(const Ch: AnsiChar; const MatchNonMatch: Boolean;
     const MaxCount: Integer): Integer;
 begin
   Result := 0;
-  While (MaxCount < 0) or (Result < MaxCount) do
+  while (MaxCount < 0) or (Result < MaxCount) do
     if not MatchChar(Ch, MatchNonMatch, True) then
       exit
     else
@@ -1403,7 +1542,7 @@ function AReaderEx.SkipAll(const C: CharSet; const MatchNonMatch: Boolean;
 var Ch : AnsiChar;
 begin
   Result := 0;
-  While (MaxCount < 0) or (Result < MaxCount) do
+  while (MaxCount < 0) or (Result < MaxCount) do
     if not MatchChar(C, Ch, MatchNonMatch, True) then
       exit
     else
@@ -1417,7 +1556,7 @@ var P : Int64;
 begin
   P := GetPosition;
   I := 0;
-  While not EOF and ((MaxOffset < 0) or (I <= MaxOffset)) do
+  while not EOF and ((MaxOffset < 0) or (I <= MaxOffset)) do
     if (AnsiChar(ReadByte) = Ch) xor LocateNonMatch then
       begin
         SetPosition(P);
@@ -1437,8 +1576,8 @@ var P : Int64;
 begin
   P := GetPosition;
   I := 0;
-  While not EOF and ((MaxOffset < 0) or (I <= MaxOffset)) do
-    if (Char(ReadByte) in C) xor LocateNonMatch then
+  while not EOF and ((MaxOffset < 0) or (I <= MaxOffset)) do
+    if (AnsiChar(ReadByte) in C) xor LocateNonMatch then
       begin
         SetPosition(P);
         Result := I;
@@ -1456,7 +1595,7 @@ var P    : Int64;
     I, J : Integer;
     B    : Pointer;
     R, M : Boolean;
-    F    : Array[0..DefaultBufSize - 1] of Byte;
+    F    : array[0..DefaultBufSize - 1] of Byte;
 begin
   if Size <= 0 then
     begin
@@ -1471,7 +1610,7 @@ begin
   try
     P := GetPosition;
     I := 0;
-    While not EOF and
+    while not EOF and
           ((MaxOffset < 0) or (I <= MaxOffset)) do
       begin
         J := Read(B^, Size);
@@ -1523,11 +1662,11 @@ begin
   I := Locate(C, not ExtractNonMatch, MaxCount);
   if I = -1 then
     if MaxCount = -1 then
-      Result := GetToEOF
+      Result := GetToEOFA
     else
-      Result := ReadStr(MaxCount)
+      Result := ReadStrA(MaxCount)
   else
-    Result := ReadStr(I);
+    Result := ReadStrA(I);
 end;
 
 function AReaderEx.ExtractToStr(const S: AnsiString; const MaxLength: Integer;
@@ -1537,11 +1676,11 @@ begin
   I := LocateStr(S, MaxLength, CaseSensitive);
   if I = -1 then
     if MaxLength = -1 then
-      Result := GetToEOF
+      Result := GetToEOFA
     else
-      Result := ReadStr(MaxLength)
+      Result := ReadStrA(MaxLength)
   else
-    Result := ReadStr(I);
+    Result := ReadStrA(I);
 end;
 
 function AReaderEx.ExtractToChar(const C: AnsiChar; const MaxLength: Integer = -1): AnsiString;
@@ -1550,11 +1689,11 @@ begin
   I := Locate(C, False, MaxLength);
   if I = -1 then
     if MaxLength = -1 then
-      Result := GetToEOF
+      Result := GetToEOFA
     else
-      Result := ReadStr(MaxLength)
+      Result := ReadStrA(MaxLength)
   else
-    Result := ReadStr(I);
+    Result := ReadStrA(I);
 end;
 
 function AReaderEx.ExtractToChar(const C: CharSet; const MaxLength: Integer = -1): AnsiString;
@@ -1563,11 +1702,11 @@ begin
   I := Locate(C, False, MaxLength);
   if I = -1 then
     if MaxLength = -1 then
-      Result := GetToEOF
+      Result := GetToEOFA
     else
-      Result := ReadStr(MaxLength)
+      Result := ReadStrA(MaxLength)
   else
-    Result := ReadStr(I);
+    Result := ReadStrA(I);
 end;
 
 function AReaderEx.ExtractQuoted(const QuoteChars: CharSet): AnsiString;
@@ -1684,7 +1823,7 @@ begin
     end;
   if EOLTypes = [eolEOF] then
     begin
-      Result := GetToEOF;
+      Result := GetToEOFA;
       exit;
     end;
   FirstNewLineCharsFromEOLTypes(EOLTypes, NewLineChars);
@@ -1928,21 +2067,43 @@ end;
 
 
 {                                                                              }
-{ TStringReader                                                                }
+{ TLongStringReader                                                            }
 {                                                                              }
-constructor TStringReader.Create(const Data: AnsiString);
+constructor TLongStringReader.Create(const DataStr: AnsiString);
 begin
-  FDataString := Data;
+  FDataString := DataStr;
   inherited Create(Pointer(FDataString), Length(FDataString));
 end;
 
-procedure TStringReader.SetDataString(const S: AnsiString);
+procedure TLongStringReader.SetDataString(const DataStr: AnsiString);
 begin
-  FDataString := S;
+  FDataString := DataStr;
   SetData(Pointer(FDataString), Length(FDataString));
 end;
 
-function TStringReader.GetAsString: AnsiString;
+function TLongStringReader.GetAsStringA: AnsiString;
+begin
+  Result := FDataString;
+end;
+
+
+
+{                                                                              }
+{ TUnicodeStringReader                                                         }
+{                                                                              }
+constructor TUnicodeStringReader.Create(const DataStr: UnicodeString);
+begin
+  FDataString := DataStr;
+  inherited Create(Pointer(FDataString), Length(FDataString) * SizeOf(WideChar));
+end;
+
+procedure TUnicodeStringReader.SetDataString(const DataStr: UnicodeString);
+begin
+  FDataString := DataStr;
+  SetData(Pointer(FDataString), Length(FDataString) * SizeOf(WideChar));
+end;
+
+function TUnicodeStringReader.GetAsStringU: UnicodeString;
 begin
   Result := FDataString;
 end;
@@ -1952,7 +2113,7 @@ end;
 {                                                                              }
 { TFileReader                                                                  }
 {                                                                              }
-constructor TFileReader.Create(const FileName: AnsiString;
+constructor TFileReader.Create(const FileName: String;
     const AccessHint: TFileReaderAccessHint);
 {$IFDEF MSWIN}
 var F : LongWord;
@@ -1961,13 +2122,18 @@ begin
   inherited Create;
   {$IFDEF MSWIN}
   F := FILE_ATTRIBUTE_NORMAL;
-  Case AccessHint of
+  case AccessHint of
     frahNone             : ;
     frahRandomAccess     : F := F or FILE_FLAG_RANDOM_ACCESS;
     frahSequentialAccess : F := F or FILE_FLAG_SEQUENTIAL_SCAN;
   end;
+  {$IFDEF StringIsUnicode}
+  FHandle := Integer(Windows.CreateFileW(PWideChar(FileName), GENERIC_READ,
+      FILE_SHARE_READ or FILE_SHARE_WRITE, nil, OPEN_EXISTING, F, 0));
+  {$ELSE}
   FHandle := Integer(Windows.CreateFileA(PAnsiChar(FileName), GENERIC_READ,
       FILE_SHARE_READ or FILE_SHARE_WRITE, nil, OPEN_EXISTING, F, 0));
+  {$ENDIF}
   {$ELSE}
   FHandle := FileOpen(FileName, fmOpenRead or fmShareDenyNone);
   {$ENDIF}
@@ -2005,7 +2171,7 @@ end;
 
 function TFileReader.GetSize: Int64;
 var I : Int64;
-    S : AnsiString;
+    S : String;
 begin
   I := GetPosition;
   Result := FileSeek(FHandle, Int64(0), 2);
@@ -2040,13 +2206,13 @@ end;
 
 
 
-{ ReadFileToStr                                                                }
-function ReadFileToStr(const FileName: AnsiString): AnsiString;
+{ ReadFileToStrA                                                               }
+function ReadFileToStrA(const FileName: String): AnsiString;
 var F : TFileReader;
 begin
   F := TFileReader.Create(FileName);
   try
-    Result := F.GetAsString;
+    Result := F.GetAsStringA;
   finally
     F.Free;
   end;
@@ -2357,7 +2523,7 @@ begin
   L := FBufPos;
   Inc(P, L);
   Result := 0;
-  While (L < FBufUsed) and ((MaxOffset < 0) or (Result <= MaxOffset)) do
+  while (L < FBufUsed) and ((MaxOffset < 0) or (Result <= MaxOffset)) do
     if (P^ in C) xor LocateNonMatch then
       exit else
       begin
@@ -2425,7 +2591,7 @@ var I : Integer;
 begin
   inherited Create(Reader, ReaderOwner);
   FBufferSize := BufferSize;
-  For I := 0 to 1 do
+  for I := 0 to 1 do
     GetMem(FBuffer[I], BufferSize);
   FPos := Reader.GetPosition;
 end;
@@ -2433,7 +2599,7 @@ end;
 destructor TSplitBufferedReader.Destroy;
 var I : Integer;
 begin
-  For I := 0 to 1 do
+  for I := 0 to 1 do
     if Assigned(FBuffer[I]) then
       FreeMem(FBuffer[I]);
   inherited Destroy;
@@ -2619,7 +2785,7 @@ end;
 {                                                                              }
 { TBufferedFileReader                                                          }
 {                                                                              }
-constructor TBufferedFileReader.Create(const FileName: AnsiString; const BufferSize: Integer);
+constructor TBufferedFileReader.Create(const FileName: String; const BufferSize: Integer);
 begin
   inherited Create(TFileReader.Create(FileName), BufferSize, True);
 end;
@@ -2635,7 +2801,7 @@ end;
 {                                                                              }
 { TSplitBufferedFileReader                                                     }
 {                                                                              }
-constructor TSplitBufferedFileReader.Create(const FileName: AnsiString; const BufferSize: Integer);
+constructor TSplitBufferedFileReader.Create(const FileName: String; const BufferSize: Integer);
 begin
   inherited Create(TFileReader.Create(FileName), BufferSize, True);
 end;
@@ -2693,27 +2859,39 @@ begin
     RaiseWriteError;
 end;
 
-procedure AWriterEx.WriteStr(const Buffer: AnsiString);
+procedure AWriterEx.WriteStrA(const Buffer: AnsiString);
 begin
   WriteBuffer(Pointer(Buffer)^, Length(Buffer));
 end;
 
-procedure AWriterEx.WriteWideStr(const Buffer: WideString);
+procedure AWriterEx.WriteStrW(const Buffer: WideString);
 begin
   WriteBuffer(Pointer(Buffer)^, Length(Buffer) * Sizeof(WideChar));
 end;
 
-procedure AWriterEx.SetAsString(const S: AnsiString);
+procedure AWriterEx.WriteStrU(const Buffer: UnicodeString);
+begin
+  WriteBuffer(Pointer(Buffer)^, Length(Buffer) * Sizeof(WideChar));
+end;
+
+procedure AWriterEx.SetAsStringA(const S: AnsiString);
 begin
   Position := 0;
-  WriteStr(S);
+  WriteStrA(S);
   Truncate;
 end;
 
-procedure AWriterEx.SetAsWideString(const S: WideString);
+procedure AWriterEx.SetAsStringW(const S: WideString);
 begin
   Position := 0;
-  WriteWideStr(S);
+  WriteStrW(S);
+  Truncate;
+end;
+
+procedure AWriterEx.SetAsStringU(const S: UnicodeString);
+begin
+  Position := 0;
+  WriteStrU(S);
   Truncate;
 end;
 
@@ -2760,13 +2938,19 @@ end;
 procedure AWriterEx.WritePackedAnsiString(const V: AnsiString);
 begin
   WriteLongInt(Length(V));
-  WriteStr(V);
+  WriteStrA(V);
 end;
 
 procedure AWriterEx.WritePackedWideString(const V: WideString);
 begin
   WriteLongInt(Length(V));
-  WriteWideStr(V);
+  WriteStrW(V);
+end;
+
+procedure AWriterEx.WritePackedUnicodeString(const V: UnicodeString);
+begin
+  WriteLongInt(Length(V));
+  WriteStrU(V);
 end;
 
 procedure AWriterEx.WritePackedString(const V: String);
@@ -2778,33 +2962,51 @@ begin
   {$ENDIF}
 end;
 
-procedure AWriterEx.WritePackedAnsiStringArray(const V: Array of AnsiString);
+procedure AWriterEx.WritePackedAnsiStringArray(const V: array of AnsiString);
 var I, L : Integer;
 begin
   L := Length(V);
   WriteLongInt(L);
-  For I := 0 to L - 1 do
+  for I := 0 to L - 1 do
     WritePackedAnsiString(V[I]);
 end;
 
-procedure AWriterEx.WritePackedWideStringArray(const V: Array of WideString);
+procedure AWriterEx.WritePackedWideStringArray(const V: array of WideString);
 var I, L : Integer;
 begin
   L := Length(V);
   WriteLongInt(L);
-  For I := 0 to L - 1 do
+  for I := 0 to L - 1 do
     WritePackedWideString(V[I]);
+end;
+
+procedure AWriterEx.WritePackedUnicodeStringArray(const V: array of UnicodeString);
+var I, L : Integer;
+begin
+  L := Length(V);
+  WriteLongInt(L);
+  for I := 0 to L - 1 do
+    WritePackedUnicodeString(V[I]);
+end;
+
+procedure AWriterEx.WritePackedStringArray(const V: array of String);
+var I, L : Integer;
+begin
+  L := Length(V);
+  WriteLongInt(L);
+  for I := 0 to L - 1 do
+    WritePackedString(V[I]);
 end;
 
 procedure AWriterEx.WriteBufLine(const Buffer; const Size: Integer;
     const NewLineType: TWriterNewLineType);
 begin
   WriteBuffer(Buffer, Size);
-  Case NewLineType of
+  case NewLineType of
     nlCR   : WriteByte(13);
     nlLF   : WriteByte(10);
-    nlCRLF : WriteStr(#13#10);
-    nlLFCR : WriteStr(#10#13);
+    nlCRLF : WriteStrA(#13#10);
+    nlLFCR : WriteStrA(#10#13);
   end;
 end;
 
@@ -2818,17 +3020,18 @@ end;
 {                                                                              }
 { TFileWriter                                                                  }
 {                                                                              }
-constructor TFileWriter.Create(const FileName: AnsiString;
+constructor TFileWriter.Create(const FileName: String;
     const OpenMode: TFileWriterOpenMode; const Options: TFileWriterOptions;
     const AccessHint: TFileWriterAccessHint);
 var CreateFile : Boolean;
     {$IFDEF MSWIN}
     F : LongWord;
+    D : LongWord;
     {$ENDIF}
 begin
   inherited Create;
   FFileName := FileName;
-  Case OpenMode of
+  case OpenMode of
     fwomCreate           : CreateFile := True;
     fwomCreateIfNotExist : CreateFile := not FileExists(FileName);
     {$IFNDEF MSWIN}
@@ -2839,7 +3042,7 @@ begin
   end;
   {$IFDEF MSWIN}
   F := FILE_ATTRIBUTE_NORMAL;
-  Case AccessHint of
+  case AccessHint of
     fwahNone             : ;
     fwahRandomAccess     : F := F or FILE_FLAG_RANDOM_ACCESS;
     fwahSequentialAccess : F := F or FILE_FLAG_SEQUENTIAL_SCAN;
@@ -2847,11 +3050,16 @@ begin
   if fwoWriteThrough in Options then
     F := F or FILE_FLAG_WRITE_THROUGH;
   if CreateFile then
-    FHandle := Integer(Windows.CreateFileA(PAnsiChar(FileName),
-        GENERIC_READ or GENERIC_WRITE, 0, nil, CREATE_ALWAYS, F, 0))
+    D := CREATE_ALWAYS
   else
-    FHandle := Integer(Windows.CreateFileA(PAnsiChar(FileName),
-        GENERIC_READ or GENERIC_WRITE, 0, nil, OPEN_EXISTING, F, 0));
+    D := OPEN_EXISTING;
+  {$IFDEF StringIsUnicode}
+  FHandle := Integer(Windows.CreateFileW(PWideChar(FileName),
+      GENERIC_READ or GENERIC_WRITE, 0, nil, D, F, 0));
+  {$ELSE}
+  FHandle := Integer(Windows.CreateFileA(PAnsiChar(FileName),
+      GENERIC_READ or GENERIC_WRITE, 0, nil, D, F, 0));
+  {$ENDIF}
   {$ELSE}
   if CreateFile then
     FHandle := FileCreate(FileName)
@@ -2898,7 +3106,7 @@ end;
 
 function TFileWriter.GetSize: Int64;
 var I : Int64;
-    S : AnsiString;
+    S : String;
 begin
   I := GetPosition;
   Result := FileSeek(FHandle, Int64(0), 2);
@@ -2965,49 +3173,49 @@ begin
     raise EFileWriter.CreateFmt(SFileError, [GetLastOSErrorMessage]);
 end;
 
-procedure WriteStrToFile(const FileName: AnsiString; const S: AnsiString;
+procedure WriteStrToFile(const FileName: String; const S: AnsiString;
     const OpenMode: TFileWriterOpenMode);
 var F : TFileWriter;
 begin
   F := TFileWriter.Create(FileName, OpenMode);
   try
-    F.SetAsString(S);
+    F.SetAsStringA(S);
   finally
     F.Free;
   end;
 end;
 
-procedure AppendStrToFile(const FileName: AnsiString; const S: AnsiString);
+procedure AppendStrToFile(const FileName: String; const S: AnsiString);
 var F : TFileWriter;
 begin
   F := TFileWriter.Create(FileName, fwomCreateIfNotExist);
   try
     F.Append;
-    F.WriteStr(S);
+    F.WriteStrA(S);
   finally
     F.Free;
   end;
 end;
 
-procedure WriteWideStrToFile(const FileName: AnsiString; const S: WideString;
+procedure WriteWideStrToFile(const FileName: String; const S: WideString;
     const OpenMode: TFileWriterOpenMode);
 var F : TFileWriter;
 begin
   F := TFileWriter.Create(FileName, OpenMode);
   try
-    F.SetAsWideString(S);
+    F.SetAsStringU(S);
   finally
     F.Free;
   end;
 end;
 
-procedure AppendWideStrToFile(const FileName: AnsiString; const S: WideString);
+procedure AppendWideStrToFile(const FileName: String; const S: WideString);
 var F : TFileWriter;
 begin
   F := TFileWriter.Create(FileName, fwomCreateIfNotExist);
   try
     F.Append;
-    F.WriteWideStr(S);
+    F.WriteStrW(S);
   finally
     F.Free;
   end;
@@ -3018,29 +3226,29 @@ end;
 {                                                                              }
 { TStringWriter                                                                }
 {                                                                              }
-function TStringWriter.GetPosition: Int64;
+function TLongStringWriter.GetPosition: Int64;
 begin
   Result := FPos;
 end;
 
-procedure TStringWriter.SetPosition(const Position: Int64);
+procedure TLongStringWriter.SetPosition(const Position: Int64);
 begin
   if (Position < 0) or (Position > High(Integer)) then
     raise EFileWriter.Create(SInvalidPosition);
   FPos := Integer(Position);
 end;
 
-function TStringWriter.GetSize: Int64;
+function TLongStringWriter.GetSize: Int64;
 begin
   Result := FSize;
 end;
 
-procedure TStringWriter.SetSize(const Size: Integer);
+procedure TLongStringWriter.SetSize(const Size: Integer);
 var L : Integer;
 begin
   if Size = FSize then
     exit;
-  L := Length(FData);
+  L := Length(FDataStr);
   if Size > L then
     begin
       // memory allocation strategy
@@ -3050,36 +3258,36 @@ begin
         L := 16
       else                 // if grow to >= 16 then pre-allocate 1/4
         L := Size + (Size shr 2);
-      SetLength(FData, L);
+      SetLength(FDataStr, L);
     end;
   FSize := Size;
 end;
 
-procedure TStringWriter.SetSize(const Size: Int64);
+procedure TLongStringWriter.SetSize(const Size: Int64);
 begin
   if Size > High(Integer) then
     raise EFileWriter.Create(SInvalidSize);
   SetSize(Integer(Size));
 end;
 
-function TStringWriter.GetAsString: AnsiString;
+function TLongStringWriter.GetAsStringA: AnsiString;
 var L : Integer;
 begin
-  L := Length(FData);
+  L := Length(FDataStr);
   if L = FSize then
-    Result := FData
+    Result := FDataStr
   else
-    Result := Copy(FData, 1, FSize);
+    Result := Copy(FDataStr, 1, FSize);
 end;
 
-procedure TStringWriter.SetAsString(const S: AnsiString);
+procedure TLongStringWriter.SetAsStringA(const S: AnsiString);
 begin
-  FData := S;
+  FDataStr := S;
   FSize := Length(S);
   FPos := FSize;
 end;
 
-function TStringWriter.Write(const Buffer; const Size: Integer): Integer;
+function TLongStringWriter.Write(const Buffer; const Size: Integer): Integer;
 var I, J : Integer;
     P    : PAnsiChar;
 begin
@@ -3092,19 +3300,19 @@ begin
   J := I + Size;
   if J > FSize then
     SetSize(J);
-  P := Pointer(FData);
+  P := Pointer(FDataStr);
   Inc(P, I);
   Move(Buffer, P^, Size);
   Result := Size;
   FPos := J;
 end;
 
-procedure TStringWriter.WriteStr(const Buffer: AnsiString);
+procedure TLongStringWriter.WriteStrA(const Buffer: AnsiString);
 begin
   Write(Pointer(Buffer)^, Length(Buffer));
 end;
 
-procedure TStringWriter.WriteByte(const V: Byte);
+procedure TLongStringWriter.WriteByte(const V: Byte);
 var I, J : Integer;
     P    : PAnsiChar;
 begin
@@ -3112,7 +3320,7 @@ begin
   J := I + 1;
   if J > FSize then
     SetSize(J);
-  P := Pointer(FData);
+  P := Pointer(FDataStr);
   Inc(P, I);
   PByte(P)^ := V;
   FPos := J;
@@ -3121,31 +3329,31 @@ end;
 
 
 {                                                                              }
-{ TWideStringWriter                                                            }
+{ TUnicodeStringWriter                                                         }
 {                                                                              }
-function TWideStringWriter.GetPosition: Int64;
+function TUnicodeStringWriter.GetPosition: Int64;
 begin
   Result := FPos;
 end;
 
-procedure TWideStringWriter.SetPosition(const Position: Int64);
+procedure TUnicodeStringWriter.SetPosition(const Position: Int64);
 begin
   if (Position < 0) or (Position > High(Integer)) then
     raise EFileWriter.Create(SInvalidPosition);
   FPos := Integer(Position);
 end;
 
-function TWideStringWriter.GetSize: Int64;
+function TUnicodeStringWriter.GetSize: Int64;
 begin
   Result := FSize;
 end;
 
-procedure TWideStringWriter.SetSize(const Size: Integer);
+procedure TUnicodeStringWriter.SetSize(const Size: Integer);
 var L : Integer;
 begin
   if Size = FSize then
     exit;
-  L := Length(FData) * Sizeof(WideChar);
+  L := Length(FDataStr) * Sizeof(WideChar);
   if Size > L then
     begin
       // memory allocation strategy
@@ -3154,35 +3362,36 @@ begin
       if Size < 16 then    // if grow to < 16 then allocate 16
         L := 16 else
         L := Size + (Size shr 2); // if grow to > 16 then pre-allocate 1/4
-      SetLength(FData, (L + 1) div Sizeof(WideChar));
+      SetLength(FDataStr, (L + 1) div Sizeof(WideChar));
     end;
   FSize := Size;
 end;
 
-procedure TWideStringWriter.SetSize(const Size: Int64);
+procedure TUnicodeStringWriter.SetSize(const Size: Int64);
 begin
   if Size > High(Integer) then
     raise EFileWriter.Create(SInvalidSize);
   SetSize(Integer(Size));
 end;
 
-function TWideStringWriter.GetAsWideString: WideString;
+function TUnicodeStringWriter.GetAsStringU: UnicodeString;
 var L : Integer;
 begin
-  L := Length(FData) * Sizeof(WideChar);
+  L := Length(FDataStr) * Sizeof(WideChar);
   if L = FSize then
-    Result := FData else
-    Result := Copy(FData, 1, FSize div Sizeof(WideChar));
+    Result := FDataStr
+  else
+    Result := Copy(FDataStr, 1, FSize div Sizeof(WideChar));
 end;
 
-procedure TWideStringWriter.SetAsWideString(const S: WideString);
+procedure TUnicodeStringWriter.SetAsStringU(const S: UnicodeString);
 begin
-  FData := S;
+  FDataStr := S;
   FSize := Length(S) * Sizeof(WideChar);
   FPos := FSize;
 end;
 
-function TWideStringWriter.Write(const Buffer; const Size: Integer): Integer;
+function TUnicodeStringWriter.Write(const Buffer; const Size: Integer): Integer;
 var I, J : Integer;
     P    : PAnsiChar;
 begin
@@ -3195,24 +3404,24 @@ begin
   J := I + Size;
   if J > FSize then
     SetSize(J);
-  P := Pointer(FData);
+  P := Pointer(FDataStr);
   Inc(P, I);
   Move(Buffer, P^, Size);
   Result := Size;
   FPos := J;
 end;
 
-procedure TWideStringWriter.WriteStr(const Buffer: AnsiString);
+procedure TUnicodeStringWriter.WriteStrA(const Buffer: AnsiString);
 begin
   Write(Pointer(Buffer)^, Length(Buffer));
 end;
 
-procedure TWideStringWriter.WriteWideStr(const Buffer: WideString);
+procedure TUnicodeStringWriter.WriteStrW(const Buffer: WideString);
 begin
   Write(Pointer(Buffer)^, Length(Buffer) * Sizeof(WideChar));
 end;
 
-procedure TWideStringWriter.WriteByte(const V: Byte);
+procedure TUnicodeStringWriter.WriteByte(const V: Byte);
 var I, J : Integer;
     P    : PAnsiChar;
 begin
@@ -3220,13 +3429,13 @@ begin
   J := I + 1;
   if J > FSize then
     SetSize(J);
-  P := Pointer(FData);
+  P := Pointer(FDataStr);
   Inc(P, I);
   PByte(P)^ := V;
   FPos := J;
 end;
 
-procedure TWideStringWriter.WriteWord(const V: Word);
+procedure TUnicodeStringWriter.WriteWord(const V: Word);
 var I, J : Integer;
     P    : PAnsiChar;
 begin
@@ -3234,7 +3443,7 @@ begin
   J := I + 2;
   if J > FSize then
     SetSize(J);
-  P := Pointer(FData);
+  P := Pointer(FDataStr);
   Inc(P, I);
   PWord(P)^ := V;
   FPos := J;
@@ -3255,7 +3464,7 @@ begin
       exit;
     end;
   P := @Buffer;
-  For I := 1 to Size do
+  for I := 1 to Size do
     begin
       System.Write(Char(P^));
       Inc(P);
@@ -3398,7 +3607,7 @@ begin
     end;
   GetMem(Buf, L);
   try
-    While not Source.EOF and (R <> 0) do
+    while not Source.EOF and (R <> 0) do
       begin
         C := L;
         if (R > 0) and (R < C) then
@@ -3451,7 +3660,7 @@ begin
   Result := 0;
   GetMem(Buf, L);
   try
-    While not Source.EOF do
+    while not Source.EOF do
       begin
         I := Source.Read(Buf^, L);
         if (I = 0) and not Source.EOF then
@@ -3514,7 +3723,7 @@ begin
   ReadBuffer(Result, 1);
 end;
 
-function AStream.ReadStr(const Size: Integer): AnsiString;
+function AStream.ReadStrA(const Size: Integer): AnsiString;
 var L : Integer;
 begin
   if Size <= 0 then
@@ -3541,7 +3750,7 @@ begin
     raise EStream.Create(SWriteError);
 end;
 
-procedure AStream.WriteStr(const S: AnsiString);
+procedure AStream.WriteStrA(const S: AnsiString);
 begin
   WriteBuffer(Pointer(S)^, Length(S));
 end;
@@ -3695,14 +3904,14 @@ end;
 { TFileStream                                                                  }
 {                                                                              }
 const
-  WriterModes: Array[TFileStreamOpenMode] of TFileWriterOpenMode =
+  WriterModes: array[TFileStreamOpenMode] of TFileWriterOpenMode =
       (fwomOpen, fwomOpen, fwomCreate, fwomCreateIfNotExist, fwomOpen);
-  ReaderAccessHints: Array[TFileStreamAccessHint] of TFileReaderAccessHint =
+  ReaderAccessHints: array[TFileStreamAccessHint] of TFileReaderAccessHint =
       (frahNone, frahRandomAccess, frahSequentialAccess);
-  WriterAccessHints: Array[TFileStreamAccessHint] of TFileWriterAccessHint =
+  WriterAccessHints: array[TFileStreamAccessHint] of TFileWriterAccessHint =
       (fwahNone, fwahRandomAccess, fwahSequentialAccess);
 
-constructor TFileStream.Create(const FileName: AnsiString;
+constructor TFileStream.Create(const FileName: String;
     const OpenMode: TFileStreamOpenMode; const Options: TFileStreamOptions;
     const AccessHint: TFileStreamAccessHint);
 var W : TFileWriter;
@@ -3718,7 +3927,7 @@ begin
   T := [];
   if fsoWriteThrough in Options then
     Include(T, fwoWriteThrough);
-  Case OpenMode of
+  case OpenMode of
     fsomRead :
       R := TFileReader.Create(FileName, ReaderAccessHints[AccessHint]);
     fsomCreateOnWrite :
@@ -3834,73 +4043,73 @@ procedure TestReader(const Reader: AReaderEx; const FreeReader: Boolean);
 begin
   try
     Reader.Position := 0;
-    Assert(not Reader.EOF,                                 'Reader.EOF');
-    Assert(Reader.Size = 26,                               'Reader.Size');
-    Assert(Reader.PeekStr(0) = '',                         'Reader.PeekStr');
-    Assert(Reader.PeekStr(-1) = '',                        'Reader.PeekStr');
-    Assert(Reader.PeekStr(2) = '01',                       'Reader.PeekStr');
-    Assert(Char(Reader.PeekByte) = '0',                    'Reader.PeekByte');
-    Assert(Char(Reader.ReadByte) = '0',                    'Reader.ReadByte');
-    Assert(Char(Reader.PeekByte) = '1',                    'Reader.PeekByte');
-    Assert(Char(Reader.ReadByte) = '1',                    'Reader.ReadByte');
-    Assert(Reader.ReadStr(0) = '',                         'Reader.ReadStr');
-    Assert(Reader.ReadStr(-1) = '',                        'Reader.ReadStr');
-    Assert(Reader.ReadStr(1) = '2',                        'Reader.ReadStr');
-    Assert(Reader.MatchChar('3'),                          'Reader.MatchChar');
-    Assert(Reader.MatchStr('3', True),                     'Reader.MatchStr');
-    Assert(Reader.MatchStr('345', True),                   'Reader.MatchStr');
-    Assert(not Reader.MatchStr('35', True),                'Reader.MatchStr');
-    Assert(not Reader.MatchStr('4', True),                 'Reader.MatchStr');
-    Assert(not Reader.MatchStr('', True),                  'Reader.MatchStr');
-    Assert(Reader.ReadStr(2) = '34',                       'Reader.ReadStr');
-    Assert(Reader.PeekStr(3) = '567',                      'Reader.PeekStr');
-    Assert(Reader.Locate('5', False, 0) = 0,               'Reader.Locate');
-    Assert(Reader.Locate('8', False, -1) = 3,              'Reader.Locate');
-    Assert(Reader.Locate('8', False, 3) = 3,               'Reader.Locate');
-    Assert(Reader.Locate('8', False, 2) = -1,              'Reader.Locate');
-    Assert(Reader.Locate('8', False, 4) = 3,               'Reader.Locate');
-    Assert(Reader.Locate('0', False, -1) = -1,             'Reader.Locate');
-    Assert(Reader.Locate(['8'], False, -1) = 3,            'Reader.Locate');
-    Assert(Reader.Locate(['8'], False, 3) = 3,             'Reader.Locate');
-    Assert(Reader.Locate(['8'], False, 2) = -1,            'Reader.Locate');
-    Assert(Reader.Locate(['0'], False, -1) = -1,           'Reader.Locate');
-    Assert(Reader.LocateStr('8', -1, True) = 3,            'Reader.LocateStr');
-    Assert(Reader.LocateStr('8', 3, True) = 3,             'Reader.LocateStr');
-    Assert(Reader.LocateStr('8', 2, True) = -1,            'Reader.LocateStr');
-    Assert(Reader.LocateStr('89', -1, True) = 3,           'Reader.LocateStr');
-    Assert(Reader.LocateStr('0', -1, True) = -1,           'Reader.LocateStr');
-    Assert(not Reader.EOF,                                 'Reader.EOF');
-    Assert(Reader.Position = 5,                            'Reader.Position');
+    Assert(not Reader.EOF,                                  'Reader.EOF');
+    Assert(Reader.Size = 26,                                'Reader.Size');
+    Assert(Reader.PeekStrA(0) = '',                         'Reader.PeekStr');
+    Assert(Reader.PeekStrA(-1) = '',                        'Reader.PeekStr');
+    Assert(Reader.PeekStrA(2) = '01',                       'Reader.PeekStr');
+    Assert(Char(Reader.PeekByte) = '0',                     'Reader.PeekByte');
+    Assert(Char(Reader.ReadByte) = '0',                     'Reader.ReadByte');
+    Assert(Char(Reader.PeekByte) = '1',                     'Reader.PeekByte');
+    Assert(Char(Reader.ReadByte) = '1',                     'Reader.ReadByte');
+    Assert(Reader.ReadStrA(0) = '',                         'Reader.ReadStr');
+    Assert(Reader.ReadStrA(-1) = '',                        'Reader.ReadStr');
+    Assert(Reader.ReadStrA(1) = '2',                        'Reader.ReadStr');
+    Assert(Reader.MatchChar('3'),                           'Reader.MatchChar');
+    Assert(Reader.MatchStr('3', True),                      'Reader.MatchStr');
+    Assert(Reader.MatchStr('345', True),                    'Reader.MatchStr');
+    Assert(not Reader.MatchStr('35', True),                 'Reader.MatchStr');
+    Assert(not Reader.MatchStr('4', True),                  'Reader.MatchStr');
+    Assert(not Reader.MatchStr('', True),                   'Reader.MatchStr');
+    Assert(Reader.ReadStrA(2) = '34',                       'Reader.ReadStr');
+    Assert(Reader.PeekStrA(3) = '567',                      'Reader.PeekStr');
+    Assert(Reader.Locate('5', False, 0) = 0,                'Reader.Locate');
+    Assert(Reader.Locate('8', False, -1) = 3,               'Reader.Locate');
+    Assert(Reader.Locate('8', False, 3) = 3,                'Reader.Locate');
+    Assert(Reader.Locate('8', False, 2) = -1,               'Reader.Locate');
+    Assert(Reader.Locate('8', False, 4) = 3,                'Reader.Locate');
+    Assert(Reader.Locate('0', False, -1) = -1,              'Reader.Locate');
+    Assert(Reader.Locate(['8'], False, -1) = 3,             'Reader.Locate');
+    Assert(Reader.Locate(['8'], False, 3) = 3,              'Reader.Locate');
+    Assert(Reader.Locate(['8'], False, 2) = -1,             'Reader.Locate');
+    Assert(Reader.Locate(['0'], False, -1) = -1,            'Reader.Locate');
+    Assert(Reader.LocateStr('8', -1, True) = 3,             'Reader.LocateStr');
+    Assert(Reader.LocateStr('8', 3, True) = 3,              'Reader.LocateStr');
+    Assert(Reader.LocateStr('8', 2, True) = -1,             'Reader.LocateStr');
+    Assert(Reader.LocateStr('89', -1, True) = 3,            'Reader.LocateStr');
+    Assert(Reader.LocateStr('0', -1, True) = -1,            'Reader.LocateStr');
+    Assert(not Reader.EOF,                                  'Reader.EOF');
+    Assert(Reader.Position = 5,                             'Reader.Position');
     Reader.Position := 7;
     Reader.SkipByte;
-    Assert(Reader.Position = 8,                            'Reader.Position');
+    Assert(Reader.Position = 8,                             'Reader.Position');
     Reader.Skip(2);
-    Assert(Reader.Position = 10,                           'Reader.Position');
-    Assert(not Reader.EOF,                                 'Reader.EOF');
-    Assert(Reader.MatchStr('abcd', False),                 'Reader.MatchStr');
-    Assert(not Reader.MatchStr('abcd', True),              'Reader.MatchStr');
-    Assert(Reader.LocateStr('d', -1, True) = 3,            'Reader.LocateStr');
-    Assert(Reader.LocateStr('d', 3, False) = 3,            'Reader.LocateStr');
-    Assert(Reader.LocateStr('D', -1, True) = -1,           'Reader.LocateStr');
-    Assert(Reader.LocateStr('D', -1, False) = 3,           'Reader.LocateStr');
-    Assert(Reader.SkipAll('X', False, -1) = 0,             'Reader.SkipAll');
-    Assert(Reader.SkipAll('A', False, -1) = 1,             'Reader.SkipAll');
-    Assert(Reader.SkipAll(['b', 'C'], False, -1) = 2,      'Reader.SkipAll');
-    Assert(Reader.SkipAll(['d'], False, 0) = 0,            'Reader.SkipAll');
-    Assert(Reader.ExtractAll(['d', 'E'], False, 1) = 'd',  'Reader.ExtractAll');
-    Assert(Reader.ExtractAll(['*'], True, 1) = 'E',        'Reader.ExtractAll');
-    Assert(Reader.ReadStr(2) = '*.',                       'Reader.ReadStr');
-    Assert(Reader.ExtractAll(['X'], False, 1) = 'X',       'Reader.ExtractAll');
-    Assert(Reader.ExtractAll(['X'], False, -1) = 'XX',     'Reader.ExtractAll');
-    Assert(Reader.ExtractAll(['X', '*'], True, 1) = 'Y',   'Reader.ExtractAll');
-    Assert(Reader.ExtractAll(['X', '*'], True, -1) = 'YYY','Reader.ExtractAll');
-    Assert(Reader.ExtractAll(['X'], False, -1) = '',       'Reader.ExtractAll');
-    Assert(Reader.ExtractAll(['X'], True, -1) = '*.',      'Reader.ExtractAll');
-    Assert(Reader.EOF,                                     'Reader.EOF');
-    Assert(Reader.Position = 26,                           'Reader.Position');
+    Assert(Reader.Position = 10,                            'Reader.Position');
+    Assert(not Reader.EOF,                                  'Reader.EOF');
+    Assert(Reader.MatchStr('abcd', False),                  'Reader.MatchStr');
+    Assert(not Reader.MatchStr('abcd', True),               'Reader.MatchStr');
+    Assert(Reader.LocateStr('d', -1, True) = 3,             'Reader.LocateStr');
+    Assert(Reader.LocateStr('d', 3, False) = 3,             'Reader.LocateStr');
+    Assert(Reader.LocateStr('D', -1, True) = -1,            'Reader.LocateStr');
+    Assert(Reader.LocateStr('D', -1, False) = 3,            'Reader.LocateStr');
+    Assert(Reader.SkipAll('X', False, -1) = 0,              'Reader.SkipAll');
+    Assert(Reader.SkipAll('A', False, -1) = 1,              'Reader.SkipAll');
+    Assert(Reader.SkipAll(['b', 'C'], False, -1) = 2,       'Reader.SkipAll');
+    Assert(Reader.SkipAll(['d'], False, 0) = 0,             'Reader.SkipAll');
+    Assert(Reader.ExtractAll(['d', 'E'], False, 1) = 'd',   'Reader.ExtractAll');
+    Assert(Reader.ExtractAll(['*'], True, 1) = 'E',         'Reader.ExtractAll');
+    Assert(Reader.ReadStrA(2) = '*.',                       'Reader.ReadStr');
+    Assert(Reader.ExtractAll(['X'], False, 1) = 'X',        'Reader.ExtractAll');
+    Assert(Reader.ExtractAll(['X'], False, -1) = 'XX',      'Reader.ExtractAll');
+    Assert(Reader.ExtractAll(['X', '*'], True, 1) = 'Y',    'Reader.ExtractAll');
+    Assert(Reader.ExtractAll(['X', '*'], True, -1) = 'YYY', 'Reader.ExtractAll');
+    Assert(Reader.ExtractAll(['X'], False, -1) = '',        'Reader.ExtractAll');
+    Assert(Reader.ExtractAll(['X'], True, -1) = '*.',       'Reader.ExtractAll');
+    Assert(Reader.EOF,                                      'Reader.EOF');
+    Assert(Reader.Position = 26,                            'Reader.Position');
     Reader.Position := Reader.Position - 2;
-    Assert(Reader.PeekStr(3) = '*.',                       'Reader.PeekStr');
-    Assert(Reader.ReadStr(3) = '*.',                       'Reader.ReadStr');
+    Assert(Reader.PeekStrA(3) = '*.',                       'Reader.PeekStr');
+    Assert(Reader.ReadStrA(3) = '*.',                       'Reader.ReadStr');
   finally
     if FreeReader then
       Reader.Free;
@@ -3926,19 +4135,19 @@ begin
     Assert(Reader.EOF, 'Reader.EOF');
 
     Reader.Position := 0;
-    Assert(Reader.ExtractLine(-1, [eolCR, eolEOF]) = '1', 'Reader.ExtractLine');
-    Assert(Reader.ExtractLine(-1, [eolCR, eolEOF]) = #10'23', 'Reader.ExtractLine');
-    Assert(Reader.ExtractLine(-1, [eolCR, eolEOF]) = '', 'Reader.ExtractLine');
+    Assert(Reader.ExtractLine(-1, [eolCR, eolEOF]) = '1',          'Reader.ExtractLine');
+    Assert(Reader.ExtractLine(-1, [eolCR, eolEOF]) = #10'23',      'Reader.ExtractLine');
+    Assert(Reader.ExtractLine(-1, [eolCR, eolEOF]) = '',           'Reader.ExtractLine');
     Assert(Reader.ExtractLine(-1, [eolCR, eolEOF]) = '4'#10'5'#10, 'Reader.ExtractLine');
-    Assert(Reader.ExtractLine(-1, [eolCR, eolEOF]) = '6', 'Reader.ExtractLine');
+    Assert(Reader.ExtractLine(-1, [eolCR, eolEOF]) = '6',          'Reader.ExtractLine');
     Assert(Reader.EOF, 'Reader.EOF');
 
     Reader.Position := 0;
-    Assert(Reader.ExtractLine(-1, [eolCR, eolCRLF, eolEOF]) = '1', 'Reader.ExtractLine');
-    Assert(Reader.ExtractLine(-1, [eolCR, eolCRLF, eolEOF]) = '23', 'Reader.ExtractLine');
-    Assert(Reader.ExtractLine(-1, [eolCR, eolCRLF, eolEOF]) = '', 'Reader.ExtractLine');
+    Assert(Reader.ExtractLine(-1, [eolCR, eolCRLF, eolEOF]) = '1',          'Reader.ExtractLine');
+    Assert(Reader.ExtractLine(-1, [eolCR, eolCRLF, eolEOF]) = '23',         'Reader.ExtractLine');
+    Assert(Reader.ExtractLine(-1, [eolCR, eolCRLF, eolEOF]) = '',           'Reader.ExtractLine');
     Assert(Reader.ExtractLine(-1, [eolCR, eolCRLF, eolEOF]) = '4'#10'5'#10, 'Reader.ExtractLine');
-    Assert(Reader.ExtractLine(-1, [eolCR, eolCRLF, eolEOF]) = '6', 'Reader.ExtractLine');
+    Assert(Reader.ExtractLine(-1, [eolCR, eolCRLF, eolEOF]) = '6',          'Reader.ExtractLine');
     Assert(Reader.EOF, 'Reader.EOF');
 
     Reader.Position := 0;
@@ -3960,7 +4169,7 @@ begin
 end;
 
 type
-  TUnsizedStringReader = class(TStringReader)
+  TUnsizedStringReader = class(TLongStringReader)
   protected
     function  GetSize: Int64; override;
   end;
@@ -3976,7 +4185,7 @@ var S : TUnsizedStringReader;
 begin
   S := TUnsizedStringReader.Create(Data);
   try
-    T := S.GetToEOF;
+    T := S.GetToEOFA;
     Assert(T = Data,     'UnsizedReader.GetToEOF');
     Assert(S.EOF,        'UnsizedReader.EOF');
   finally
@@ -3985,31 +4194,31 @@ begin
 end;
 
 procedure SelfTestReader;
-var S : TStringReader;
+var S : TLongStringReader;
     I : Integer;
     T : AnsiString;
     B : TFileReader;
 begin
-  S := TStringReader.Create('0123456789AbCdE*.XXXYYYY*.');
+  S := TLongStringReader.Create('0123456789AbCdE*.XXXYYYY*.');
   try
     TestReader(TReaderProxy.Create(S, False, -1), True);
     TestReader(S, False);
     TestReader(TBufferedReader.Create(S, 128, False), True);
-    For I := 1 to 16 do
+    for I := 1 to 16 do
       TestReader(TBufferedReader.Create(S, I, False), True);
     TestReader(TSplitBufferedReader.Create(S, 128, False), True);
-    For I := 1 to 16 do
+    for I := 1 to 16 do
       TestReader(TSplitBufferedReader.Create(S, I, False), True);
   finally
     S.Free;
   end;
 
-  S := TStringReader.Create('1'#13#10'23'#13#13'4'#10'5'#10#13'6');
+  S := TLongStringReader.Create('1'#13#10'23'#13#13'4'#10'5'#10#13'6');
   try
     TestLineReader(TReaderProxy.Create(S, False, -1), True);
-    For I := 1 to 32 do
+    for I := 1 to 32 do
       TestLineReader(TBufferedReader.Create(S, I, False), True);
-    For I := 1 to 32 do
+    for I := 1 to 32 do
       TestLineReader(TSplitBufferedReader.Create(S, I, False), True);
     TestLineReader(S, False);
   finally
@@ -4020,43 +4229,49 @@ begin
   TestUnsizedReader('A');
   TestUnsizedReader('ABC');
   T := '';
-  For I := 1 to 1000 do
+  for I := 1 to 1000 do
     T := T + 'ABCDEFGHIJKLMNOPQRSTUVWXYZ';
   TestUnsizedReader(T);
 
-  WriteStrToFile('selftestfile', '0123456789AbCdE*.XXXYYYY*.', fwomCreate);
-  B := TFileReader.Create('selftestfile');
-  TestReader(B, True);
-  WriteStrToFile('selftestfile', '1'#13#10'23'#13#13'4'#10'5'#10#13'6', fwomCreate);
-  B := TFileReader.Create('selftestfile');
-  TestLineReader(B, True);
-  DeleteFile('selftestfile');
+  try
+    WriteStrToFile('selftestfile', '0123456789AbCdE*.XXXYYYY*.', fwomCreate);
+    B := TFileReader.Create('selftestfile');
+    TestReader(B, True);
+    WriteStrToFile('selftestfile', '1'#13#10'23'#13#13'4'#10'5'#10#13'6', fwomCreate);
+    B := TFileReader.Create('selftestfile');
+    TestLineReader(B, True);
+  finally
+    DeleteFile('selftestfile');
+  end;
 end;
 
 procedure SelfTestWriter;
-var A : TStringWriter;
+var A : TLongStringWriter;
     B : TFileWriter;
 begin
-  A := TStringWriter.Create;
-  A.WriteStr('123');
+  A := TLongStringWriter.Create;
+  A.WriteStrA('123');
   Assert(A.Size = 3, 'Writer.Size');
-  Assert(A.GetAsString = '123', 'Writer.GetAsString');
-  A.WriteStr('ABC');
+  Assert(A.GetAsStringA = '123', 'Writer.GetAsString');
+  A.WriteStrA('ABC');
   Assert(A.Size = 6, 'Writer.Size');
-  Assert(A.GetAsString = '123ABC', 'Writer.GetAsString');
+  Assert(A.GetAsStringA = '123ABC', 'Writer.GetAsString');
   A.Free;
 
   B := TFileWriter.Create('selftestfile', fwomCreate);
-  Assert(B.Size = 0, 'Writer.Size');
-  B.WriteStr('123');
-  Assert(B.Size = 3, 'Writer.Size');
-  B.WriteByte(65);
-  Assert(B.Size = 4, 'Writer.Size');
-  B.Size := 2;
-  Assert(B.Size = 2, 'Writer.Size');
-  Assert(B.Position = 2, 'Writer.Position');
-  B.DeleteFile;
-  B.Free;
+  try
+    Assert(B.Size = 0, 'Writer.Size');
+    B.WriteStrA('123');
+    Assert(B.Size = 3, 'Writer.Size');
+    B.WriteByte(65);
+    Assert(B.Size = 4, 'Writer.Size');
+    B.Size := 2;
+    Assert(B.Size = 2, 'Writer.Size');
+    Assert(B.Position = 2, 'Writer.Position');
+  finally
+    B.Free;
+    DeleteFile('selftestfile');
+  end;
 end;
 
 procedure SelfTestStream;
@@ -4064,21 +4279,24 @@ var A : TFileStream;
     S : AnsiString;
 begin
   A := TFileStream.Create('selftestfile', fsomCreate);
-  Assert(A.Size = 0, 'Stream.Size');
-  Assert(A.Position = 0, 'Stream.Position');
-  A.WriteStr('123');
-  Assert(A.Size = 3, 'Stream.Size');
-  A.WriteStr('ABC');
-  Assert(A.Size = 6, 'Stream.Size');
-  Assert(A.Position = 6, 'Stream.Position');
-  A.SetPosition(1);
-  Assert(A.Position = 1, 'Stream.Position');
-  S := A.ReadStr(3);
-  Assert(S = '23A', 'Stream.ReadStr');
-  S := A.ReadStr(3);
-  Assert(S = 'BC', 'Stream.ReadStr');
-  A.DeleteFile;
-  A.Free;
+  try
+    Assert(A.Size = 0, 'Stream.Size');
+    Assert(A.Position = 0, 'Stream.Position');
+    A.WriteStrA('123');
+    Assert(A.Size = 3, 'Stream.Size');
+    A.WriteStrA('ABC');
+    Assert(A.Size = 6, 'Stream.Size');
+    Assert(A.Position = 6, 'Stream.Position');
+    A.SetPosition(1);
+    Assert(A.Position = 1, 'Stream.Position');
+    S := A.ReadStrA(3);
+    Assert(S = '23A', 'Stream.ReadStr');
+    S := A.ReadStrA(3);
+    Assert(S = 'BC', 'Stream.ReadStr');
+  finally
+    A.Free;
+    DeleteFile('selftestfile');
+  end;
 end;
 
 procedure SelfTest;

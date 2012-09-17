@@ -341,8 +341,8 @@ begin
      (KeySize mod HugeWordElementBits <> 0) then
     raise ERSA.Create(SRSAInvalidKeySize);
   Key.KeySize := KeySize;
-  HexToHugeWord(HexMod, Key.Modulus);
-  HexToHugeWord(HexExp, Key.Exponent);
+  HexToHugeWordA(HexMod, Key.Modulus);
+  HexToHugeWordA(HexExp, Key.Exponent);
   if (HugeWordGetBitCount(Key.Modulus) > KeySize) or
      (HugeWordGetBitCount(Key.Exponent) > KeySize) then
     raise ERSA.Create(SRSAInvalidKeySize);
@@ -1237,13 +1237,13 @@ procedure SelfTest;
         'e0aab12d7b61a51f527a9a41f6c1687f' +
         'e2537298ca2a8f5946f8e5fd091dbdcb',
         '00000011');
-    HexToHugeWord(
+    HexToHugeWordA(
         '00EB7A19ACE9E3006350E329504B45E2CA82310B26DCD87D5C68F1EEA8F55267C31B2E8BB4251F84' +
         'D7E0B2C04626F5AFF93EDCFB25C9C2B3FF8AE10E839A2DDB4CDCFE4FF47728B4A1B7C1362BAAD29A' +
         'B48D2869D5024121435811591BE392F982FB3E87D095AEB40448DB972F3AC14F7BC275195281CE32' +
         'D2F1B76D4D353E2D', EM);
     RSAEncryptMessage(Pub, EM, CM);
-    Assert(HugeWordToHex(CM) =
+    Assert(HugeWordToHexA(CM) =
         '1253E04DC0A5397BB44A7AB87E9BF2A039A33D1E996FC82A94CCD30074C95DF763722017069E5268' +
         'DA5D1C0B4F872CF653C11DF82314A67968DFEAE28DEF04BB6D84B1C31D654A1970E5783BD6EB96A0' +
         '24C2CA2F4A90FE9F2EF5C9C140E5BB48DA9536AD8700C84FC9130ADEA74E558D51A74DDF85D8B50D' +
@@ -1286,13 +1286,13 @@ var Pri : TRSAPrivateKey;
         'e56aaf68c56c092cd38dc3bef5d20a93' +
         '9926ed4f74a13eddfbe1a1cecc4894af' +
         '9428c2b7b8883fe4463a4bc85b1cb3c1');
-    HexToHugeWord(
+    HexToHugeWordA(
         'eecfae81b1b9b3c908810b10a1b56001' +
         '99eb9f44aef4fda493b81a9e3d84f632' +
         '124ef0236e5d1e3b7e28fae7aa040a2d' +
         '5b252176459d1f397541ba2a58fb6599',
         Pri.Prime1);
-    HexToHugeWord(
+    HexToHugeWordA(
         'c97fb1f027f453f6341233eaaad1d935' +
         '3f6c42d08866b1d05a0f2035028b9d86' +
         '9840b41666b42e92ea0da3b43204b5cf' +
@@ -1368,13 +1368,13 @@ begin
   T := GetTickCount - T;
   Writeln('GenerateKeys: ', T / 1000.0:0:2, 's');
   Writeln('Pri.Mod:');
-  Writeln(HugeWordToHex(Pri.Modulus));
+  Writeln(HugeWordToHexA(Pri.Modulus));
   Writeln('Pri.Exp:');
-  Writeln(HugeWordToHex(Pri.Exponent));
+  Writeln(HugeWordToHexA(Pri.Exponent));
   Writeln('Pub.Mod:');
-  Writeln(HugeWordToHex(Pub.Modulus));
+  Writeln(HugeWordToHexA(Pub.Modulus));
   Writeln('Pub.Exp:');
-  Writeln(HugeWordToHex(Pub.Exponent));
+  Writeln(HugeWordToHexA(Pub.Exponent));
 
   T := GetTickCount;
   Pln := '123456';

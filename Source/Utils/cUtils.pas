@@ -1,12 +1,11 @@
-{***************************************************************************** }
+{******************************************************************************}
 {                                                                              }
 {   Library:          Fundamentals 4.00                                        }
 {   File name:        cUtils.pas                                               }
-{   File version:     4.46                                                     }
-{   Description:      Utility functions for simple data types and dynamic      }
-{                     arrays                                                   }
+{   File version:     4.50                                                     }
+{   Description:      Utility functions for simple data types                  }
 {                                                                              }
-{   Copyright:        Copyright © 2000-2011, David J Butler                    }
+{   Copyright:        Copyright © 2000-2012, David J Butler                    }
 {                     All rights reserved.                                     }
 {                     Redistribution and use in source and binary forms, with  }
 {                     or without modification, are permitted provided that     }
@@ -97,27 +96,26 @@
 {   2008/06/06  4.44  Fixed bug in case insensitive hashing functions.         }
 {   2009/10/09  4.45  Compilable with Delphi 2009 Win32/.NET.                  }
 {   2010/06/27  4.46  Compilable with FreePascal 2.4.0 OSX x86-64.             }
+{   2012/04/03  4.47  Support for Delphi XE string and integer types.          }
+{   2012/04/04  4.48  Moved dynamic arrays functions to cDynArrays.            }
+{   2012/04/11  4.49  StringToFloat/FloatToStr functions.                      }
+{   2012/08/26  4.50  UnicodeString versions of functions.                     }
 {                                                                              }
 { Supported compilers:                                                         }
 {                                                                              }
 {   Delphi 5 Win32 i386                                                        }
 {   Delphi 6 Win32 i386                                                        }
-{   Delphi 7 Win32 i386                 4.45  2009/10/09                       }
+{   Delphi 7 Win32 i386                 4.50  2012/08/30                       }
 {   Delphi 8 .NET                                                              }
 {   Delphi 2005 Win32 i386                                                     }
 {   Delphi 2006 Win32 i386                                                     }
-{   Delphi 2007 Win32 i386              4.45  2009/10/09                       }
+{   Delphi 2007 Win32 i386              4.50  2012/08/26                       }
 {   Delphi 2009 Win32 i386              4.46  2011/09/27                       }
 {   Delphi 2009 .NET                    4.45  2009/10/09                       }
-{   FreePascal 2 Win32 i386                                                    }
+{   Delphi XE                           4.50  2012/08/26                       }
 {   FreePascal 2.0.4 Linux i386                                                }
 {   FreePascal 2.4.0 OSX x86-64         4.46  2010/06/27                       }
-{                                                                              }
-{ Notes:                                                                       }
-{                                                                              }
-{   This unit doesn't depend on any other units, including standard system     }
-{   units such as SysUtils. This allows it to be used in projects that         }
-{   require very small binaries.                                               }
+{   FreePascal 2.6.0 Win32              4.50  2012/08/30                       }
 {                                                                              }
 {******************************************************************************}
 
@@ -148,45 +146,57 @@ const
   LibraryMajorVersion = 4;
   LibraryMinorVersion = 0;
   LibraryName         = 'Fundamentals ' + LibraryVersion;
-  LibraryCopyright    = 'Copyright (c) 1998-2011 David J Butler';
+  LibraryCopyright    = 'Copyright (c) 1998-2012 David J Butler';
 
 
 
 {                                                                              }
 { Integer types                                                                }
 {                                                                              }
-{   Unsigned integers                   Signed integers                        }
-{   --------------------------------    --------------------------------       }
-{   Byte      unsigned 8 bits           ShortInt  signed 8 bits                }
-{   Word      unsigned 16 bits          SmallInt  signed 16 bits               }
-{   LongWord  unsigned 32 bits          LongInt   signed 32 bits               }
-{   -                                   Int64     signed 64 bits               }
-{   Cardinal  unsigned system word      Integer   signed system word           }
+{   Unsigned integers                     Signed integers                      }
+{   --------------------------------      --------------------------------     }
+{   Byte        unsigned 8 bits           ShortInt   signed 8 bits             }
+{   Word        unsigned 16 bits          SmallInt   signed 16 bits            }
+{   LongWord    unsigned 32 bits          LongInt    signed 32 bits            }
+{   -                                     Int64      signed 64 bits            }
+{   Cardinal    unsigned 32 bits          Integer    signed 32 bits            }
+{   NativeUInt  unsigned system word      NativeInt  signed system word        }
 {                                                                              }
 type
   Int8      = ShortInt;
   Int16     = SmallInt;
   Int32     = LongInt;
 
+  UInt8     = Byte;
+  UInt16    = Word;
+  UInt32    = LongWord;
+  {$IFNDEF SupportUInt64}
+  UInt64    = type Int64;
+  {$ENDIF}
+
+  Word8     = UInt8;
+  Word16    = UInt16;
+  Word32    = UInt32;
+  Word64    = UInt64;
+
   LargeInt  = Int64;
 
-  Word8     = Byte;
-  Word16    = Word;
-  Word32    = LongWord;
-
-  UInt8     = Word8;
-  UInt16    = Word16;
-  UInt32    = Word32;
+  {$IFNDEF SupportNativeInt}
+  NativeInt   = type Integer;
+  NativeUInt  = type Cardinal;
+  PNativeUInt = ^NativeUInt;
+  PNativeInt  = ^NativeInt;
+  {$ENDIF}
 
   {$IFDEF DELPHI5_DOWN}
-  PByte     = ^Byte;
-  PWord     = ^Word;
-  PLongWord = ^LongWord;
-  PShortInt = ^ShortInt;
-  PSmallInt = ^SmallInt;
-  PLongInt  = ^LongInt;
-  PInteger  = ^Integer;
-  PInt64    = ^Int64;
+  PByte       = ^Byte;
+  PWord       = ^Word;
+  PLongWord   = ^LongWord;
+  PShortInt   = ^ShortInt;
+  PSmallInt   = ^SmallInt;
+  PLongInt    = ^LongInt;
+  PInteger    = ^Integer;
+  PInt64      = ^Int64;
   {$ENDIF}
 
   PInt8     = ^Int8;
@@ -202,6 +212,7 @@ type
   PUInt8    = ^UInt8;
   PUInt16   = ^UInt16;
   PUInt32   = ^UInt32;
+  PUInt64   = ^UInt64;
 
   {$IFNDEF ManagedCode}
   SmallIntRec = packed record
@@ -220,31 +231,37 @@ type
   {$ENDIF}
 
 const
-  MinByte     = Low(Byte);
-  MaxByte     = High(Byte);
-  MinWord     = Low(Word);
-  MaxWord     = High(Word);
-  MinShortInt = Low(ShortInt);
-  MaxShortInt = High(ShortInt);
-  MinSmallInt = Low(SmallInt);
-  MaxSmallInt = High(SmallInt);
-  MinLongWord = LongWord(Low(LongWord));
-  MaxLongWord = LongWord(High(LongWord));
-  MinLongInt  = LongInt(Low(LongInt));
-  MaxLongInt  = LongInt(High(LongInt));
-  MaxInt64    = Int64(High(Int64));
-  MinInt64    = Int64(Low(Int64));
-  MinInteger  = Integer(Low(Integer));
-  MaxInteger  = Integer(High(Integer));
-  MinCardinal = Cardinal(Low(Cardinal));
-  MaxCardinal = Cardinal(High(Cardinal));
+  MinByte       = Low(Byte);
+  MaxByte       = High(Byte);
+  MinWord       = Low(Word);
+  MaxWord       = High(Word);
+  MinShortInt   = Low(ShortInt);
+  MaxShortInt   = High(ShortInt);
+  MinSmallInt   = Low(SmallInt);
+  MaxSmallInt   = High(SmallInt);
+  MinLongWord   = LongWord(Low(LongWord));
+  MaxLongWord   = LongWord(High(LongWord));
+  MinLongInt    = LongInt(Low(LongInt));
+  MaxLongInt    = LongInt(High(LongInt));
+  MinInt64      = Int64(Low(Int64));
+  MaxInt64      = Int64(High(Int64));
+  MinInteger    = Integer(Low(Integer));
+  MaxInteger    = Integer(High(Integer));
+  MinCardinal   = Cardinal(Low(Cardinal));
+  MaxCardinal   = Cardinal(High(Cardinal));
+  MinNativeUInt = NativeUInt(Low(NativeUInt));
+  MaxNativeUInt = NativeUInt(High(NativeUInt));
+  MinNativeInt  = NativeInt(Low(NativeInt));
+  MaxNativeInt  = NativeInt(High(NativeInt));
 
 const
-  BitsPerByte      = 8;
-  BitsPerWord      = 16;
-  BitsPerLongWord  = 32;
-  BytesPerCardinal = Sizeof(Cardinal);
-  BitsPerCardinal  = BytesPerCardinal * 8;
+  BitsPerByte        = 8;
+  BitsPerWord        = 16;
+  BitsPerLongWord    = 32;
+  BytesPerCardinal   = Sizeof(Cardinal);
+  BitsPerCardinal    = BytesPerCardinal * 8;
+  BytesPerNativeWord = SizeOf(NativeInt);
+  BitsPerNativeWord  = BytesPerNativeWord * 8;
 
 { Min returns smallest of A and B                                              }
 { Max returns greatest of A and B                                              }
@@ -299,6 +316,21 @@ type
   PBool8    = ^Bool8;
   PBool16   = ^Bool16;
   PBool32   = ^Bool32;
+
+
+
+{                                                                              }
+{ Comparison                                                                   }
+{                                                                              }
+type
+  TCompareResult = (
+      crLess,
+      crEqual,
+      crGreater,
+      crUndefined);
+  TCompareResultSet = set of TCompareResult;
+
+function  ReverseCompareResult(const C: TCompareResult): TCompareResult;
 
 
 
@@ -377,226 +409,14 @@ function  InCurrencyRange(const A: Float): Boolean; overload;
 function  InCurrencyRange(const A: Int64): Boolean; overload;
 {$ENDIF}
 
+{ FloatExponent returns the exponent component of an Extended value            }
+function  FloatExponentBase2(const A: Extended; var Exponent: Integer): Boolean;
+function  FloatExponentBase10(const A: Extended; var Exponent: Integer): Boolean;
 
-
-{                                                                              }
-{ Bit functions                                                                }
-{                                                                              }
-function  ClearBit(const Value, BitIndex: LongWord): LongWord;
-function  SetBit(const Value, BitIndex: LongWord): LongWord;
-function  IsBitSet(const Value, BitIndex: LongWord): Boolean;
-function  ToggleBit(const Value, BitIndex: LongWord): LongWord;
-function  IsHighBitSet(const Value: LongWord): Boolean;
-
-function  SetBitScanForward(const Value: LongWord): Integer; overload;
-function  SetBitScanForward(const Value, BitIndex: LongWord): Integer; overload;
-function  SetBitScanReverse(const Value: LongWord): Integer; overload;
-function  SetBitScanReverse(const Value, BitIndex: LongWord): Integer; overload;
-function  ClearBitScanForward(const Value: LongWord): Integer; overload;
-function  ClearBitScanForward(const Value, BitIndex: LongWord): Integer; overload;
-function  ClearBitScanReverse(const Value: LongWord): Integer; overload;
-function  ClearBitScanReverse(const Value, BitIndex: LongWord): Integer; overload;
-
-function  ReverseBits(const Value: LongWord): LongWord; overload;
-function  ReverseBits(const Value: LongWord; const BitCount: Integer): LongWord; overload;
-function  SwapEndian(const Value: LongWord): LongWord;
-{$IFDEF ManagedCode}
-procedure SwapEndianBuf(var Buf: array of LongWord);
-{$ELSE}
-procedure SwapEndianBuf(var Buf; const Count: Integer);
-{$ENDIF}
-function  TwosComplement(const Value: LongWord): LongWord;
-
-function  RotateLeftBits16(const Value: Word; const Bits: Byte): Word;
-function  RotateLeftBits32(const Value: LongWord; const Bits: Byte): LongWord;
-function  RotateRightBits16(const Value: Word; const Bits: Byte): Word;
-function  RotateRightBits32(const Value: LongWord; const Bits: Byte): LongWord;
-
-function  BitCount(const Value: LongWord): LongWord;
-function  IsPowerOfTwo(const Value: LongWord): Boolean;
-
-function  LowBitMask(const HighBitIndex: LongWord): LongWord;
-function  HighBitMask(const LowBitIndex: LongWord): LongWord;
-function  RangeBitMask(const LowBitIndex, HighBitIndex: LongWord): LongWord;
-
-function  SetBitRange(const Value: LongWord;
-          const LowBitIndex, HighBitIndex: LongWord): LongWord;
-function  ClearBitRange(const Value: LongWord;
-          const LowBitIndex, HighBitIndex: LongWord): LongWord;
-function  ToggleBitRange(const Value: LongWord;
-          const LowBitIndex, HighBitIndex: LongWord): LongWord;
-function  IsBitRangeSet(const Value: LongWord;
-          const LowBitIndex, HighBitIndex: LongWord): Boolean;
-function  IsBitRangeClear(const Value: LongWord;
-          const LowBitIndex, HighBitIndex: LongWord): Boolean;
-
-const
-  BitMaskTable: array[0..31] of LongWord =
-    ($00000001, $00000002, $00000004, $00000008,
-     $00000010, $00000020, $00000040, $00000080,
-     $00000100, $00000200, $00000400, $00000800,
-     $00001000, $00002000, $00004000, $00008000,
-     $00010000, $00020000, $00040000, $00080000,
-     $00100000, $00200000, $00400000, $00800000,
-     $01000000, $02000000, $04000000, $08000000,
-     $10000000, $20000000, $40000000, $80000000);
-
-
-
-{                                                                              }
-{ Sets                                                                         }
-{   Operations on byte and character sets.                                     }
-{                                                                              }
-type
-  CharSet = set of AnsiChar;
-  ByteSet = set of Byte;
-  PCharSet = ^CharSet;
-  PByteSet = ^ByteSet;
-
-const
-  CompleteCharSet = [AnsiChar(#0)..AnsiChar(#255)];
-  CompleteByteSet = [0..255];
-
-function  AsCharSet(const C: array of AnsiChar): CharSet;
-function  AsByteSet(const C: array of Byte): ByteSet;
-procedure ComplementChar(var C: CharSet; const Ch: AnsiChar);
-procedure ClearCharSet(var C: CharSet);
-procedure FillCharSet(var C: CharSet);
-procedure ComplementCharSet(var C: CharSet);
-procedure AssignCharSet(var DestSet: CharSet; const SourceSet: CharSet); overload;
-procedure Union(var DestSet: CharSet; const SourceSet: CharSet); overload;
-procedure Difference(var DestSet: CharSet; const SourceSet: CharSet); overload;
-procedure Intersection(var DestSet: CharSet; const SourceSet: CharSet); overload;
-procedure XORCharSet(var DestSet: CharSet; const SourceSet: CharSet);
-function  IsSubSet(const A, B: CharSet): Boolean;
-function  IsEqual(const A, B: CharSet): Boolean; overload;
-function  IsEmpty(const C: CharSet): Boolean;
-function  IsComplete(const C: CharSet): Boolean;
-function  CharCount(const C: CharSet): Integer; overload;
-procedure ConvertCaseInsensitive(var C: CharSet);
-function  CaseInsensitiveCharSet(const C: CharSet): CharSet;
-
-
-
-{                                                                              }
-{ Range functions                                                              }
-{                                                                              }
-{   RangeLength      Length of a range                                         }
-{   RangeAdjacent    True if ranges are adjacent                               }
-{   RangeOverlap     True if ranges overlap                                    }
-{   RangeHasElement  True if element is in range                               }
-{                                                                              }
-function  IntRangeLength(const Low, High: Integer): Int64;
-function  IntRangeAdjacent(const Low1, High1, Low2, High2: Integer): Boolean;
-function  IntRangeOverlap(const Low1, High1, Low2, High2: Integer): Boolean;
-function  IntRangeHasElement(const Low, High, Element: Integer): Boolean;
-
-function  IntRangeIncludeElement(var Low, High: Integer;
-          const Element: Integer): Boolean;
-function  IntRangeIncludeElementRange(var Low, High: Integer;
-          const LowElement, HighElement: Integer): Boolean;
-
-function  CardRangeLength(const Low, High: Cardinal): Int64;
-function  CardRangeAdjacent(const Low1, High1, Low2, High2: Cardinal): Boolean;
-function  CardRangeOverlap(const Low1, High1, Low2, High2: Cardinal): Boolean;
-function  CardRangeHasElement(const Low, High, Element: Cardinal): Boolean;
-
-function  CardRangeIncludeElement(var Low, High: Cardinal;
-          const Element: Cardinal): Boolean;
-function  CardRangeIncludeElementRange(var Low, High: Cardinal;
-          const LowElement, HighElement: Cardinal): Boolean;
-
-
-
-{                                                                              }
-{ Swap                                                                         }
-{                                                                              }
-procedure Swap(var X, Y: Boolean); overload;
-procedure Swap(var X, Y: Byte); overload;
-procedure Swap(var X, Y: Word); overload;
-procedure Swap(var X, Y: LongWord); overload;
-procedure Swap(var X, Y: ShortInt); overload;
-procedure Swap(var X, Y: SmallInt); overload;
-procedure Swap(var X, Y: LongInt); overload;
-procedure Swap(var X, Y: Int64); overload;
-procedure Swap(var X, Y: Single); overload;
-procedure Swap(var X, Y: Double); overload;
-procedure Swap(var X, Y: Extended); overload;
-procedure Swap(var X, Y: Currency); overload;
-procedure Swap(var X, Y: AnsiString); overload;
-procedure Swap(var X, Y: WideString); overload;
-procedure Swap(var X, Y: TObject); overload;
-{$IFDEF ManagedCode}
-procedure SwapObjects(var X, Y: TObject);
-{$ELSE}
-procedure SwapObjects(var X, Y);
-{$ENDIF}
-{$IFNDEF ManagedCode}
-procedure Swap(var X, Y: Pointer); overload;
-{$ENDIF}
-
-
-
-{                                                                              }
-{ Inline if                                                                    }
-{                                                                              }
-{   iif returns TrueValue if Expr is True, otherwise it returns FalseValue.    }
-{                                                                              }
-function  iif(const Expr: Boolean; const TrueValue: Integer;
-          const FalseValue: Integer = 0): Integer; overload;
-          {$IFDEF UseInline}inline;{$ENDIF}
-function  iif(const Expr: Boolean; const TrueValue: Int64;
-          const FalseValue: Int64 = 0): Int64; overload;
-          {$IFDEF UseInline}inline;{$ENDIF}
-function  iif(const Expr: Boolean; const TrueValue: Extended;
-          const FalseValue: Extended = 0.0): Extended; overload;
-          {$IFDEF UseInline}inline;{$ENDIF}
-function  iifA(const Expr: Boolean; const TrueValue: AnsiString;
-          const FalseValue: AnsiString = ''): AnsiString; overload;
-          {$IFDEF UseInline}inline;{$ENDIF}
-function  iifW(const Expr: Boolean; const TrueValue: WideString;
-          const FalseValue: WideString = ''): WideString; overload;
-          {$IFDEF UseInline}inline;{$ENDIF}
-function  iif(const Expr: Boolean; const TrueValue: String;
-          const FalseValue: String = ''): String; overload;
-          {$IFDEF UseInline}inline;{$ENDIF}
-function  iif(const Expr: Boolean; const TrueValue: TObject;
-          const FalseValue: TObject = nil): TObject; overload;
-          {$IFDEF UseInline}inline;{$ENDIF}
-
-
-
-{                                                                              }
-{ Comparison                                                                   }
-{                                                                              }
-type
-  TCompareResult = (
-      crLess,
-      crEqual,
-      crGreater,
-      crUndefined);
-  TCompareResultSet = set of TCompareResult;
-
-function  ReverseCompareResult(const C: TCompareResult): TCompareResult;
-
-
-
-{                                                                              }
-{ Direct comparison                                                            }
-{                                                                              }
-{   Compare(I1, I2) returns crLess if I1 < I2, crEqual if I1 = I2 or           }
-{   crGreater if I1 > I2.                                                      }
-{                                                                              }
-function  Compare(const I1, I2: Boolean): TCompareResult; overload;
-function  Compare(const I1, I2: Integer): TCompareResult; overload;
-function  Compare(const I1, I2: Int64): TCompareResult; overload;
-function  Compare(const I1, I2: Extended): TCompareResult; overload;
-function  Compare(const I1, I2: AnsiString): TCompareResult; overload;
-function  WideCompare(const I1, I2: WideString): TCompareResult;
-
-function  Sign(const A: LongInt): Integer; overload;
-function  Sign(const A: Int64): Integer; overload;
-function  Sign(const A: Extended): Integer; overload;
+{ FloatIsInfinity is True if A is a positive or negative infinity.             }
+{ FloatIsNaN is True if A is Not-a-Number.                                     }
+function  FloatIsInfinity(const A: Extended): Boolean;
+function  FloatIsNaN(const A: Extended): Boolean;
 
 
 
@@ -672,68 +492,419 @@ function  ApproxEqual(const A, B: Extended;
           const CompareEpsilon: Double = DefaultCompareEpsilon): Boolean;
 function  ApproxCompare(const A, B: Extended;
           const CompareEpsilon: Double = DefaultCompareEpsilon): TCompareResult;
-
-
-
-{                                                                              }
-{ Special floating-point values                                                }
-{                                                                              }
-{   FloatIsInfinity is True if A is a positive or negative infinity.           }
-{   FloatIsNaN is True if A is Not-a-Number.                                   }
-{                                                                              }
-function  FloatIsInfinity(const A: Extended): Boolean;
-function  FloatIsNaN(const A: Extended): Boolean;
 {$ENDIF}
 
 
 
 {                                                                              }
-{ Integer conversion                                                           }
+{ Bit functions                                                                }
 {                                                                              }
-function  AnsiCharToInt(const A: AnsiChar): Integer;                                 {$IFDEF UseInline}inline;{$ENDIF}
-function  WideCharToInt(const A: WideChar): Integer;                                 {$IFDEF UseInline}inline;{$ENDIF}
-function  CharToInt(const A: Char): Integer;                                         {$IFDEF UseInline}inline;{$ENDIF}
+function  ClearBit(const Value, BitIndex: LongWord): LongWord;
+function  SetBit(const Value, BitIndex: LongWord): LongWord;
+function  IsBitSet(const Value, BitIndex: LongWord): Boolean;
+function  ToggleBit(const Value, BitIndex: LongWord): LongWord;
+function  IsHighBitSet(const Value: LongWord): Boolean;
 
-function  IntToAnsiChar(const A: Integer): AnsiChar;                                 {$IFDEF UseInline}inline;{$ENDIF}
-function  IntToWideChar(const A: Integer): WideChar;                                 {$IFDEF UseInline}inline;{$ENDIF}
-function  IntToChar(const A: Integer): Char;                                         {$IFDEF UseInline}inline;{$ENDIF}
+function  SetBitScanForward(const Value: LongWord): Integer; overload;
+function  SetBitScanForward(const Value, BitIndex: LongWord): Integer; overload;
+function  SetBitScanReverse(const Value: LongWord): Integer; overload;
+function  SetBitScanReverse(const Value, BitIndex: LongWord): Integer; overload;
+function  ClearBitScanForward(const Value: LongWord): Integer; overload;
+function  ClearBitScanForward(const Value, BitIndex: LongWord): Integer; overload;
+function  ClearBitScanReverse(const Value: LongWord): Integer; overload;
+function  ClearBitScanReverse(const Value, BitIndex: LongWord): Integer; overload;
+
+function  ReverseBits(const Value: LongWord): LongWord; overload;
+function  ReverseBits(const Value: LongWord; const BitCount: Integer): LongWord; overload;
+function  SwapEndian(const Value: LongWord): LongWord;
+{$IFDEF ManagedCode}
+procedure SwapEndianBuf(var Buf: array of LongWord);
+{$ELSE}
+procedure SwapEndianBuf(var Buf; const Count: Integer);
+{$ENDIF}
+function  TwosComplement(const Value: LongWord): LongWord;
+
+function  RotateLeftBits16(const Value: Word; const Bits: Byte): Word;
+function  RotateLeftBits32(const Value: LongWord; const Bits: Byte): LongWord;
+function  RotateRightBits16(const Value: Word; const Bits: Byte): Word;
+function  RotateRightBits32(const Value: LongWord; const Bits: Byte): LongWord;
+
+function  BitCount(const Value: LongWord): LongWord;
+function  IsPowerOfTwo(const Value: LongWord): Boolean;
+
+function  LowBitMask(const HighBitIndex: LongWord): LongWord;
+function  HighBitMask(const LowBitIndex: LongWord): LongWord;
+function  RangeBitMask(const LowBitIndex, HighBitIndex: LongWord): LongWord;
+
+function  SetBitRange(const Value: LongWord;
+          const LowBitIndex, HighBitIndex: LongWord): LongWord;
+function  ClearBitRange(const Value: LongWord;
+          const LowBitIndex, HighBitIndex: LongWord): LongWord;
+function  ToggleBitRange(const Value: LongWord;
+          const LowBitIndex, HighBitIndex: LongWord): LongWord;
+function  IsBitRangeSet(const Value: LongWord;
+          const LowBitIndex, HighBitIndex: LongWord): Boolean;
+function  IsBitRangeClear(const Value: LongWord;
+          const LowBitIndex, HighBitIndex: LongWord): Boolean;
+
+const
+  BitMaskTable: array[0..31] of LongWord =
+    ($00000001, $00000002, $00000004, $00000008,
+     $00000010, $00000020, $00000040, $00000080,
+     $00000100, $00000200, $00000400, $00000800,
+     $00001000, $00002000, $00004000, $00008000,
+     $00010000, $00020000, $00040000, $00080000,
+     $00100000, $00200000, $00400000, $00800000,
+     $01000000, $02000000, $04000000, $08000000,
+     $10000000, $20000000, $40000000, $80000000);
+
+
+
+{                                                                              }
+{ Sets                                                                         }
+{   Operations on byte and character sets.                                     }
+{                                                                              }
+type
+  CharSet = set of AnsiChar;
+  AnsiCharSet = CharSet;
+  ByteSet = set of Byte;
+  PCharSet = ^CharSet;
+  PByteSet = ^ByteSet;
+
+
+const
+  CompleteCharSet = [AnsiChar(#0)..AnsiChar(#255)];
+  CompleteByteSet = [0..255];
+
+function  AsCharSet(const C: array of AnsiChar): CharSet;
+function  AsByteSet(const C: array of Byte): ByteSet;
+procedure ComplementChar(var C: CharSet; const Ch: AnsiChar);
+procedure ClearCharSet(var C: CharSet);
+procedure FillCharSet(var C: CharSet);
+procedure ComplementCharSet(var C: CharSet);
+procedure AssignCharSet(var DestSet: CharSet; const SourceSet: CharSet); overload;
+procedure Union(var DestSet: CharSet; const SourceSet: CharSet); overload;
+procedure Difference(var DestSet: CharSet; const SourceSet: CharSet); overload;
+procedure Intersection(var DestSet: CharSet; const SourceSet: CharSet); overload;
+procedure XORCharSet(var DestSet: CharSet; const SourceSet: CharSet);
+function  IsSubSet(const A, B: CharSet): Boolean;
+function  IsEqual(const A, B: CharSet): Boolean; overload;
+function  IsEmpty(const C: CharSet): Boolean;
+function  IsComplete(const C: CharSet): Boolean;
+function  CharCount(const C: CharSet): Integer; overload;
+procedure ConvertCaseInsensitive(var C: CharSet);
+function  CaseInsensitiveCharSet(const C: CharSet): CharSet;
+
+
+
+{                                                                              }
+{ Range functions                                                              }
+{                                                                              }
+{   RangeLength      Length of a range                                         }
+{   RangeAdjacent    True if ranges are adjacent                               }
+{   RangeOverlap     True if ranges overlap                                    }
+{   RangeHasElement  True if element is in range                               }
+{                                                                              }
+function  IntRangeLength(const Low, High: Integer): Int64;
+function  IntRangeAdjacent(const Low1, High1, Low2, High2: Integer): Boolean;
+function  IntRangeOverlap(const Low1, High1, Low2, High2: Integer): Boolean;
+function  IntRangeHasElement(const Low, High, Element: Integer): Boolean;
+
+function  IntRangeIncludeElement(var Low, High: Integer;
+          const Element: Integer): Boolean;
+function  IntRangeIncludeElementRange(var Low, High: Integer;
+          const LowElement, HighElement: Integer): Boolean;
+
+function  CardRangeLength(const Low, High: Cardinal): Int64;
+function  CardRangeAdjacent(const Low1, High1, Low2, High2: Cardinal): Boolean;
+function  CardRangeOverlap(const Low1, High1, Low2, High2: Cardinal): Boolean;
+function  CardRangeHasElement(const Low, High, Element: Cardinal): Boolean;
+
+function  CardRangeIncludeElement(var Low, High: Cardinal;
+          const Element: Cardinal): Boolean;
+function  CardRangeIncludeElementRange(var Low, High: Cardinal;
+          const LowElement, HighElement: Cardinal): Boolean;
+
+
+
+{                                                                              }
+{ UnicodeString                                                                }
+{   UnicodeString in Delphi 2009 is reference counted, code page aware,        }
+{   variable character length unicode string. Defaults to UTF-16 encoding.     }
+{   WideString is not reference counted.                                       }
+{                                                                              }
+type
+  UnicodeChar = WideChar;
+  PUnicodeChar = ^UnicodeChar;
+  {$IFNDEF SupportUnicodeString}
+  UnicodeString = WideString;
+  PUnicodeString = ^UnicodeString;
+  {$ENDIF}
+
+
+
+{                                                                              }
+{ Swap                                                                         }
+{                                                                              }
+procedure Swap(var X, Y: Boolean); overload;
+procedure Swap(var X, Y: Byte); overload;
+procedure Swap(var X, Y: Word); overload;
+procedure Swap(var X, Y: LongWord); overload;
+procedure Swap(var X, Y: NativeUInt); overload;
+procedure Swap(var X, Y: ShortInt); overload;
+procedure Swap(var X, Y: SmallInt); overload;
+procedure Swap(var X, Y: LongInt); overload;
+procedure Swap(var X, Y: Int64); overload;
+procedure Swap(var X, Y: NativeInt); overload;
+procedure Swap(var X, Y: Single); overload;
+procedure Swap(var X, Y: Double); overload;
+procedure Swap(var X, Y: Extended); overload;
+procedure Swap(var X, Y: Currency); overload;
+procedure SwapA(var X, Y: AnsiString); overload;
+procedure SwapW(var X, Y: WideString); overload;
+procedure SwapU(var X, Y: UnicodeString); overload;
+procedure Swap(var X, Y: String); overload;
+procedure Swap(var X, Y: TObject); overload;
+{$IFDEF ManagedCode}
+procedure SwapObjects(var X, Y: TObject);
+{$ELSE}
+procedure SwapObjects(var X, Y);
+{$ENDIF}
+{$IFNDEF ManagedCode}
+procedure Swap(var X, Y: Pointer); overload;
+{$ENDIF}
+
+
+
+{                                                                              }
+{ Inline if                                                                    }
+{                                                                              }
+{   iif returns TrueValue if Expr is True, otherwise it returns FalseValue.    }
+{                                                                              }
+function  iif(const Expr: Boolean; const TrueValue: Integer;
+          const FalseValue: Integer = 0): Integer; overload;              {$IFDEF UseInline}inline;{$ENDIF}
+function  iif(const Expr: Boolean; const TrueValue: Int64;
+          const FalseValue: Int64 = 0): Int64; overload;                  {$IFDEF UseInline}inline;{$ENDIF}
+function  iif(const Expr: Boolean; const TrueValue: Extended;
+          const FalseValue: Extended = 0.0): Extended; overload;          {$IFDEF UseInline}inline;{$ENDIF}
+function  iifA(const Expr: Boolean; const TrueValue: AnsiString;
+          const FalseValue: AnsiString = ''): AnsiString; overload;       {$IFDEF UseInline}inline;{$ENDIF}
+function  iifW(const Expr: Boolean; const TrueValue: WideString;
+          const FalseValue: WideString = ''): WideString; overload;       {$IFDEF UseInline}inline;{$ENDIF}
+function  iifU(const Expr: Boolean; const TrueValue: UnicodeString;
+          const FalseValue: UnicodeString = ''): UnicodeString; overload; {$IFDEF UseInline}inline;{$ENDIF}
+function  iif(const Expr: Boolean; const TrueValue: String;
+          const FalseValue: String = ''): String; overload;               {$IFDEF UseInline}inline;{$ENDIF}
+function  iif(const Expr: Boolean; const TrueValue: TObject;
+          const FalseValue: TObject = nil): TObject; overload;            {$IFDEF UseInline}inline;{$ENDIF}
+
+
+
+{                                                                              }
+{ Direct comparison                                                            }
+{                                                                              }
+{   Compare(I1, I2) returns crLess if I1 < I2, crEqual if I1 = I2 or           }
+{   crGreater if I1 > I2.                                                      }
+{                                                                              }
+function  Compare(const I1, I2: Boolean): TCompareResult; overload;
+function  Compare(const I1, I2: Integer): TCompareResult; overload;
+function  Compare(const I1, I2: Int64): TCompareResult; overload;
+function  Compare(const I1, I2: Extended): TCompareResult; overload;
+function  CompareA(const I1, I2: AnsiString): TCompareResult;
+function  CompareW(const I1, I2: WideString): TCompareResult;
+function  CompareU(const I1, I2: UnicodeString): TCompareResult;
+
+function  Sgn(const A: LongInt): Integer; overload;
+function  Sgn(const A: Int64): Integer; overload;
+function  Sgn(const A: Extended): Integer; overload;
+
+
+
+{                                                                              }
+{ Convert result                                                               }
+{                                                                              }
+type
+  TConvertResult = (
+      convertOK,
+      convertFormatError,
+      convertOverflow
+      );
+
+
+
+{                                                                              }
+{ Integer-String conversions                                                   }
+{                                                                              }
+const
+  StrHexDigitsUpper: String[16] = '0123456789ABCDEF';
+  StrHexDigitsLower: String[16] = '0123456789abcdef';
+
+function  AnsiCharToInt(const A: AnsiChar): Integer;                            {$IFDEF UseInline}inline;{$ENDIF}
+function  WideCharToInt(const A: WideChar): Integer;                            {$IFDEF UseInline}inline;{$ENDIF}
+function  CharToInt(const A: Char): Integer;                                    {$IFDEF UseInline}inline;{$ENDIF}
+
+function  IntToAnsiChar(const A: Integer): AnsiChar;                            {$IFDEF UseInline}inline;{$ENDIF}
+function  IntToWideChar(const A: Integer): WideChar;                            {$IFDEF UseInline}inline;{$ENDIF}
+function  IntToChar(const A: Integer): Char;                                    {$IFDEF UseInline}inline;{$ENDIF}
 
 function  IsHexAnsiChar(const Ch: AnsiChar): Boolean;
 function  IsHexWideChar(const Ch: WideChar): Boolean;
-function  IsHexChar(const Ch: Char): Boolean;                                        {$IFDEF UseInline}inline;{$ENDIF}
+function  IsHexChar(const Ch: Char): Boolean;                                   {$IFDEF UseInline}inline;{$ENDIF}
 
 function  HexAnsiCharToInt(const A: AnsiChar): Integer;
 function  HexWideCharToInt(const A: WideChar): Integer;
-function  HexCharToInt(const A: Char): Integer;                                      {$IFDEF UseInline}inline;{$ENDIF}
+function  HexCharToInt(const A: Char): Integer;                                 {$IFDEF UseInline}inline;{$ENDIF}
 
 function  IntToUpperHexAnsiChar(const A: Integer): AnsiChar;
 function  IntToUpperHexWideChar(const A: Integer): WideChar;
-function  IntToUpperHexChar(const A: Integer): Char;                                 {$IFDEF UseInline}inline;{$ENDIF}
+function  IntToUpperHexChar(const A: Integer): Char;                            {$IFDEF UseInline}inline;{$ENDIF}
 
 function  IntToLowerHexAnsiChar(const A: Integer): AnsiChar;
 function  IntToLowerHexWideChar(const A: Integer): WideChar;
-function  IntToLowerHexChar(const A: Integer): Char;                                 {$IFDEF UseInline}inline;{$ENDIF}
+function  IntToLowerHexChar(const A: Integer): Char;                            {$IFDEF UseInline}inline;{$ENDIF}
 
-function  IntToAnsiString(const A: Integer): AnsiString;
-function  IntToWideString(const A: Integer): WideString;
-function  IntToString(const A: Integer): String;                                     {$IFDEF UseInline}inline;{$ENDIF}
+function  IntToStringA(const A: Int64): AnsiString;
+function  IntToStringW(const A: Int64): WideString;
+function  IntToStringU(const A: Int64): UnicodeString;
+function  IntToString(const A: Int64): String;
 
-function  LongWordToHexAnsiString(const A: LongWord; const Digits: Integer = 0; const LowerCase: Boolean = False): AnsiString;
-function  LongWordToHexWideString(const A: LongWord; const Digits: Integer = 0; const LowerCase: Boolean = False): WideString;
-function  LongWordToHexString(const A: LongWord; const Digits: Integer = 0; const LowerCase: Boolean = False): String; {$IFDEF UseInline}inline;{$ENDIF}
+function  UIntToStringA(const A: NativeUInt): AnsiString;
+function  UIntToStringW(const A: NativeUInt): WideString;
+function  UIntToStringU(const A: NativeUInt): UnicodeString;
+function  UIntToString(const A: NativeUInt): String;
 
-function  AnsiStringToInt(const A: AnsiString): Integer;
-function  TryAnsiStringToInt(const A: AnsiString; out B: Integer): Boolean;
-function  AnsiStringToIntDef(const A: AnsiString; const Default: Integer): Integer;
-function  WideStringToInt(const A: WideString): Integer;
-function  WideStringToIntDef(const A: WideString; const Default: Integer): Integer;
-function  StringToInt(const A: String): Integer;                                     {$IFDEF UseInline}inline;{$ENDIF}
-function  StringToIntDef(const A: String; const Default: Integer): Integer;          {$IFDEF UseInline}inline;{$ENDIF}
+function  LongWordToStrA(const A: LongWord; const Digits: Integer = 0): AnsiString;
+function  LongWordToStrW(const A: LongWord; const Digits: Integer = 0): WideString;
+function  LongWordToStrU(const A: LongWord; const Digits: Integer = 0): UnicodeString;
+function  LongWordToStr(const A: LongWord; const Digits: Integer = 0): String;
+
+function  LongWordToHexA(const A: LongWord; const Digits: Integer = 0; const UpperCase: Boolean = True): AnsiString;
+function  LongWordToHexW(const A: LongWord; const Digits: Integer = 0; const UpperCase: Boolean = True): WideString;
+function  LongWordToHexU(const A: LongWord; const Digits: Integer = 0; const UpperCase: Boolean = True): UnicodeString;
+function  LongWordToHex(const A: LongWord; const Digits: Integer = 0; const UpperCase: Boolean = True): String;
+
+function  LongWordToOctA(const A: LongWord; const Digits: Integer = 0): AnsiString;
+function  LongWordToOctW(const A: LongWord; const Digits: Integer = 0): WideString;
+function  LongWordToOctU(const A: LongWord; const Digits: Integer = 0): UnicodeString;
+function  LongWordToOct(const A: LongWord; const Digits: Integer = 0): String;
+
+function  LongWordToBinA(const A: LongWord; const Digits: Integer = 0): AnsiString;
+function  LongWordToBinW(const A: LongWord; const Digits: Integer = 0): WideString;
+function  LongWordToBinU(const A: LongWord; const Digits: Integer = 0): UnicodeString;
+function  LongWordToBin(const A: LongWord; const Digits: Integer = 0): String;
+
+function  TryStringToInt64PA(const BufP: Pointer; const BufLen: Integer; out Value: Int64; out StrLen: Integer): TConvertResult;
+function  TryStringToInt64PW(const BufP: Pointer; const BufLen: Integer; out Value: Int64; out StrLen: Integer): TConvertResult;
+function  TryStringToInt64P(const BufP: Pointer; const BufLen: Integer; out Value: Int64; out StrLen: Integer): TConvertResult;
+
+function  TryStringToInt64A(const S: AnsiString; out A: Int64): Boolean;
+function  TryStringToInt64W(const S: WideString; out A: Int64): Boolean;
+function  TryStringToInt64U(const S: UnicodeString; out A: Int64): Boolean;
+function  TryStringToInt64(const S: String; out A: Int64): Boolean;
+
+function  StringToInt64DefA(const S: AnsiString; const Default: Int64): Int64;
+function  StringToInt64DefW(const S: WideString; const Default: Int64): Int64;
+function  StringToInt64DefU(const S: UnicodeString; const Default: Int64): Int64;
+function  StringToInt64Def(const S: String; const Default: Int64): Int64;
+
+function  StringToInt64A(const S: AnsiString): Int64;
+function  StringToInt64W(const S: WideString): Int64;
+function  StringToInt64U(const S: UnicodeString): Int64;
+function  StringToInt64(const S: String): Int64;
+
+function  TryStringToIntA(const S: AnsiString; out A: Integer): Boolean;
+function  TryStringToIntW(const S: WideString; out A: Integer): Boolean;
+function  TryStringToIntU(const S: UnicodeString; out A: Integer): Boolean;
+function  TryStringToInt(const S: String; out A: Integer): Boolean;
+
+function  StringToIntDefA(const S: AnsiString; const Default: Integer): Integer;
+function  StringToIntDefW(const S: WideString; const Default: Integer): Integer;
+function  StringToIntDefU(const S: UnicodeString; const Default: Integer): Integer;
+function  StringToIntDef(const S: String; const Default: Integer): Integer;
+
+function  StringToIntA(const S: AnsiString): Integer;
+function  StringToIntW(const S: WideString): Integer;
+function  StringToIntU(const S: UnicodeString): Integer;
+function  StringToInt(const S: String): Integer;
+
+function  TryStringToLongWordA(const S: AnsiString; out A: LongWord): Boolean;
+function  TryStringToLongWordW(const S: WideString; out A: LongWord): Boolean;
+function  TryStringToLongWordU(const S: UnicodeString; out A: LongWord): Boolean;
+function  TryStringToLongWord(const S: String; out A: LongWord): Boolean;
+
+function  StringToLongWordA(const S: AnsiString): LongWord;
+function  StringToLongWordW(const S: WideString): LongWord;
+function  StringToLongWordU(const S: UnicodeString): LongWord;
+function  StringToLongWord(const S: String): LongWord;
+
+function  HexToUIntA(const S: AnsiString): NativeUInt;
+function  HexToUIntW(const S: WideString): NativeUInt;
+function  HexToUIntU(const S: UnicodeString): NativeUInt;
+function  HexToUInt(const S: String): NativeUInt;
+
+function  TryHexToLongWordA(const S: AnsiString; out A: LongWord): Boolean;
+function  TryHexToLongWordW(const S: WideString; out A: LongWord): Boolean;
+function  TryHexToLongWordU(const S: UnicodeString; out A: LongWord): Boolean;
+function  TryHexToLongWord(const S: String; out A: LongWord): Boolean;
+
+function  HexToLongWordA(const S: AnsiString): LongWord;
+function  HexToLongWordW(const S: WideString): LongWord;
+function  HexToLongWordU(const S: UnicodeString): LongWord;
+function  HexToLongWord(const S: String): LongWord;
+
+function  TryOctToLongWordA(const S: AnsiString; out A: LongWord): Boolean;
+function  TryOctToLongWordW(const S: WideString; out A: LongWord): Boolean;
+function  TryOctToLongWordU(const S: UnicodeString; out A: LongWord): Boolean;
+function  TryOctToLongWord(const S: String; out A: LongWord): Boolean;
+
+function  OctToLongWordA(const S: AnsiString): LongWord;
+function  OctToLongWordW(const S: WideString): LongWord;
+function  OctToLongWordU(const S: UnicodeString): LongWord;
+function  OctToLongWord(const S: String): LongWord;
+
+function  TryBinToLongWordA(const S: AnsiString; out A: LongWord): Boolean;
+function  TryBinToLongWordW(const S: WideString; out A: LongWord): Boolean;
+function  TryBinToLongWordU(const S: UnicodeString; out A: LongWord): Boolean;
+function  TryBinToLongWord(const S: String; out A: LongWord): Boolean;
+
+function  BinToLongWordA(const S: AnsiString): LongWord;
+function  BinToLongWordW(const S: WideString): LongWord;
+function  BinToLongWordU(const S: UnicodeString): LongWord;
+function  BinToLongWord(const S: String): LongWord;
 
 
 
 {                                                                              }
-{ Base Conversion                                                              }
+{ Float-String conversions                                                     }
+{                                                                              }
+function  FloatToStringA(const A: Extended): AnsiString;
+function  FloatToStringW(const A: Extended): WideString;
+function  FloatToStringU(const A: Extended): UnicodeString;
+function  FloatToString(const A: Extended): String;
+
+function  TryStringToFloatPA(const BufP: Pointer; const BufLen: Integer; out Value: Extended; out StrLen: Integer): TConvertResult;
+function  TryStringToFloatPW(const BufP: Pointer; const BufLen: Integer; out Value: Extended; out StrLen: Integer): TConvertResult;
+function  TryStringToFloatP(const BufP: Pointer; const BufLen: Integer; out Value: Extended; out StrLen: Integer): TConvertResult;
+
+function  TryStringToFloatA(const A: AnsiString; out B: Extended): Boolean;
+function  TryStringToFloatW(const A: WideString; out B: Extended): Boolean;
+function  TryStringToFloatU(const A: UnicodeString; out B: Extended): Boolean;
+function  TryStringToFloat(const A: String; out B: Extended): Boolean;
+
+function  StringToFloatA(const A: AnsiString): Extended;
+function  StringToFloatW(const A: WideString): Extended;
+function  StringToFloatU(const A: UnicodeString): Extended;
+function  StringToFloat(const A: String): Extended;
+
+function  StringToFloatDefA(const A: AnsiString; const Default: Extended): Extended;
+function  StringToFloatDefW(const A: WideString; const Default: Extended): Extended;
+function  StringToFloatDefU(const A: UnicodeString; const Default: Extended): Extended;
+function  StringToFloatDef(const A: String; const Default: Extended): Extended;
+
+
+
+{                                                                              }
+{ Base64                                                                       }
 {                                                                              }
 {   EncodeBase64 converts a binary string (S) to a base 64 string using        }
 {   Alphabet. if Pad is True, the result will be padded with PadChar to be a   }
@@ -742,32 +913,11 @@ function  StringToIntDef(const A: String; const Default: Integer): Integer;     
 {   DecodeBase64 converts a base 64 string using Alphabet (64 characters for   }
 {   values 0-63) to a binary string.                                           }
 {                                                                              }
-const
-  StrHexDigitsUpper: String[16] = '0123456789ABCDEF';
-  StrHexDigitsLower: String[16] = '0123456789abcdef';
-
-function  LongWordToBin(const I: LongWord; const Digits: Byte = 0): AnsiString;
-function  LongWordToOct(const I: LongWord; const Digits: Byte = 0): AnsiString;
-function  LongWordToHex(const I: LongWord; const Digits: Byte = 0;
-          const UpperCase: Boolean = True): AnsiString;
-function  LongWordToStr(const I: LongWord; const Digits: Byte = 0): AnsiString;
-
-function  IsValidBinStr(const S: AnsiString): Boolean;
-function  IsValidOctStr(const S: AnsiString): Boolean;
-function  IsValidDecStr(const S: AnsiString): Boolean;
-function  IsValidHexStr(const S: AnsiString): Boolean;
-
-{ xxxStrToLongWord converts a number in a specific base to a LongWord value.   }
-{ Valid is False on return if the string could not be converted.               }
-function  BinStrToLongWord(const S: AnsiString; var Valid: Boolean): LongWord;
-function  OctStrToLongWord(const S: AnsiString; var Valid: Boolean): LongWord;
-function  DecStrToLongWord(const S: AnsiString; var Valid: Boolean): LongWord;
-function  HexStrToLongWord(const S: AnsiString; var Valid: Boolean): LongWord;
-
 function  EncodeBase64(const S, Alphabet: AnsiString;
           const Pad: Boolean = False;
           const PadMultiple: Integer = 4;
           const PadChar: AnsiChar = '='): AnsiString;
+
 function  DecodeBase64(const S, Alphabet: AnsiString;
           const PadSet: CharSet{$IFNDEF CLR} = []{$ENDIF}): AnsiString;
 
@@ -792,9 +942,19 @@ function  BytesToHex(
 { Type conversion                                                              }
 {                                                                              }
 {$IFNDEF ManagedCode}
-function  PointerToStr(const P: Pointer): AnsiString;
-function  StrToPointer(const S: AnsiString): Pointer;
+function  PointerToStrA(const P: Pointer): AnsiString;
+function  PointerToStrW(const P: Pointer): WideString;
+function  PointerToStr(const P: Pointer): String;
+
+function  StrToPointerA(const S: AnsiString): Pointer;
+function  StrToPointerW(const S: WideString): Pointer;
+function  StrToPointer(const S: String): Pointer;
+
+function  InterfaceToStrA(const I: IInterface): AnsiString;
+function  InterfaceToStrW(const I: IInterface): WideString;
+function  InterfaceToStr(const I: IInterface): String;
 {$ENDIF}
+
 function  ObjectClassName(const O: TObject): String;
 function  ClassClassName(const C: TClass): String;
 function  ObjectToStr(const O: TObject): String;
@@ -808,23 +968,31 @@ function  StrToCharSet(const S: AnsiString): CharSet;
 {                                                                              }
 {   HashBuf uses a every byte in the buffer to calculate a hash.               }
 {                                                                              }
-{   HashStrBuf/HashStr is a general purpose string hashing function.           }
-{   For large strings, HashStr will sample up to 48 bytes from the string.     }
+{   HashStr is a general purpose string hashing function.                      }
 {                                                                              }
 {   If Slots = 0 the hash value is in the LongWord range (0-$FFFFFFFF),        }
 {   otherwise the value is in the range from 0 to Slots-1. Note that the       }
 {   'mod' operation, which is used when Slots <> 0, is comparitively slow.     }
 {                                                                              }
-{$IFNDEF ManagedCode}
-function  HashBuf(const Buf; const BufSize: Integer;
+function  HashBuf(const Hash: LongWord; const Buf; const BufSize: Integer): LongWord;
+
+function  HashStrA(const S: AnsiString;
+          const Index: Integer = 1; const Count: Integer = -1;
+          const AsciiCaseSensitive: Boolean = True;
           const Slots: LongWord = 0): LongWord;
-function  HashStrBuf(const StrBuf: Pointer; const StrLength: Integer;
+function  HashStrW(const S: WideString;
+          const Index: Integer = 1; const Count: Integer = -1;
+          const AsciiCaseSensitive: Boolean = True;
           const Slots: LongWord = 0): LongWord;
-function  HashStrBufNoCase(const StrBuf: Pointer; const StrLength: Integer;
+function  HashStrU(const S: UnicodeString;
+          const Index: Integer = 1; const Count: Integer = -1;
+          const AsciiCaseSensitive: Boolean = True;
           const Slots: LongWord = 0): LongWord;
-{$ENDIF}
-function  HashStr(const S: AnsiString; const Slots: LongWord = 0;
-          const CaseSensitive: Boolean = True): LongWord;
+function  HashStr(const S: String;
+          const Index: Integer = 1; const Count: Integer = -1;
+          const AsciiCaseSensitive: Boolean = True;
+          const Slots: LongWord = 0): LongWord;
+
 function  HashInteger(const I: Integer; const Slots: LongWord = 0): LongWord;
 function  HashLongWord(const I: LongWord; const Slots: LongWord = 0): LongWord;
 
@@ -892,11 +1060,13 @@ const
   MaxWordArrayElements = MaxArraySize div Sizeof(Word);
   MaxLongWordArrayElements = MaxArraySize div Sizeof(LongWord);
   MaxCardinalArrayElements = MaxArraySize div Sizeof(Cardinal);
+  MaxNativeUIntArrayElements = MaxArraySize div Sizeof(NativeUInt);
   MaxShortIntArrayElements = MaxArraySize div Sizeof(ShortInt);
   MaxSmallIntArrayElements = MaxArraySize div Sizeof(SmallInt);
   MaxLongIntArrayElements = MaxArraySize div Sizeof(LongInt);
   MaxIntegerArrayElements = MaxArraySize div Sizeof(Integer);
   MaxInt64ArrayElements = MaxArraySize div Sizeof(Int64);
+  MaxNativeIntArrayElements = MaxArraySize div Sizeof(NativeInt);
   MaxSingleArrayElements = MaxArraySize div Sizeof(Single);
   MaxDoubleArrayElements = MaxArraySize div Sizeof(Double);
   MaxExtendedArrayElements = MaxArraySize div Sizeof(Extended);
@@ -905,6 +1075,7 @@ const
   MaxCurrencyArrayElements = MaxArraySize div Sizeof(Currency);
   MaxAnsiStringArrayElements = MaxArraySize div Sizeof(AnsiString);
   MaxWideStringArrayElements = MaxArraySize div Sizeof(WideString);
+  MaxUnicodeStringArrayElements = MaxArraySize div Sizeof(UnicodeString);
   {$IFDEF StringIsUnicode}
   MaxStringArrayElements = MaxArraySize div Sizeof(UnicodeString);
   {$ELSE}
@@ -922,10 +1093,12 @@ type
   TStaticByteArray = array[0..MaxByteArrayElements - 1] of Byte;
   TStaticWordArray = array[0..MaxWordArrayElements - 1] of Word;
   TStaticLongWordArray = array[0..MaxLongWordArrayElements - 1] of LongWord;
+  TStaticNativeUIntArray = array[0..MaxNativeUIntArrayElements - 1] of NativeUInt;
   TStaticShortIntArray = array[0..MaxShortIntArrayElements - 1] of ShortInt;
   TStaticSmallIntArray = array[0..MaxSmallIntArrayElements - 1] of SmallInt;
   TStaticLongIntArray = array[0..MaxLongIntArrayElements - 1] of LongInt;
   TStaticInt64Array = array[0..MaxInt64ArrayElements - 1] of Int64;
+  TStaticNativeIntArray = array[0..MaxNativeIntArrayElements - 1] of NativeInt;
   TStaticSingleArray = array[0..MaxSingleArrayElements - 1] of Single;
   TStaticDoubleArray = array[0..MaxDoubleArrayElements - 1] of Double;
   TStaticExtendedArray = array[0..MaxExtendedArrayElements - 1] of Extended;
@@ -934,6 +1107,7 @@ type
   TStaticCurrencyArray = array[0..MaxCurrencyArrayElements - 1] of Currency;
   TStaticAnsiStringArray = array[0..MaxAnsiStringArrayElements - 1] of AnsiString;
   TStaticWideStringArray = array[0..MaxWideStringArrayElements - 1] of WideString;
+  TStaticUnicodeStringArray = array[0..MaxUnicodeStringArrayElements - 1] of UnicodeString;
   {$IFDEF StringIsUnicode}
   TStaticStringArray = TStaticWideStringArray;
   {$ELSE}
@@ -954,11 +1128,13 @@ type
   PStaticWordArray = ^TStaticWordArray;
   PStaticLongWordArray = ^TStaticLongWordArray;
   PStaticCardinalArray = ^TStaticCardinalArray;
+  PStaticNativeUIntArray = ^TStaticNativeUIntArray;
   PStaticShortIntArray = ^TStaticShortIntArray;
   PStaticSmallIntArray = ^TStaticSmallIntArray;
   PStaticLongIntArray = ^TStaticLongIntArray;
   PStaticIntegerArray = ^TStaticIntegerArray;
   PStaticInt64Array = ^TStaticInt64Array;
+  PStaticNativeIntArray = ^TStaticNativeIntArray;
   PStaticSingleArray = ^TStaticSingleArray;
   PStaticDoubleArray = ^TStaticDoubleArray;
   PStaticExtendedArray = ^TStaticExtendedArray;
@@ -967,6 +1143,7 @@ type
   PStaticCurrencyArray = ^TStaticCurrencyArray;
   PStaticAnsiStringArray = ^TStaticAnsiStringArray;
   PStaticWideStringArray = ^TStaticWideStringArray;
+  PStaticUnicodeStringArray = ^TStaticUnicodeStringArray;
   PStaticStringArray = ^TStaticStringArray;
   PStaticPointerArray = ^TStaticPointerArray;
   PStaticObjectArray = ^TStaticObjectArray;
@@ -984,9 +1161,13 @@ type
   ByteArray = array of Byte;
   WordArray = array of Word;
   LongWordArray = array of LongWord;
+  CardinalArray = LongWordArray;
+  NativeUIntArray = array of NativeUInt;
   ShortIntArray = array of ShortInt;
   SmallIntArray = array of SmallInt;
   LongIntArray = array of LongInt;
+  IntegerArray = LongIntArray;
+  NativeIntArray = array of NativeInt;
   Int64Array = array of Int64;
   SingleArray = array of Single;
   DoubleArray = array of Double;
@@ -995,11 +1176,8 @@ type
   BooleanArray = array of Boolean;
   AnsiStringArray = array of AnsiString;
   WideStringArray = array of WideString;
-  {$IFDEF StringIsUnicode}
-  StringArray = WideStringArray;
-  {$ELSE}
-  StringArray = AnsiStringArray;
-  {$ENDIF}
+  UnicodeStringArray = array of UnicodeString;
+  StringArray = array of String;
   {$IFNDEF ManagedCode}
   PointerArray = array of Pointer;
   {$ENDIF}
@@ -1007,141 +1185,7 @@ type
   InterfaceArray = array of IInterface;
   CharSetArray = array of CharSet;
   ByteSetArray = array of ByteSet;
-  IntegerArray = LongIntArray;
-  CardinalArray = LongWordArray;
 
-
-function  Append(var V: ByteArray; const R: Byte): Integer; overload; {$IFDEF UseInline}inline;{$ENDIF}
-function  Append(var V: WordArray; const R: Word): Integer; overload; {$IFDEF UseInline}inline;{$ENDIF}
-function  Append(var V: LongWordArray; const R: LongWord): Integer; overload; {$IFDEF UseInline}inline;{$ENDIF}
-function  Append(var V: ShortIntArray; const R: ShortInt): Integer; overload; {$IFDEF UseInline}inline;{$ENDIF}
-function  Append(var V: SmallIntArray; const R: SmallInt): Integer; overload; {$IFDEF UseInline}inline;{$ENDIF}
-function  Append(var V: LongIntArray; const R: LongInt): Integer; overload; {$IFDEF UseInline}inline;{$ENDIF}
-function  Append(var V: Int64Array; const R: Int64): Integer; overload; {$IFDEF UseInline}inline;{$ENDIF}
-function  Append(var V: SingleArray; const R: Single): Integer; overload; {$IFDEF UseInline}inline;{$ENDIF}
-function  Append(var V: DoubleArray; const R: Double): Integer; overload; {$IFDEF UseInline}inline;{$ENDIF}
-function  Append(var V: ExtendedArray; const R: Extended): Integer; overload; {$IFDEF UseInline}inline;{$ENDIF}
-function  Append(var V: CurrencyArray; const R: Currency): Integer; overload; {$IFDEF UseInline}inline;{$ENDIF}
-function  Append(var V: BooleanArray; const R: Boolean): Integer; overload; {$IFDEF UseInline}inline;{$ENDIF}
-function  Append(var V: AnsiStringArray; const R: AnsiString): Integer; overload; {$IFDEF UseInline}inline;{$ENDIF}
-function  Append(var V: WideStringArray; const R: WideString): Integer; overload; {$IFDEF UseInline}inline;{$ENDIF}
-{$IFNDEF ManagedCode}
-function  Append(var V: PointerArray; const R: Pointer): Integer; overload; {$IFDEF UseInline}inline;{$ENDIF}
-{$ENDIF}
-function  Append(var V: ObjectArray; const R: TObject): Integer; overload; {$IFDEF UseInline}inline;{$ENDIF}
-function  Append(var V: InterfaceArray; const R: IInterface): Integer; overload; {$IFDEF UseInline}inline;{$ENDIF}
-function  Append(var V: ByteSetArray; const R: ByteSet): Integer; overload; {$IFDEF UseInline}inline;{$ENDIF}
-function  Append(var V: CharSetArray; const R: CharSet): Integer; overload; {$IFDEF UseInline}inline;{$ENDIF}
-function  AppendByteArray(var V: ByteArray; const R: array of Byte): Integer; overload;
-function  AppendWordArray(var V: WordArray; const R: array of Word): Integer; overload;
-function  AppendCardinalArray(var V: CardinalArray; const R: array of LongWord): Integer; overload;
-function  AppendShortIntArray(var V: ShortIntArray; const R: array of ShortInt): Integer; overload;
-function  AppendSmallIntArray(var V: SmallIntArray; const R: array of SmallInt): Integer; overload;
-function  AppendIntegerArray(var V: IntegerArray; const R: array of LongInt): Integer; overload;
-function  AppendInt64Array(var V: Int64Array; const R: array of Int64): Integer; overload;
-function  AppendSingleArray(var V: SingleArray; const R: array of Single): Integer; overload;
-function  AppendDoubleArray(var V: DoubleArray; const R: array of Double): Integer; overload;
-function  AppendExtendedArray(var V: ExtendedArray; const R: array of Extended): Integer; overload;
-function  AppendAnsiStringArray(var V: AnsiStringArray; const R: array of AnsiString): Integer; overload;
-function  AppendWideStringArray(var V: WideStringArray; const R: array of WideString): Integer; overload;
-function  AppendStringArray(var V: StringArray; const R: array of String): Integer; overload;
-{$IFNDEF CLR}
-function  AppendCurrencyArray(var V: CurrencyArray; const R: array of Currency): Integer; overload;
-function  AppendPointerArray(var V: PointerArray; const R: array of Pointer): Integer; overload;
-function  AppendCharSetArray(var V: CharSetArray; const R: array of CharSet): Integer; overload;
-function  AppendByteSetArray(var V: ByteSetArray; const R: array of ByteSet): Integer; overload;
-{$ENDIF}
-function  AppendObjectArray(var V: ObjectArray; const R: ObjectArray): Integer; overload;
-
-
-function  Remove(var V: ByteArray; const Idx: Integer; const Count: Integer = 1): Integer; overload;
-function  Remove(var V: WordArray; const Idx: Integer; const Count: Integer = 1): Integer; overload;
-function  Remove(var V: LongWordArray; const Idx: Integer; const Count: Integer = 1): Integer; overload;
-function  Remove(var V: ShortIntArray; const Idx: Integer; const Count: Integer = 1): Integer; overload;
-function  Remove(var V: SmallIntArray; const Idx: Integer; const Count: Integer = 1): Integer; overload;
-function  Remove(var V: LongIntArray; const Idx: Integer; const Count: Integer = 1): Integer; overload;
-function  Remove(var V: Int64Array; const Idx: Integer; const Count: Integer = 1): Integer; overload;
-function  Remove(var V: SingleArray; const Idx: Integer; const Count: Integer = 1): Integer; overload;
-function  Remove(var V: DoubleArray; const Idx: Integer; const Count: Integer = 1): Integer; overload;
-function  Remove(var V: ExtendedArray; const Idx: Integer; const Count: Integer = 1): Integer; overload;
-function  Remove(var V: AnsiStringArray; const Idx: Integer; const Count: Integer = 1): Integer; overload;
-function  Remove(var V: WideStringArray; const Idx: Integer; const Count: Integer = 1): Integer; overload;
-{$IFNDEF ManagedCode}
-function  Remove(var V: PointerArray; const Idx: Integer; const Count: Integer = 1): Integer; overload;
-{$ENDIF}
-{$IFNDEF CLR}
-function  Remove(var V: CurrencyArray; const Idx: Integer; const Count: Integer = 1): Integer; overload;
-{$ENDIF}
-function  Remove(var V: ObjectArray; const Idx: Integer; const Count: Integer = 1;
-          const FreeObjects: Boolean = False): Integer; overload;
-function  Remove(var V: InterfaceArray; const Idx: Integer; const Count: Integer = 1): Integer; overload;
-
-procedure RemoveDuplicates(var V: ByteArray; const IsSorted: Boolean); overload;
-procedure RemoveDuplicates(var V: WordArray; const IsSorted: Boolean); overload;
-procedure RemoveDuplicates(var V: LongWordArray; const IsSorted: Boolean); overload;
-procedure RemoveDuplicates(var V: ShortIntArray; const IsSorted: Boolean); overload;
-procedure RemoveDuplicates(var V: SmallIntArray; const IsSorted: Boolean); overload;
-procedure RemoveDuplicates(var V: LongIntArray; const IsSorted: Boolean); overload;
-procedure RemoveDuplicates(var V: Int64Array; const IsSorted: Boolean); overload;
-procedure RemoveDuplicates(var V: SingleArray; const IsSorted: Boolean); overload;
-procedure RemoveDuplicates(var V: DoubleArray; const IsSorted: Boolean); overload;
-procedure RemoveDuplicates(var V: ExtendedArray; const IsSorted: Boolean); overload;
-procedure RemoveDuplicates(var V: AnsiStringArray; const IsSorted: Boolean); overload;
-procedure RemoveDuplicates(var V: WideStringArray; const IsSorted: Boolean); overload;
-{$IFNDEF ManagedCode}
-procedure RemoveDuplicates(var V: PointerArray; const IsSorted: Boolean); overload;
-{$ENDIF}
-
-procedure TrimArrayLeft(var S: ByteArray; const TrimList: array of Byte); overload;
-procedure TrimArrayLeft(var S: WordArray; const TrimList: array of Word); overload;
-procedure TrimArrayLeft(var S: LongWordArray; const TrimList: array of LongWord); overload;
-procedure TrimArrayLeft(var S: ShortIntArray; const TrimList: array of ShortInt); overload;
-procedure TrimArrayLeft(var S: SmallIntArray; const TrimList: array of SmallInt); overload;
-procedure TrimArrayLeft(var S: LongIntArray; const TrimList: array of LongInt); overload;
-procedure TrimArrayLeft(var S: Int64Array; const TrimList: array of Int64); overload;
-procedure TrimArrayLeft(var S: SingleArray; const TrimList: array of Single); overload;
-procedure TrimArrayLeft(var S: DoubleArray; const TrimList: array of Double); overload;
-procedure TrimArrayLeft(var S: ExtendedArray; const TrimList: array of Extended); overload;
-procedure TrimArrayLeft(var S: AnsiStringArray; const TrimList: array of AnsiString); overload;
-procedure TrimArrayLeft(var S: WideStringArray; const TrimList: array of WideString); overload;
-{$IFNDEF ManagedCode}
-procedure TrimArrayLeft(var S: PointerArray; const TrimList: array of Pointer); overload;
-{$ENDIF}
-
-procedure TrimArrayRight(var S: ByteArray; const TrimList: array of Byte); overload;
-procedure TrimArrayRight(var S: WordArray; const TrimList: array of Word); overload;
-procedure TrimArrayRight(var S: LongWordArray; const TrimList: array of LongWord); overload;
-procedure TrimArrayRight(var S: ShortIntArray; const TrimList: array of ShortInt); overload;
-procedure TrimArrayRight(var S: SmallIntArray; const TrimList: array of SmallInt); overload;
-procedure TrimArrayRight(var S: LongIntArray; const TrimList: array of LongInt); overload;
-procedure TrimArrayRight(var S: Int64Array; const TrimList: array of Int64); overload;
-procedure TrimArrayRight(var S: SingleArray; const TrimList: array of Single); overload;
-procedure TrimArrayRight(var S: DoubleArray; const TrimList: array of Double); overload;
-procedure TrimArrayRight(var S: ExtendedArray; const TrimList: array of Extended); overload;
-procedure TrimArrayRight(var S: AnsiStringArray; const TrimList: array of AnsiString); overload;
-procedure TrimArrayRight(var S: WideStringArray; const TrimList: array of WideString); overload;
-{$IFNDEF ManagedCode}
-procedure TrimArrayRight(var S: PointerArray; const TrimList: array of Pointer); overload;
-{$ENDIF}
-
-function  ArrayInsert(var V: ByteArray; const Idx: Integer; const Count: Integer): Integer; overload;
-function  ArrayInsert(var V: WordArray; const Idx: Integer; const Count: Integer): Integer; overload;
-function  ArrayInsert(var V: LongWordArray; const Idx: Integer; const Count: Integer): Integer; overload;
-function  ArrayInsert(var V: ShortIntArray; const Idx: Integer; const Count: Integer): Integer; overload;
-function  ArrayInsert(var V: SmallIntArray; const Idx: Integer; const Count: Integer): Integer; overload;
-function  ArrayInsert(var V: LongIntArray; const Idx: Integer; const Count: Integer): Integer; overload;
-function  ArrayInsert(var V: Int64Array; const Idx: Integer; const Count: Integer): Integer; overload;
-function  ArrayInsert(var V: SingleArray; const Idx: Integer; const Count: Integer): Integer; overload;
-function  ArrayInsert(var V: DoubleArray; const Idx: Integer; const Count: Integer): Integer; overload;
-function  ArrayInsert(var V: ExtendedArray; const Idx: Integer; const Count: Integer): Integer; overload;
-function  ArrayInsert(var V: CurrencyArray; const Idx: Integer; const Count: Integer): Integer; overload;
-function  ArrayInsert(var V: AnsiStringArray; const Idx: Integer; const Count: Integer): Integer; overload;
-function  ArrayInsert(var V: WideStringArray; const Idx: Integer; const Count: Integer): Integer; overload;
-{$IFNDEF ManagedCode}
-function  ArrayInsert(var V: PointerArray; const Idx: Integer; const Count: Integer): Integer; overload;
-function  ArrayInsert(var V: ObjectArray; const Idx: Integer; const Count: Integer): Integer; overload;
-{$ENDIF}
-function  ArrayInsert(var V: InterfaceArray; const Idx: Integer; const Count: Integer): Integer; overload;
 
 {$IFDEF ManagedCode}
 procedure FreeObjectArray(var V: ObjectArray); overload;
@@ -1151,349 +1195,6 @@ procedure FreeObjectArray(var V); overload;
 procedure FreeObjectArray(var V; const LoIdx, HiIdx: Integer); overload;
 {$ENDIF}
 procedure FreeAndNilObjectArray(var V: ObjectArray);
-
-function  PosNext(const Find: Byte; const V: ByteArray; const PrevPos: Integer = -1;
-          const IsSortedAscending: Boolean = False): Integer; overload;
-function  PosNext(const Find: Word; const V: WordArray; const PrevPos: Integer = -1;
-          const IsSortedAscending: Boolean = False): Integer; overload;
-function  PosNext(const Find: LongWord; const V: LongWordArray; const PrevPos: Integer = -1;
-          const IsSortedAscending: Boolean = False): Integer; overload;
-function  PosNext(const Find: ShortInt; const V: ShortIntArray; const PrevPos: Integer = -1;
-          const IsSortedAscending: Boolean = False): Integer; overload;
-function  PosNext(const Find: SmallInt; const V: SmallIntArray; const PrevPos: Integer = -1;
-          const IsSortedAscending: Boolean = False): Integer; overload;
-function  PosNext(const Find: LongInt; const V: LongIntArray; const PrevPos: Integer = -1;
-          const IsSortedAscending: Boolean = False): Integer; overload;
-function  PosNext(const Find: Int64; const V: Int64Array; const PrevPos: Integer = -1;
-          const IsSortedAscending: Boolean = False): Integer; overload;
-function  PosNext(const Find: Single; const V: SingleArray; const PrevPos: Integer = -1;
-          const IsSortedAscending: Boolean = False): Integer; overload;
-function  PosNext(const Find: Double; const V: DoubleArray; const PrevPos: Integer = -1;
-          const IsSortedAscending: Boolean = False): Integer; overload;
-function  PosNext(const Find: Extended; const V: ExtendedArray; const PrevPos: Integer = -1;
-          const IsSortedAscending: Boolean = False): Integer; overload;
-function  PosNext(const Find: Boolean; const V: BooleanArray; const PrevPos: Integer = -1;
-          const IsSortedAscending: Boolean = False): Integer; overload;
-function  PosNext(const Find: AnsiString; const V: AnsiStringArray; const PrevPos: Integer = -1;
-          const IsSortedAscending: Boolean = False): Integer; overload;
-function  PosNext(const Find: WideString; const V: WideStringArray; const PrevPos: Integer = -1;
-          const IsSortedAscending: Boolean = False): Integer; overload;
-{$IFNDEF ManagedCode}
-function  PosNext(const Find: Pointer; const V: PointerArray;
-          const PrevPos: Integer = -1): Integer; overload;
-{$ENDIF}
-function  PosNext(const Find: TObject; const V: ObjectArray;
-          const PrevPos: Integer = -1): Integer; overload;
-function  PosNext(const ClassType: TClass; const V: ObjectArray;
-          const PrevPos: Integer = -1): Integer; overload;
-function  PosNext(const ClassName: String; const V: ObjectArray;
-          const PrevPos: Integer = -1): Integer; overload;
-
-function  Count(const Find: Byte; const V: ByteArray;
-          const IsSortedAscending: Boolean = False): Integer; overload;
-function  Count(const Find: Word; const V: WordArray;
-          const IsSortedAscending: Boolean = False): Integer; overload;
-function  Count(const Find: LongWord; const V: LongWordArray;
-          const IsSortedAscending: Boolean = False): Integer; overload;
-function  Count(const Find: ShortInt; const V: ShortIntArray;
-          const IsSortedAscending: Boolean = False): Integer; overload;
-function  Count(const Find: SmallInt; const V: SmallIntArray;
-          const IsSortedAscending: Boolean = False): Integer; overload;
-function  Count(const Find: LongInt; const V: LongIntArray;
-          const IsSortedAscending: Boolean = False): Integer; overload;
-function  Count(const Find: Int64; const V: Int64Array;
-          const IsSortedAscending: Boolean = False): Integer; overload;
-function  Count(const Find: Single; const V: SingleArray;
-          const IsSortedAscending: Boolean = False): Integer; overload;
-function  Count(const Find: Double; const V: DoubleArray;
-          const IsSortedAscending: Boolean = False): Integer; overload;
-function  Count(const Find: Extended; const V: ExtendedArray;
-          const IsSortedAscending: Boolean = False): Integer; overload;
-function  Count(const Find: AnsiString; const V: AnsiStringArray;
-          const IsSortedAscending: Boolean = False): Integer; overload;
-function  Count(const Find: WideString; const V: WideStringArray;
-          const IsSortedAscending: Boolean = False): Integer; overload;
-function  Count(const Find: Boolean; const V: BooleanArray;
-          const IsSortedAscending: Boolean = False): Integer; overload;
-
-procedure RemoveAll(const Find: Byte; var V: ByteArray;
-          const IsSortedAscending: Boolean = False); overload; 
-procedure RemoveAll(const Find: Word; var V: WordArray;
-          const IsSortedAscending: Boolean = False); overload; 
-procedure RemoveAll(const Find: LongWord; var V: LongWordArray;
-          const IsSortedAscending: Boolean = False); overload; 
-procedure RemoveAll(const Find: ShortInt; var V: ShortIntArray;
-          const IsSortedAscending: Boolean = False); overload; 
-procedure RemoveAll(const Find: SmallInt; var V: SmallIntArray;
-          const IsSortedAscending: Boolean = False); overload; 
-procedure RemoveAll(const Find: LongInt; var V: LongIntArray;
-          const IsSortedAscending: Boolean = False); overload; 
-procedure RemoveAll(const Find: Int64; var V: Int64Array;
-          const IsSortedAscending: Boolean = False); overload; 
-procedure RemoveAll(const Find: Single; var V: SingleArray;
-          const IsSortedAscending: Boolean = False); overload; 
-procedure RemoveAll(const Find: Double; var V: DoubleArray;
-          const IsSortedAscending: Boolean = False); overload; 
-procedure RemoveAll(const Find: Extended; var V: ExtendedArray;
-          const IsSortedAscending: Boolean = False); overload; 
-procedure RemoveAll(const Find: AnsiString; var V: AnsiStringArray;
-          const IsSortedAscending: Boolean = False); overload; 
-procedure RemoveAll(const Find: WideString; var V: WideStringArray;
-          const IsSortedAscending: Boolean = False); overload; 
-
-function  Intersection(const V1, V2: ByteArray;
-          const IsSortedAscending: Boolean = False): ByteArray; overload;
-function  Intersection(const V1, V2: WordArray;
-          const IsSortedAscending: Boolean = False): WordArray; overload;
-function  Intersection(const V1, V2: LongWordArray;
-          const IsSortedAscending: Boolean = False): LongWordArray; overload;
-function  Intersection(const V1, V2: ShortIntArray;
-          const IsSortedAscending: Boolean = False): ShortIntArray; overload;
-function  Intersection(const V1, V2: SmallIntArray;
-          const IsSortedAscending: Boolean = False): SmallIntArray; overload;
-function  Intersection(const V1, V2: LongIntArray;
-          const IsSortedAscending: Boolean = False): LongIntArray; overload;
-function  Intersection(const V1, V2: Int64Array;
-          const IsSortedAscending: Boolean = False): Int64Array; overload;
-function  Intersection(const V1, V2: SingleArray;
-          const IsSortedAscending: Boolean = False): SingleArray; overload;
-function  Intersection(const V1, V2: DoubleArray;
-          const IsSortedAscending: Boolean = False): DoubleArray; overload;
-function  Intersection(const V1, V2: ExtendedArray;
-          const IsSortedAscending: Boolean = False): ExtendedArray; overload;
-function  Intersection(const V1, V2: AnsiStringArray;
-          const IsSortedAscending: Boolean = False): AnsiStringArray; overload;
-function  Intersection(const V1, V2: WideStringArray;
-          const IsSortedAscending: Boolean = False): WideStringArray; overload;
-
-function  Difference(const V1, V2: ByteArray;
-          const IsSortedAscending: Boolean = False): ByteArray; overload;
-function  Difference(const V1, V2: WordArray;
-          const IsSortedAscending: Boolean = False): WordArray; overload;
-function  Difference(const V1, V2: LongWordArray;
-          const IsSortedAscending: Boolean = False): LongWordArray; overload;
-function  Difference(const V1, V2: ShortIntArray;
-          const IsSortedAscending: Boolean = False): ShortIntArray; overload;
-function  Difference(const V1, V2: SmallIntArray;
-          const IsSortedAscending: Boolean = False): SmallIntArray; overload;
-function  Difference(const V1, V2: LongIntArray;
-          const IsSortedAscending: Boolean = False): LongIntArray; overload;
-function  Difference(const V1, V2: Int64Array;
-          const IsSortedAscending: Boolean = False): Int64Array; overload;
-function  Difference(const V1, V2: SingleArray;
-          const IsSortedAscending: Boolean = False): SingleArray; overload;
-function  Difference(const V1, V2: DoubleArray;
-          const IsSortedAscending: Boolean = False): DoubleArray; overload;
-function  Difference(const V1, V2: ExtendedArray;
-          const IsSortedAscending: Boolean = False): ExtendedArray; overload;
-function  Difference(const V1, V2: AnsiStringArray;
-          const IsSortedAscending: Boolean = False): AnsiStringArray; overload;
-function  Difference(const V1, V2: WideStringArray;
-          const IsSortedAscending: Boolean = False): WideStringArray; overload;
-
-procedure Reverse(var V: ByteArray); overload;
-procedure Reverse(var V: WordArray); overload;
-procedure Reverse(var V: LongWordArray); overload;
-procedure Reverse(var V: ShortIntArray); overload;
-procedure Reverse(var V: SmallIntArray); overload;
-procedure Reverse(var V: LongIntArray); overload;
-procedure Reverse(var V: Int64Array); overload;
-procedure Reverse(var V: SingleArray); overload;
-procedure Reverse(var V: DoubleArray); overload;
-procedure Reverse(var V: ExtendedArray); overload;
-procedure Reverse(var V: AnsiStringArray); overload;
-procedure Reverse(var V: WideStringArray); overload;
-{$IFNDEF ManagedCode}
-procedure Reverse(var V: PointerArray); overload;
-{$ENDIF}
-procedure Reverse(var V: ObjectArray); overload;
-
-function  AsBooleanArray(const V: array of Boolean): BooleanArray; overload;
-function  AsByteArray(const V: array of Byte): ByteArray; overload;
-function  AsWordArray(const V: array of Word): WordArray; overload;
-function  AsLongWordArray(const V: array of LongWord): LongWordArray; overload;
-function  AsCardinalArray(const V: array of Cardinal): CardinalArray; overload;
-function  AsShortIntArray(const V: array of ShortInt): ShortIntArray; overload;
-function  AsSmallIntArray(const V: array of SmallInt): SmallIntArray; overload;
-function  AsLongIntArray(const V: array of LongInt): LongIntArray; overload;
-function  AsIntegerArray(const V: array of Integer): IntegerArray; overload;
-function  AsInt64Array(const V: array of Int64): Int64Array; overload;
-function  AsSingleArray(const V: array of Single): SingleArray; overload;
-function  AsDoubleArray(const V: array of Double): DoubleArray; overload;
-function  AsExtendedArray(const V: array of Extended): ExtendedArray; overload;
-function  AsCurrencyArray(const V: array of Currency): CurrencyArray; overload;
-function  AsAnsiStringArray(const V: array of AnsiString): AnsiStringArray; overload;
-function  AsWideStringArray(const V: array of WideString): WideStringArray; overload;
-function  AsStringArray(const V: array of String): StringArray; overload;
-{$IFNDEF ManagedCode}
-function  AsPointerArray(const V: array of Pointer): PointerArray; overload;
-{$ENDIF}
-function  AsCharSetArray(const V: array of CharSet): CharSetArray; overload;
-function  AsObjectArray(const V: array of TObject): ObjectArray; overload;
-function  AsInterfaceArray(const V: array of IInterface): InterfaceArray; overload;
-
-function  RangeByte(const First: Byte; const Count: Integer;
-          const Increment: Byte = 1): ByteArray;
-function  RangeWord(const First: Word; const Count: Integer;
-          const Increment: Word = 1): WordArray;
-function  RangeLongWord(const First: LongWord; const Count: Integer;
-          const Increment: LongWord = 1): LongWordArray;
-function  RangeCardinal(const First: Cardinal; const Count: Integer;
-          const Increment: Cardinal = 1): CardinalArray;
-function  RangeShortInt(const First: ShortInt; const Count: Integer;
-          const Increment: ShortInt = 1): ShortIntArray;
-function  RangeSmallInt(const First: SmallInt; const Count: Integer;
-          const Increment: SmallInt = 1): SmallIntArray;
-function  RangeLongInt(const First: LongInt; const Count: Integer;
-          const Increment: LongInt = 1): LongIntArray;
-function  RangeInteger(const First: Integer; const Count: Integer;
-          const Increment: Integer = 1): IntegerArray;
-function  RangeInt64(const First: Int64; const Count: Integer;
-          const Increment: Int64 = 1): Int64Array;
-function  RangeSingle(const First: Single; const Count: Integer;
-          const Increment: Single = 1): SingleArray;
-function  RangeDouble(const First: Double; const Count: Integer;
-          const Increment: Double = 1): DoubleArray;
-function  RangeExtended(const First: Extended; const Count: Integer;
-          const Increment: Extended = 1): ExtendedArray;
-
-function  DupByte(const V: Byte; const Count: Integer): ByteArray;
-function  DupWord(const V: Word; const Count: Integer): WordArray;
-function  DupLongWord(const V: LongWord; const Count: Integer): LongWordArray;
-function  DupCardinal(const V: Cardinal; const Count: Integer): CardinalArray;
-function  DupShortInt(const V: ShortInt; const Count: Integer): ShortIntArray;
-function  DupSmallInt(const V: SmallInt; const Count: Integer): SmallIntArray;
-function  DupLongInt(const V: LongInt; const Count: Integer): LongIntArray;
-function  DupInteger(const V: Integer; const Count: Integer): IntegerArray;
-function  DupInt64(const V: Int64; const Count: Integer): Int64Array;
-function  DupSingle(const V: Single; const Count: Integer): SingleArray;
-function  DupDouble(const V: Double; const Count: Integer): DoubleArray;
-function  DupExtended(const V: Extended; const Count: Integer): ExtendedArray;
-function  DupCurrency(const V: Currency; const Count: Integer): CurrencyArray;
-function  DupAnsiString(const V: AnsiString; const Count: Integer): AnsiStringArray;
-function  DupWideString(const V: WideString; const Count: Integer): WideStringArray;
-function  DupString(const V: String; const Count: Integer): StringArray;
-function  DupCharSet(const V: CharSet; const Count: Integer): CharSetArray;
-function  DupObject(const V: TObject; const Count: Integer): ObjectArray;
-
-procedure SetLengthAndZero(var V: ByteArray; const NewLength: Integer); overload;
-procedure SetLengthAndZero(var V: WordArray; const NewLength: Integer); overload;
-procedure SetLengthAndZero(var V: LongWordArray; const NewLength: Integer); overload;
-procedure SetLengthAndZero(var V: ShortIntArray; const NewLength: Integer); overload;
-procedure SetLengthAndZero(var V: SmallIntArray; const NewLength: Integer); overload;
-procedure SetLengthAndZero(var V: LongIntArray; const NewLength: Integer); overload;
-procedure SetLengthAndZero(var V: Int64Array; const NewLength: Integer); overload;
-procedure SetLengthAndZero(var V: SingleArray; const NewLength: Integer); overload;
-procedure SetLengthAndZero(var V: DoubleArray; const NewLength: Integer); overload;
-procedure SetLengthAndZero(var V: ExtendedArray; const NewLength: Integer); overload;
-procedure SetLengthAndZero(var V: CurrencyArray; const NewLength: Integer); overload;
-procedure SetLengthAndZero(var V: CharSetArray; const NewLength: Integer); overload;
-procedure SetLengthAndZero(var V: BooleanArray; const NewLength: Integer); overload;
-{$IFNDEF ManagedCode}
-procedure SetLengthAndZero(var V: PointerArray; const NewLength: Integer); overload;
-{$ENDIF}
-procedure SetLengthAndZero(var V: ObjectArray; const NewLength: Integer;
-          const FreeObjects: Boolean = False); overload;
-
-function  IsEqual(const V1, V2: ByteArray): Boolean; overload;
-function  IsEqual(const V1, V2: WordArray): Boolean; overload;
-function  IsEqual(const V1, V2: LongWordArray): Boolean; overload;
-function  IsEqual(const V1, V2: ShortIntArray): Boolean; overload;
-function  IsEqual(const V1, V2: SmallIntArray): Boolean; overload;
-function  IsEqual(const V1, V2: LongIntArray): Boolean; overload;
-function  IsEqual(const V1, V2: Int64Array): Boolean; overload;
-function  IsEqual(const V1, V2: SingleArray): Boolean; overload;
-function  IsEqual(const V1, V2: DoubleArray): Boolean; overload;
-function  IsEqual(const V1, V2: ExtendedArray): Boolean; overload;
-function  IsEqual(const V1, V2: CurrencyArray): Boolean; overload;
-function  IsEqual(const V1, V2: AnsiStringArray): Boolean; overload;
-function  IsEqual(const V1, V2: WideStringArray): Boolean; overload;
-function  IsEqual(const V1, V2: CharSetArray): Boolean; overload;
-
-function  ByteArrayToLongIntArray(const V: ByteArray): LongIntArray;
-function  WordArrayToLongIntArray(const V: WordArray): LongIntArray;
-function  ShortIntArrayToLongIntArray(const V: ShortIntArray): LongIntArray;
-function  SmallIntArrayToLongIntArray(const V: SmallIntArray): LongIntArray;
-function  LongIntArrayToInt64Array(const V: LongIntArray): Int64Array;
-function  LongIntArrayToSingleArray(const V: LongIntArray): SingleArray;
-function  LongIntArrayToDoubleArray(const V: LongIntArray): DoubleArray;
-function  LongIntArrayToExtendedArray(const V: LongIntArray): ExtendedArray;
-function  SingleArrayToDoubleArray(const V: SingleArray): DoubleArray;
-function  SingleArrayToExtendedArray(const V: SingleArray): ExtendedArray;
-function  SingleArrayToCurrencyArray(const V: SingleArray): CurrencyArray;
-function  SingleArrayToLongIntArray(const V: SingleArray): LongIntArray;
-function  SingleArrayToInt64Array(const V: SingleArray): Int64Array;
-function  DoubleArrayToExtendedArray(const V: DoubleArray): ExtendedArray;
-function  DoubleArrayToCurrencyArray(const V: DoubleArray): CurrencyArray;
-function  DoubleArrayToLongIntArray(const V: DoubleArray): LongIntArray;
-function  DoubleArrayToInt64Array(const V: DoubleArray): Int64Array;
-function  ExtendedArrayToCurrencyArray(const V: ExtendedArray): CurrencyArray;
-function  ExtendedArrayToLongIntArray(const V: ExtendedArray): LongIntArray;
-function  ExtendedArrayToInt64Array(const V: ExtendedArray): Int64Array;
-
-function  ByteArrayFromIndexes(const V: ByteArray;
-          const Indexes: IntegerArray): ByteArray;
-function  WordArrayFromIndexes(const V: WordArray;
-          const Indexes: IntegerArray): WordArray;
-function  LongWordArrayFromIndexes(const V: LongWordArray;
-          const Indexes: IntegerArray): LongWordArray;
-function  CardinalArrayFromIndexes(const V: CardinalArray;
-          const Indexes: IntegerArray): CardinalArray;
-function  ShortIntArrayFromIndexes(const V: ShortIntArray;
-          const Indexes: IntegerArray): ShortIntArray;
-function  SmallIntArrayFromIndexes(const V: SmallIntArray;
-          const Indexes: IntegerArray): SmallIntArray;
-function  LongIntArrayFromIndexes(const V: LongIntArray;
-          const Indexes: IntegerArray): LongIntArray;
-function  IntegerArrayFromIndexes(const V: IntegerArray;
-          const Indexes: IntegerArray): IntegerArray;
-function  Int64ArrayFromIndexes(const V: Int64Array;
-          const Indexes: IntegerArray): Int64Array;
-function  SingleArrayFromIndexes(const V: SingleArray;
-          const Indexes: IntegerArray): SingleArray;
-function  DoubleArrayFromIndexes(const V: DoubleArray;
-          const Indexes: IntegerArray): DoubleArray;
-function  ExtendedArrayFromIndexes(const V: ExtendedArray;
-          const Indexes: IntegerArray): ExtendedArray;
-function  StringArrayFromIndexes(const V: StringArray;
-          const Indexes: IntegerArray): StringArray;
-
-procedure Sort(const V: ByteArray); overload;
-procedure Sort(const V: WordArray); overload;
-procedure Sort(const V: LongWordArray); overload;
-procedure Sort(const V: ShortIntArray); overload;
-procedure Sort(const V: SmallIntArray); overload;
-procedure Sort(const V: LongIntArray); overload;
-procedure Sort(const V: Int64Array); overload;
-procedure Sort(const V: SingleArray); overload;
-procedure Sort(const V: DoubleArray); overload;
-procedure Sort(const V: ExtendedArray); overload;
-procedure Sort(const V: AnsiStringArray); overload;
-procedure Sort(const V: WideStringArray); overload;
-
-procedure Sort(const Key: IntegerArray; const Data: IntegerArray); overload;
-procedure Sort(const Key: IntegerArray; const Data: Int64Array); overload;
-procedure Sort(const Key: IntegerArray; const Data: AnsiStringArray); overload;
-procedure Sort(const Key: IntegerArray; const Data: ExtendedArray); overload;
-{$IFNDEF ManagedCode}
-procedure Sort(const Key: IntegerArray; const Data: PointerArray); overload;
-{$ENDIF}
-procedure Sort(const Key: AnsiStringArray; const Data: IntegerArray); overload;
-procedure Sort(const Key: AnsiStringArray; const Data: Int64Array); overload;
-procedure Sort(const Key: AnsiStringArray; const Data: AnsiStringArray); overload;
-procedure Sort(const Key: AnsiStringArray; const Data: ExtendedArray); overload;
-{$IFNDEF ManagedCode}
-procedure Sort(const Key: AnsiStringArray; const Data: PointerArray); overload;
-{$ENDIF}
-procedure Sort(const Key: ExtendedArray; const Data: IntegerArray); overload;
-procedure Sort(const Key: ExtendedArray; const Data: Int64Array); overload;
-procedure Sort(const Key: ExtendedArray; const Data: AnsiStringArray); overload;
-procedure Sort(const Key: ExtendedArray; const Data: ExtendedArray); overload;
-{$IFNDEF ManagedCode}
-procedure Sort(const Key: ExtendedArray; const Data: PointerArray); overload;
-{$ENDIF}
-
-
 
 {$IFNDEF CLR}
 {                                                                              }
@@ -1537,10 +1238,9 @@ procedure SelfTest;
 
 implementation
 
-{$IFDEF ManagedCode}
 uses
-  SysUtils;
-{$ENDIF}
+  SysUtils,
+  Math;
 
 
 
@@ -1604,8 +1304,6 @@ end;
 {                                                                              }
 { Range check error                                                            }
 {                                                                              }
-{$IFOPT R+}
-{$IFDEF ManagedCode}
 resourcestring
   SRangeCheckError = 'Range check error';
 
@@ -1613,34 +1311,6 @@ procedure RaiseRangeCheckError; {$IFDEF UseInline}inline;{$ENDIF}
 begin
   raise ERangeError.Create(SRangeCheckError);
 end;
-{$ELSE}
-{$IFDEF DELPHI2005_UP}
-procedure RaiseRangeCheckError;
-begin
-  // Raise range check error using Error function in System.pas
-  Error(reRangeError);
-end;
-{$ELSE}
-resourcestring
-  SRangeCheckError = 'Range check error';
-
-procedure RaiseRangeCheckError;
-begin
-  // Raise range check error using Assert mechanism
-  {$IFOPT C+}
-    {$DEFINE OPT_C_ON}
-  {$ELSE}
-    {$UNDEF OPT_C_ON}
-    {$C+}
-  {$ENDIF}
-  Assert(False, SRangeCheckError);
-  {$IFNDEF OPT_C_ON}
-    {$C-}
-  {$ENDIF}
-end;
-{$ENDIF}
-{$ENDIF}
-{$ENDIF}
 
 
 
@@ -1872,6 +1542,172 @@ end;
 function InCurrencyRange(const A: Int64): Boolean;
 begin
   Result := (A >= MinCurrency) and (A <= MaxCurrency);
+end;
+{$ENDIF}
+
+function FloatExponentBase2(const A: Extended; var Exponent: Integer): Boolean;
+var RecA : ExtendedRec absolute A;
+    ExpA : Word;
+begin
+  ExpA := RecA.Exponent and $7FFF;
+  if ExpA = $7FFF then // A is NaN, Infinity, ...
+    begin
+      Exponent := 0;
+      Result := False;
+    end
+  else
+    begin
+      Exponent := Integer(ExpA) - 16383;
+      Result := True;
+    end;
+end;
+
+function FloatExponentBase10(const A: Extended; var Exponent: Integer): Boolean;
+const Log2_10 = 3.32192809488736; // Log2(10)
+begin
+  Result := FloatExponentBase2(A, Exponent);
+  if Result then
+    Exponent := Round(Exponent / Log2_10);
+end;
+
+function FloatIsInfinity(const A: Extended): Boolean;
+var Ext : ExtendedRec absolute A;
+begin
+  if Ext.Exponent and $7FFF <> $7FFF then
+    Result := False
+  else
+    Result := (Ext.Mantissa[1] = $80000000) and (Ext.Mantissa[0] = 0);
+end;
+
+function FloatIsNaN(const A: Extended): Boolean;
+var Ext : ExtendedRec absolute A;
+begin
+  if Ext.Exponent and $7FFF <> $7FFF then
+    Result := False
+  else
+    Result := (Ext.Mantissa[1] <> $80000000) or (Ext.Mantissa[0] <> 0)
+end;
+
+
+
+{                                                                              }
+{ Approximate comparison                                                       }
+{                                                                              }
+function FloatZero(const A: Float; const CompareDelta: Float): Boolean;
+begin
+  Assert(CompareDelta >= 0.0);
+  Result := Abs(A) <= CompareDelta;
+end;
+
+function FloatOne(const A: Float; const CompareDelta: Float): Boolean;
+begin
+  Assert(CompareDelta >= 0.0);
+  Result := Abs(A - 1.0) <= CompareDelta;
+end;
+
+function FloatsEqual(const A, B: Float; const CompareDelta: Float): Boolean;
+begin
+  Assert(CompareDelta >= 0.0);
+  Result := Abs(A - B) <= CompareDelta;
+end;
+
+function FloatsCompare(const A, B: Float; const CompareDelta: Float): TCompareResult;
+var D : Float;
+begin
+  Assert(CompareDelta >= 0.0);
+  D := A - B;
+  if Abs(D) <= CompareDelta then
+    Result := crEqual else
+  if D >= CompareDelta then
+    Result := crGreater
+  else
+    Result := crLess;
+end;
+
+
+
+{$IFNDEF CLR}
+{                                                                              }
+{ Scaled approximate comparison                                                }
+{                                                                              }
+{   The ApproxEqual and ApproxCompare functions were taken from the freeware   }
+{   FltMath unit by Tempest Software, as taken from Knuth, Seminumerical       }
+{   Algorithms, 2nd ed., Addison-Wesley, 1981, pp. 217-220.                    }
+{                                                                              }
+function ApproxEqual(const A, B: Extended; const CompareEpsilon: Double): Boolean;
+var ExtA : ExtendedRec absolute A;
+    ExtB : ExtendedRec absolute B;
+    ExpA : Word;
+    ExpB : Word;
+    Exp  : ExtendedRec;
+begin
+  ExpA := ExtA.Exponent and $7FFF;
+  ExpB := ExtB.Exponent and $7FFF;
+  if (ExpA = $7FFF) and
+     ((ExtA.Mantissa[1] <> $80000000) or (ExtA.Mantissa[0] <> 0)) then
+    { A is NaN }
+    Result := False else
+  if (ExpB = $7FFF) and
+     ((ExtB.Mantissa[1] <> $80000000) or (ExtB.Mantissa[0] <> 0)) then
+    { B is NaN }
+    Result := False else
+  if (ExpA = $7FFF) or (ExpB = $7FFF) then
+    { A or B is infinity. Use the builtin comparison, which will       }
+    { properly account for signed infinities, comparing infinity with  }
+    { infinity, or comparing infinity with a finite value.             }
+    Result := A = B else
+  begin
+    { We are comparing two finite values, so take the difference and   }
+    { compare that against the scaled Epsilon.                         }
+    Exp.Value := 1.0;
+    if ExpA < ExpB then
+      Exp.Exponent := ExpB
+    else
+      Exp.Exponent := ExpA;
+    Result := Abs(A - B) <= (CompareEpsilon * Exp.Value);
+  end;
+end;
+
+function ApproxCompare(const A, B: Extended; const CompareEpsilon: Double): TCompareResult;
+var ExtA : ExtendedRec absolute A;
+    ExtB : ExtendedRec absolute B;
+    ExpA : Word;
+    ExpB : Word;
+    Exp  : ExtendedRec;
+    D, E : Extended;
+begin
+  ExpA := ExtA.Exponent and $7FFF;
+  ExpB := ExtB.Exponent and $7FFF;
+  if (ExpA = $7FFF) and
+     ((ExtA.Mantissa[1] <> $80000000) or (ExtA.Mantissa[0] <> 0)) then
+    { A is NaN }
+    Result := crUndefined else
+  if (ExpB = $7FFF) and
+     ((ExtB.Mantissa[1] <> $80000000) or (ExtB.Mantissa[0] <> 0)) then
+    { B is NaN }
+    Result := crUndefined else
+  if (ExpA = $7FFF) or (ExpB = $7FFF) then
+    { A or B is infinity. Use the builtin comparison, which will       }
+    { properly account for signed infinities, comparing infinity with  }
+    { infinity, or comparing infinity with a finite value.             }
+    Result := Compare(A, B) else
+  begin
+    { We are comparing two finite values, so take the difference and   }
+    { compare that against the scaled Epsilon.                         }
+    Exp.Value := 1.0;
+    if ExpA < ExpB then
+      Exp.Exponent := ExpB
+    else
+      Exp.Exponent := ExpA;
+    E := CompareEpsilon * Exp.Value;
+    D := A - B;
+    if Abs(D) <= E then
+      Result := crEqual else
+    if D >= E then
+      Result := crGreater
+    else
+      Result := crLess;
+  end;
 end;
 {$ENDIF}
 
@@ -3161,6 +2997,22 @@ begin
 end;
 {$ENDIF}
 
+procedure Swap(var X, Y: NativeUInt);
+var F : NativeUInt;
+begin
+  F := X;
+  X := Y;
+  Y := F;
+end;
+
+procedure Swap(var X, Y: NativeInt);
+var F : NativeInt;
+begin
+  F := X;
+  X := Y;
+  Y := F;
+end;
+
 {$IFNDEF ManagedCode}
 {$IFDEF ASM386_DELPHI}
 procedure Swap(var X, Y: Pointer); register; assembler;
@@ -3237,7 +3089,7 @@ begin
   Y := F;
 end;
 
-procedure Swap(var X, Y: AnsiString);
+procedure SwapA(var X, Y: AnsiString);
 var F : AnsiString;
 begin
   F := X;
@@ -3245,8 +3097,24 @@ begin
   Y := F;
 end;
 
-procedure Swap(var X, Y: WideString);
+procedure SwapW(var X, Y: WideString);
 var F : WideString;
+begin
+  F := X;
+  X := Y;
+  Y := F;
+end;
+
+procedure SwapU(var X, Y: UnicodeString);
+var F : UnicodeString;
+begin
+  F := X;
+  X := Y;
+  Y := F;
+end;
+
+procedure Swap(var X, Y: String);
+var F : String;
 begin
   F := X;
   X := Y;
@@ -3332,6 +3200,14 @@ begin
     Result := FalseValue;
 end;
 
+function iifU(const Expr: Boolean; const TrueValue, FalseValue: UnicodeString): UnicodeString;
+begin
+  if Expr then
+    Result := TrueValue
+  else
+    Result := FalseValue;
+end;
+
 function iif(const Expr: Boolean; const TrueValue, FalseValue: TObject): TObject;
 begin
   if Expr then
@@ -3396,7 +3272,7 @@ begin
     Result := crLess;
 end;
 
-function Compare(const I1, I2: AnsiString): TCompareResult;
+function CompareA(const I1, I2: AnsiString): TCompareResult;
 begin
   if I1 = I2 then
     Result := crEqual else
@@ -3406,7 +3282,7 @@ begin
     Result := crLess;
 end;
 
-function WideCompare(const I1, I2: WideString): TCompareResult;
+function CompareW(const I1, I2: WideString): TCompareResult;
 begin
   if I1 = I2 then
     Result := crEqual else
@@ -3416,181 +3292,45 @@ begin
     Result := crLess;
 end;
 
-function Sign(const A: LongInt): Integer;
+function CompareU(const I1, I2: UnicodeString): TCompareResult;
 begin
-  if A < 0 then
-    Result := -1 else
-  if A > 0 then
-    Result := 1
-  else
-    Result := 0;
-end;
-
-function Sign(const A: Int64): Integer;
-begin
-  if A < 0 then
-    Result := -1 else
-  if A > 0 then
-    Result := 1
-  else
-    Result := 0;
-end;
-
-function Sign(const A: Extended): Integer;
-begin
-  if A < 0 then
-    Result := -1 else
-  if A > 0 then
-    Result := 1
-  else
-    Result := 0;
-end;
-
-
-
-{                                                                              }
-{ Approximate comparison                                                       }
-{                                                                              }
-function FloatZero(const A: Float; const CompareDelta: Float): Boolean;
-begin
-  Assert(CompareDelta >= 0.0);
-  Result := Abs(A) <= CompareDelta;
-end;
-
-function FloatOne(const A: Float; const CompareDelta: Float): Boolean;
-begin
-  Assert(CompareDelta >= 0.0);
-  Result := Abs(A - 1.0) <= CompareDelta;
-end;
-
-function FloatsEqual(const A, B: Float; const CompareDelta: Float): Boolean;
-begin
-  Assert(CompareDelta >= 0.0);
-  Result := Abs(A - B) <= CompareDelta;
-end;
-
-function FloatsCompare(const A, B: Float; const CompareDelta: Float): TCompareResult;
-var D : Float;
-begin
-  Assert(CompareDelta >= 0.0);
-  D := A - B;
-  if Abs(D) <= CompareDelta then
+  if I1 = I2 then
     Result := crEqual else
-  if D >= CompareDelta then
+  if I1 > I2 then
     Result := crGreater
   else
     Result := crLess;
 end;
 
-
-
-{$IFNDEF CLR}
-{                                                                              }
-{ Scaled approximate comparison                                                }
-{                                                                              }
-{   The ApproxEqual and ApproxCompare functions were taken from the freeware   }
-{   FltMath unit by Tempest Software, as taken from Knuth, Seminumerical       }
-{   Algorithms, 2nd ed., Addison-Wesley, 1981, pp. 217-220.                    }
-{                                                                              }
-function ApproxEqual(const A, B: Extended; const CompareEpsilon: Double): Boolean;
-var ExtA : ExtendedRec absolute A;
-    ExtB : ExtendedRec absolute B;
-    ExpA : Word;
-    ExpB : Word;
-    Exp  : ExtendedRec;
+function Sgn(const A: LongInt): Integer;
 begin
-  ExpA := ExtA.Exponent and $7FFF;
-  ExpB := ExtB.Exponent and $7FFF;
-  if (ExpA = $7FFF) and
-     ((ExtA.Mantissa[1] <> $80000000) or (ExtA.Mantissa[0] <> 0)) then
-    { A is NaN }
-    Result := False else
-  if (ExpB = $7FFF) and
-     ((ExtB.Mantissa[1] <> $80000000) or (ExtB.Mantissa[0] <> 0)) then
-    { B is NaN }
-    Result := False else
-  if (ExpA = $7FFF) or (ExpB = $7FFF) then
-    { A or B is infinity. Use the builtin comparison, which will       }
-    { properly account for signed infinities, comparing infinity with  }
-    { infinity, or comparing infinity with a finite value.             }
-    Result := A = B else
-  begin
-    { We are comparing two finite values, so take the difference and   }
-    { compare that against the scaled Epsilon.                         }
-    Exp.Value := 1.0;
-    if ExpA < ExpB then
-      Exp.Exponent := ExpB
-    else
-      Exp.Exponent := ExpA;
-    Result := Abs(A - B) <= (CompareEpsilon * Exp.Value);
-  end;
-end;
-
-function ApproxCompare(const A, B: Extended; const CompareEpsilon: Double): TCompareResult;
-var ExtA : ExtendedRec absolute A;
-    ExtB : ExtendedRec absolute B;
-    ExpA : Word;
-    ExpB : Word;
-    Exp  : ExtendedRec;
-    D, E : Extended;
-begin
-  ExpA := ExtA.Exponent and $7FFF;
-  ExpB := ExtB.Exponent and $7FFF;
-  if (ExpA = $7FFF) and
-     ((ExtA.Mantissa[1] <> $80000000) or (ExtA.Mantissa[0] <> 0)) then
-    { A is NaN }
-    Result := crUndefined else
-  if (ExpB = $7FFF) and
-     ((ExtB.Mantissa[1] <> $80000000) or (ExtB.Mantissa[0] <> 0)) then
-    { B is NaN }
-    Result := crUndefined else
-  if (ExpA = $7FFF) or (ExpB = $7FFF) then
-    { A or B is infinity. Use the builtin comparison, which will       }
-    { properly account for signed infinities, comparing infinity with  }
-    { infinity, or comparing infinity with a finite value.             }
-    Result := Compare(A, B) else
-  begin
-    { We are comparing two finite values, so take the difference and   }
-    { compare that against the scaled Epsilon.                         }
-    Exp.Value := 1.0;
-    if ExpA < ExpB then
-      Exp.Exponent := ExpB
-    else
-      Exp.Exponent := ExpA;
-    E := CompareEpsilon * Exp.Value;
-    D := A - B;
-    if Abs(D) <= E then
-      Result := crEqual else
-    if D >= E then
-      Result := crGreater
-    else
-      Result := crLess;
-  end;
-end;
-
-
-
-{                                                                              }
-{ Special floating-point values                                                }
-{                                                                              }
-function FloatIsInfinity(const A: Extended): Boolean;
-var Ext : ExtendedRec absolute A;
-begin
-  if Ext.Exponent and $7FFF <> $7FFF then
-    Result := False
+  if A < 0 then
+    Result := -1 else
+  if A > 0 then
+    Result := 1
   else
-    Result := (Ext.Mantissa[1] = $80000000) and (Ext.Mantissa[0] = 0);
+    Result := 0;
 end;
 
-function FloatIsNaN(const A: Extended): Boolean;
-var Ext : ExtendedRec absolute A;
+function Sgn(const A: Int64): Integer;
 begin
-  if Ext.Exponent and $7FFF <> $7FFF then
-    Result := False
+  if A < 0 then
+    Result := -1 else
+  if A > 0 then
+    Result := 1
   else
-    Result := (Ext.Mantissa[1] <> $80000000) or (Ext.Mantissa[0] <> 0)
+    Result := 0;
 end;
-{$ENDIF}
+
+function Sgn(const A: Extended): Integer;
+begin
+  if A < 0 then
+    Result := -1 else
+  if A > 0 then
+    Result := 1
+  else
+    Result := 0;
+end;
 
 
 
@@ -3619,7 +3359,7 @@ const
 
 
 {                                                                              }
-{ Integer conversion                                                           }
+{ Integer-String conversions                                                   }
 {                                                                              }
 function AnsiCharToInt(const A: AnsiChar): Integer;
 begin
@@ -3789,7 +3529,7 @@ begin
   {$ENDIF}
 end;
 
-function IntToAnsiString(const A: Integer): AnsiString;
+function IntToStringA(const A: Int64): AnsiString;
 var L, T, I : Integer;
 begin
   if A = 0 then
@@ -3797,7 +3537,7 @@ begin
       Result := '0';
       exit;
     end;
-  // calculate length
+  // calculate string length
   if A < 0 then
     L := 1
   else
@@ -3825,7 +3565,7 @@ begin
     end;
 end;
 
-function IntToWideString(const A: Integer): WideString;
+function IntToStringW(const A: Int64): WideString;
 var L, T, I : Integer;
 begin
   if A = 0 then
@@ -3833,7 +3573,7 @@ begin
       Result := '0';
       exit;
     end;
-  // calculate length
+  // calculate string length
   if A < 0 then
     L := 1
   else
@@ -3861,458 +3601,102 @@ begin
     end;
 end;
 
-function IntToString(const A: Integer): String;
+function IntToStringU(const A: Int64): UnicodeString;
+var L, T, I : Integer;
 begin
-  {$IFDEF CharIsWide}
-  Result := IntToWideString(A);
-  {$ELSE}
-  Result := IntToAnsiString(A);
-  {$ENDIF}
-end;
-
-function LongWordToHexAnsiString(const A: LongWord; const Digits: Integer; const LowerCase: Boolean): AnsiString;
-var L, I, D : Integer;
-    T : LongWord;
-    C : AnsiChar;
-begin
-  // calculate length
-  L := 0;
+  if A = 0 then
+    begin
+      Result := '0';
+      exit;
+    end;
+  // calculate string length
+  if A < 0 then
+    L := 1
+  else
+    L := 0;
   T := A;
   while T <> 0 do
     begin
-      T := T div 16;
+      T := T div 10;
       Inc(L);
     end;
-  if L = 0 then
-    L := 1;
-  if Digits > L then
-    L := Digits;
   // convert
   SetLength(Result, L);
   I := 0;
   T := A;
+  if T < 0 then
+    begin
+      Result[1] := '-';
+      T := -T;
+    end;
   while T > 0 do
     begin
-      D := T mod 16;
-      if LowerCase then
-        C := IntToLowerHexAnsiChar(D)
-      else
-        C := IntToUpperHexAnsiChar(D);
-      Result[L - I] := C;
-      T := T div 16;
-      Inc(I);
-    end;
-  while I < L do
-    begin
-      Result[L - I] := '0';
+      Result[L - I] := IntToWideChar(T mod 10);
+      T := T div 10;
       Inc(I);
     end;
 end;
 
-function LongWordToHexWideString(const A: LongWord; const Digits: Integer; const LowerCase: Boolean): WideString;
-var L, I, D : Integer;
-    T : LongWord;
-    C : WideChar;
+function IntToString(const A: Int64): String;
+var L, T, I : Integer;
 begin
-  // calculate length
-  L := 0;
+  if A = 0 then
+    begin
+      Result := '0';
+      exit;
+    end;
+  // calculate string length
+  if A < 0 then
+    L := 1
+  else
+    L := 0;
   T := A;
   while T <> 0 do
     begin
-      T := T div 16;
+      T := T div 10;
       Inc(L);
     end;
-  if L = 0 then
-    L := 1;
-  if Digits > L then
-    L := Digits;
   // convert
   SetLength(Result, L);
   I := 0;
   T := A;
+  if T < 0 then
+    begin
+      Result[1] := '-';
+      T := -T;
+    end;
   while T > 0 do
     begin
-      D := T mod 16;
-      if LowerCase then
-        C := IntToLowerHexWideChar(D)
-      else
-        C := IntToUpperHexWideChar(D);
-      Result[L - I] := C;
-      T := T div 16;
-      Inc(I);
-    end;
-  while I < L do
-    begin
-      Result[L - I] := '0';
+      Result[L - I] := IntToChar(T mod 10);
+      T := T div 10;
       Inc(I);
     end;
 end;
 
-function TryAnsiStringToInt(const A: AnsiString; out B: Integer): Boolean;
-var S, L, I, J : Integer;
-    R : Int64;
-begin
-  L := Length(A);
-  if L = 0 then
-    begin
-      B := 0;
-      Result := False;
-      exit;
-    end;
-  I := 1;
-  // check sign
-  if A[I] = '-' then
-    begin
-      Inc(I);
-      S := -1;
-    end
-  else
-    S := 1;
-  // skip leading zeros
-  while (I <= L) and (A[I] = '0') do
-    Inc(I);
-  if I > L then
-    begin
-      B := 0;
-      Result := True;
-      exit;
-    end;
-  // validate digits and convert
-  J := I;
-  R := 0;
-  while J <= L do
-    if A[J] in ['0'..'9'] then
-      begin
-        R := R * 10 + AnsiCharToInt(A[J]);
-        Inc(J);
-        if R > MaxInteger then
-          begin
-            if S < 0 then
-              B := MinInteger
-            else
-              B := MaxInteger;
-            Result := False;
-            exit;
-          end;
-      end
-    else
-      begin
-        B := 0;
-        Result := False;
-        exit;
-      end;
-  // apply sign and check range
-  if S < 0 then
-    begin
-      R := -R;
-      if R < MinInteger then
-        begin
-          B := MinInteger;
-          Result := False;
-          exit;
-        end;
-    end;
-  // return integer result
-  B := Integer(R);
-  Result := True;
-end;
-
-function AnsiStringToInt(const A: AnsiString): Integer;
-var S, L, I, J : Integer;
-    B, R : Int64;
-begin
-  L := Length(A);
-  {$IFOPT R+}
-  if L = 0 then
-    RaiseRangeCheckError;
-  {$ELSE}
-  if L = 0 then
-    begin
-      Result := 0;
-      exit;
-    end;
-  {$ENDIF}
-  I := 1;
-  // check sign
-  if A[I] = '-' then
-    begin
-      Inc(I);
-      S := -1;
-    end
-  else
-    S := 1;
-  // skip leading zeros
-  while (I <= L) and (A[I] = '0') do
-    Inc(I);
-  if I > L then
-    begin
-      Result := 0;
-      exit;
-    end;
-  // validate digits and base range
-  J := I;
-  B := 0;
-  while J <= L do
-    if A[J] in ['0'..'9'] then
-      begin
-        Inc(J);
-        if B = 0 then
-          B := 1
-        else
-          B := B * 10;
-        {$IFOPT R+}
-        if B > MaxInteger then
-          RaiseRangeCheckError;
-        {$ELSE}
-        if B > MaxInteger then
-          begin
-            Result := MaxInteger;
-            exit;
-          end;
-        {$ENDIF}
-      end
-    else
-      {$IFOPT R+}
-      RaiseRangeCheckError;
-      {$ELSE}
-      begin
-        Result := 0;
-        exit;
-      end;
-      {$ENDIF}
-  // convert
-  R := 0;
-  J := I;
-  while J <= L do
-    begin
-      R := R * 10 + AnsiCharToInt(A[J]);
-      Inc(J);
-    end;
-  // apply sign and check range
-  if S < 0 then
-    begin
-      R := -R;
-      {$IFOPT R+}
-      if R < MinInteger then
-        RaiseRangeCheckError;
-      {$ELSE}
-      if R < MinInteger then
-        begin
-          Result := MinInteger;
-          exit;
-        end;
-      {$ENDIF}
-    end
-  else
-    {$IFOPT R+}
-    if R > MaxInteger then
-      RaiseRangeCheckError;
-    {$ELSE}
-    if R > MaxInteger then
-      begin
-        Result := MaxInteger;
-        exit;
-      end;
-    {$ENDIF}
-  // return integer result
-  Result := Integer(R);
-end;
-
-function AnsiStringToIntDef(const A: AnsiString; const Default: Integer): Integer;
-begin
-  try
-    Result := AnsiStringToInt(A);
-  except
-    Result := Default;
-  end;
-end;
-
-function WideStringToInt(const A: WideString): Integer;
-var S, L, I, J : Integer;
-    B, R : Int64;
-begin
-  L := Length(A);
-  {$IFOPT R+}
-  if L = 0 then
-    RaiseRangeCheckError;
-  {$ELSE}
-  if L = 0 then
-    begin
-      Result := 0;
-      exit;
-    end;
-  {$ENDIF}
-  I := 1;
-  // check sign
-  if A[I] = '-' then
-    begin
-      Inc(I);
-      S := -1;
-    end
-  else
-    S := 1;
-  // skip leading zeros
-  while (I <= L) and (A[I] = '0') do
-    Inc(I);
-  if I > L then
-    begin
-      Result := 0;
-      exit;
-    end;
-  // validate digits and base range
-  J := I;
-  B := 0;
-  while J <= L do
-    {$IFOPT R+}
-    if Ord(A[J]) > $FF then
-      RaiseRangeCheckError else
-    {$ELSE}
-    if Ord(A[J]) > $FF then
-      begin
-        Result := 0;
-        exit;
-      end;
-    {$ENDIF}
-    if AnsiChar(A[J]) in ['0'..'9'] then
-      begin
-        Inc(J);
-        if B = 0 then
-          B := 1
-        else
-          B := B * 10;
-        {$IFOPT R+}
-        if B > MaxInteger then
-          RaiseRangeCheckError;
-        {$ELSE}
-        if B > MaxInteger then
-          begin
-            Result := MaxInteger;
-            exit;
-          end;
-        {$ENDIF}
-      end
-    else
-      {$IFOPT R+}
-      RaiseRangeCheckError;
-      {$ELSE}
-      begin
-        Result := 0;
-        exit;
-      end;
-      {$ENDIF}
-  // convert
-  R := 0;
-  J := I;
-  while J <= L do
-    begin
-      R := R * 10 + AnsiCharToInt(AnsiChar(A[J]));
-      Inc(J);
-    end;
-  // apply sign and check range
-  if S < 0 then
-    begin
-      R := -R;
-      {$IFOPT R+}
-      if R < MinInteger then
-        RaiseRangeCheckError;
-      {$ELSE}
-      if R < MinInteger then
-        begin
-          Result := MinInteger;
-          exit;
-        end;
-      {$ENDIF}
-    end
-  else
-    {$IFOPT R+}
-    if R > MaxInteger then
-      RaiseRangeCheckError;
-    {$ELSE}
-    if R > MaxInteger then
-      begin
-        Result := MaxInteger;
-        exit;
-      end;
-    {$ENDIF}
-  // return integer result
-  Result := Integer(R);
-end;
-
-function WideStringToIntDef(const A: WideString; const Default: Integer): Integer;
-begin
-  try
-    Result := WideStringToInt(A);
-  except
-    Result := Default;
-  end;
-end;
-
-function StringToInt(const A: String): Integer;
-begin
-  {$IFDEF CharIsWide}
-  Result := WideStringToInt(A);
-  {$ELSE}
-  Result := AnsiStringToInt(A);
-  {$ENDIF}
-end;
-
-function StringToIntDef(const A: String; const Default: Integer): Integer;
-begin
-  {$IFDEF CharIsWide}
-  Result := WideStringToIntDef(A, Default);
-  {$ELSE}
-  Result := AnsiStringToIntDef(A, Default);
-  {$ENDIF}
-end;
-
-function LongWordToHexString(const A: LongWord; const Digits: Integer; const LowerCase: Boolean): String;
-begin
-  {$IFDEF DELPHI2009_UP}
-  Result := LongWordToHexWideString(A, Digits, LowerCase);
-  {$ELSE}
-  Result := LongWordToHexAnsiString(A, Digits, LowerCase);
-  {$ENDIF}
-end;
-
-
-
-{                                                                              }
-{ Base Conversion                                                              }
-{                                                                              }
-function LongWordToBase(const I: LongWord; const Digits, Base: Byte;
+function NativeUIntToBaseA(
+         const Value: NativeUInt;
+         const Digits: Integer;
+         const Base: Byte;
          const UpperCase: Boolean = True): AnsiString;
-var D : LongWord;
-    L : Byte;
-    {$IFNDEF CLR}
-    P : PAnsiChar;
-    {$ENDIF}
+var D : NativeUInt;
+    L : Integer;
     V : Byte;
 begin
   Assert((Base >= 2) and (Base <= 16));
-  {$IFOPT R+}
-  if (Base < 2) or (Base > 16) then
-    begin
-      Result := '';
-      exit;
-    end;
-  {$ENDIF}
-  if I = 0 then
+  if Value = 0 then // handle zero value
     begin
       if Digits = 0 then
         L := 1
       else
         L := Digits;
       SetLength(Result, L);
-      {$IFDEF ManagedCode}
       for V := 1 to L do
         Result[V] := '0';
-      {$ELSE}
-      FillMem(Pointer(Result)^, L, Ord('0'));
-      {$ENDIF}
       exit;
     end;
+  // determine number of digits in result
   L := 0;
-  D := I;
+  D := Value;
   while D > 0 do
     begin
       Inc(L);
@@ -4320,149 +3704,872 @@ begin
     end;
   if L < Digits then
     L := Digits;
+  // do conversion
   SetLength(Result, L);
-  {$IFNDEF ManagedCode}
-  P := Pointer(Result);
-  Inc(P, L - 1);
-  {$ENDIF}
-  D := I;
+  D := Value;
   while D > 0 do
     begin
       V := D mod Base + 1;
-      {$IFDEF CLR}
       if UpperCase then
         Result[L] := AnsiChar(StrHexDigitsUpper[V])
       else
         Result[L] := AnsiChar(StrHexDigitsLower[V]);
-      {$ELSE}
-      if UpperCase then
-        P^ := StrHexDigitsUpper[V]
-      else
-        P^ := StrHexDigitsLower[V];
-      Dec(P);
-      {$ENDIF}
       Dec(L);
       D := D div Base;
     end;
   while L > 0 do
     begin
-      {$IFDEF CLR}
       Result[L] := '0';
-      {$ELSE}
-      P^ := '0';
-      Dec(P);
-      {$ENDIF}
       Dec(L);
     end;
 end;
 
-function LongWordToBin(const I: LongWord; const Digits: Byte): AnsiString;
+function NativeUIntToBaseW(
+         const Value: NativeUInt;
+         const Digits: Integer;
+         const Base: Byte;
+         const UpperCase: Boolean = True): WideString;
+var D : NativeUInt;
+    L : Integer;
+    V : Byte;
 begin
-  Result := LongWordToBase(I, Digits, 2);
-end;
-
-function LongWordToOct(const I: LongWord; const Digits: Byte): AnsiString;
-begin
-  Result := LongWordToBase(I, Digits, 8);
-end;
-
-function LongWordToHex(const I: LongWord; const Digits: Byte;
-         const UpperCase: Boolean): AnsiString;
-begin
-  Result := LongWordToBase(I, Digits, 16, UpperCase);
-end;
-
-function LongWordToStr(const I: LongWord; const Digits: Byte): AnsiString;
-begin
-  Result := LongWordToBase(I, Digits, 10);
-end;
-
-{$IFDEF CLR}
-function IsValidBaseStr(const S: AnsiString; const V: CharSet): Boolean;
-var I : Integer;
-begin
-  I := Length(S);
-  if I = 0 then
+  Assert((Base >= 2) and (Base <= 16));
+  if Value = 0 then // handle zero value
     begin
-      Result := False;
+      if Digits = 0 then
+        L := 1
+      else
+        L := Digits;
+      SetLength(Result, L);
+      for V := 1 to L do
+        Result[V] := '0';
       exit;
     end;
-  while I > 0 do
-    if not (S[I] in V) then
-      begin
-        Result := False;
-        exit;
-      end
-    else
-      Dec(I);
-  Result := True;
+  // determine number of digits in result
+  L := 0;
+  D := Value;
+  while D > 0 do
+    begin
+      Inc(L);
+      D := D div Base;
+    end;
+  if L < Digits then
+    L := Digits;
+  // do conversion
+  SetLength(Result, L);
+  D := Value;
+  while D > 0 do
+    begin
+      V := D mod Base + 1;
+      if UpperCase then
+        Result[L] := WideChar(StrHexDigitsUpper[V])
+      else
+        Result[L] := WideChar(StrHexDigitsLower[V]);
+      Dec(L);
+      D := D div Base;
+    end;
+  while L > 0 do
+    begin
+      Result[L] := '0';
+      Dec(L);
+    end;
 end;
-{$ELSE}
-function IsValidBaseStr(const S: AnsiString; const V: CharSet): Boolean;
-var I : Integer;
+
+function NativeUIntToBaseU(
+         const Value: NativeUInt;
+         const Digits: Integer;
+         const Base: Byte;
+         const UpperCase: Boolean = True): UnicodeString;
+var D : NativeUInt;
+    L : Integer;
+    V : Byte;
+begin
+  Assert((Base >= 2) and (Base <= 16));
+  if Value = 0 then // handle zero value
+    begin
+      if Digits = 0 then
+        L := 1
+      else
+        L := Digits;
+      SetLength(Result, L);
+      for V := 1 to L do
+        Result[V] := '0';
+      exit;
+    end;
+  // determine number of digits in result
+  L := 0;
+  D := Value;
+  while D > 0 do
+    begin
+      Inc(L);
+      D := D div Base;
+    end;
+  if L < Digits then
+    L := Digits;
+  // do conversion
+  SetLength(Result, L);
+  D := Value;
+  while D > 0 do
+    begin
+      V := D mod Base + 1;
+      if UpperCase then
+        Result[L] := WideChar(StrHexDigitsUpper[V])
+      else
+        Result[L] := WideChar(StrHexDigitsLower[V]);
+      Dec(L);
+      D := D div Base;
+    end;
+  while L > 0 do
+    begin
+      Result[L] := '0';
+      Dec(L);
+    end;
+end;
+
+function NativeUIntToBase(
+         const Value: NativeUInt;
+         const Digits: Integer;
+         const Base: Byte;
+         const UpperCase: Boolean = True): String;
+var D : NativeUInt;
+    L : Integer;
+    V : Byte;
+begin
+  Assert((Base >= 2) and (Base <= 16));
+  if Value = 0 then // handle zero value
+    begin
+      if Digits = 0 then
+        L := 1
+      else
+        L := Digits;
+      SetLength(Result, L);
+      for V := 1 to L do
+        Result[V] := '0';
+      exit;
+    end;
+  // determine number of digits in result
+  L := 0;
+  D := Value;
+  while D > 0 do
+    begin
+      Inc(L);
+      D := D div Base;
+    end;
+  if L < Digits then
+    L := Digits;
+  // do conversion
+  SetLength(Result, L);
+  D := Value;
+  while D > 0 do
+    begin
+      V := D mod Base + 1;
+      if UpperCase then
+        Result[L] := Char(StrHexDigitsUpper[V])
+      else
+        Result[L] := Char(StrHexDigitsLower[V]);
+      Dec(L);
+      D := D div Base;
+    end;
+  while L > 0 do
+    begin
+      Result[L] := '0';
+      Dec(L);
+    end;
+end;
+
+function UIntToStringA(const A: NativeUInt): AnsiString;
+begin
+  Result := NativeUIntToBaseA(A, 0, 10);
+end;
+
+function UIntToStringW(const A: NativeUInt): WideString;
+begin
+  Result := NativeUIntToBaseW(A, 0, 10);
+end;
+
+function UIntToStringU(const A: NativeUInt): UnicodeString;
+begin
+  Result := NativeUIntToBaseU(A, 0, 10);
+end;
+
+function UIntToString(const A: NativeUInt): String;
+begin
+  Result := NativeUIntToBase(A, 0, 10);
+end;
+
+function LongWordToStrA(const A: LongWord; const Digits: Integer): AnsiString;
+begin
+  Result := NativeUIntToBaseA(A, Digits, 10);
+end;
+
+function LongWordToStrW(const A: LongWord; const Digits: Integer): WideString;
+begin
+  Result := NativeUIntToBaseW(A, Digits, 10);
+end;
+
+function LongWordToStrU(const A: LongWord; const Digits: Integer): UnicodeString;
+begin
+  Result := NativeUIntToBaseU(A, Digits, 10);
+end;
+
+function LongWordToStr(const A: LongWord; const Digits: Integer): String;
+begin
+  Result := NativeUIntToBase(A, Digits, 10);
+end;
+
+function LongWordToHexA(const A: LongWord; const Digits: Integer; const UpperCase: Boolean): AnsiString;
+begin
+  Result := NativeUIntToBaseA(A, Digits, 16, UpperCase);
+end;
+
+function LongWordToHexW(const A: LongWord; const Digits: Integer; const UpperCase: Boolean): WideString;
+begin
+  Result := NativeUIntToBaseW(A, Digits, 16, UpperCase);
+end;
+
+function LongWordToHexU(const A: LongWord; const Digits: Integer; const UpperCase: Boolean): UnicodeString;
+begin
+  Result := NativeUIntToBaseU(A, Digits, 16, UpperCase);
+end;
+
+function LongWordToHex(const A: LongWord; const Digits: Integer; const UpperCase: Boolean): String;
+begin
+  Result := NativeUIntToBase(A, Digits, 16, UpperCase);
+end;
+
+function LongWordToOctA(const A: LongWord; const Digits: Integer): AnsiString;
+begin
+  Result := NativeUIntToBaseA(A, Digits, 8);
+end;
+
+function LongWordToOctW(const A: LongWord; const Digits: Integer): WideString;
+begin
+  Result := NativeUIntToBaseW(A, Digits, 8);
+end;
+
+function LongWordToOctU(const A: LongWord; const Digits: Integer): UnicodeString;
+begin
+  Result := NativeUIntToBaseU(A, Digits, 8);
+end;
+
+function LongWordToOct(const A: LongWord; const Digits: Integer): String;
+begin
+  Result := NativeUIntToBase(A, Digits, 8);
+end;
+
+function LongWordToBinA(const A: LongWord; const Digits: Integer): AnsiString;
+begin
+  Result := NativeUIntToBaseA(A, Digits, 2);
+end;
+
+function LongWordToBinW(const A: LongWord; const Digits: Integer): WideString;
+begin
+  Result := NativeUIntToBaseW(A, Digits, 2);
+end;
+
+function LongWordToBinU(const A: LongWord; const Digits: Integer): UnicodeString;
+begin
+  Result := NativeUIntToBaseU(A, Digits, 2);
+end;
+
+function LongWordToBin(const A: LongWord; const Digits: Integer): String;
+begin
+  Result := NativeUIntToBase(A, Digits, 2);
+end;
+
+function TryStringToInt64PA(const BufP: Pointer; const BufLen: Integer; out Value: Int64; out StrLen: Integer): TConvertResult;
+var Len : Integer;
+    DigVal : Integer;
     P : PAnsiChar;
+    Ch : AnsiChar;
+    HasDig : Boolean;
+    Neg : Boolean;
+    Res : Int64;
 begin
-  I := Length(S);
-  if I = 0 then
+  if BufLen <= 0 then
     begin
+      Value := 0;
+      StrLen := 0;
+      Result := convertFormatError;
+      exit;
+    end;
+  P := BufP;
+  Len := 0;
+  // check sign
+  Ch := P^;
+  if Ch in ['+', '-'] then
+    begin
+      Inc(Len);
+      Inc(P);
+      Neg := Ch = '-';
+    end
+  else
+    Neg := False;
+  // skip leading zeros
+  HasDig := False;
+  while (Len < BufLen) and (P^ = '0') do
+    begin
+      Inc(Len);
+      Inc(P);
+      HasDig := True;
+    end;
+  // convert digits
+  Res := 0;
+  while Len < BufLen do
+    begin
+      Ch := P^;
+      if Ch in ['0'..'9'] then
+        begin
+          HasDig := True;
+          if (Res > 922337203685477580) or
+             (Res < -922337203685477580) then
+            begin
+              Value := 0;
+              StrLen := Len;
+              Result := convertOverflow;
+              exit;
+            end;
+          {$IFOPT Q+}{$DEFINE QOn}{$Q-}{$ELSE}{$UNDEF QOn}{$ENDIF} // overflowing for -922337203685477580 * 10 ?
+          Res := Res * 10;
+          {$IFDEF QOn}{$Q+}{$ENDIF}
+          DigVal := AnsiCharToInt(Ch);
+          if ((Res = 9223372036854775800) and (DigVal > 7)) or
+             ((Res = -9223372036854775800) and (DigVal > 8)) then
+            begin
+              Value := 0;
+              StrLen := Len;
+              Result := convertOverflow;
+              exit;
+            end;
+          if Neg then
+            Dec(Res, DigVal)
+          else
+            Inc(Res, DigVal);
+          Inc(Len);
+          Inc(P);
+        end
+      else
+        break;
+    end;
+  StrLen := Len;
+  if not HasDig then
+    begin
+      Value := 0;
+      Result := convertFormatError;
+    end
+  else
+    begin
+      Value := Res;
+      Result := convertOK;
+    end;
+end;
+
+function TryStringToInt64PW(const BufP: Pointer; const BufLen: Integer; out Value: Int64; out StrLen: Integer): TConvertResult;
+var Len : Integer;
+    DigVal : Integer;
+    P : PWideChar;
+    Ch : WideChar;
+    HasDig : Boolean;
+    Neg : Boolean;
+    Res : Int64;
+begin
+  if BufLen <= 0 then
+    begin
+      Value := 0;
+      StrLen := 0;
+      Result := convertFormatError;
+      exit;
+    end;
+  P := BufP;
+  Len := 0;
+  // check sign
+  Ch := P^;
+  if (Ch = '+') or (Ch = '-') then
+    begin
+      Inc(Len);
+      Inc(P);
+      Neg := Ch = '-';
+    end
+  else
+    Neg := False;
+  // skip leading zeros
+  HasDig := False;
+  while (Len < BufLen) and (P^ = '0') do
+    begin
+      Inc(Len);
+      Inc(P);
+      HasDig := True;
+    end;
+  // convert digits
+  Res := 0;
+  while Len < BufLen do
+    begin
+      Ch := P^;
+      if (Ch >= '0') and (Ch <= '9') then
+        begin
+          HasDig := True;
+          if (Res > 922337203685477580) or
+             (Res < -922337203685477580) then
+            begin
+              Value := 0;
+              StrLen := Len;
+              Result := convertOverflow;
+              exit;
+            end;
+          {$IFOPT Q+}{$DEFINE QOn}{$Q-}{$ELSE}{$UNDEF QOn}{$ENDIF} // overflowing for -922337203685477580 * 10 ?
+          Res := Res * 10;
+          {$IFDEF QOn}{$Q+}{$ENDIF}
+          DigVal := WideCharToInt(Ch);
+          if ((Res = 9223372036854775800) and (DigVal > 7)) or
+             ((Res = -9223372036854775800) and (DigVal > 8)) then
+            begin
+              Value := 0;
+              StrLen := Len;
+              Result := convertOverflow;
+              exit;
+            end;
+          if Neg then
+            Dec(Res, DigVal)
+          else
+            Inc(Res, DigVal);
+          Inc(Len);
+          Inc(P);
+        end
+      else
+        break;
+    end;
+  StrLen := Len;
+  if not HasDig then
+    begin
+      Value := 0;
+      Result := convertFormatError;
+    end
+  else
+    begin
+      Value := Res;
+      Result := convertOK;
+    end;
+end;
+
+function TryStringToInt64P(const BufP: Pointer; const BufLen: Integer; out Value: Int64; out StrLen: Integer): TConvertResult;
+var Len : Integer;
+    DigVal : Integer;
+    P : PChar;
+    Ch : Char;
+    HasDig : Boolean;
+    Neg : Boolean;
+    Res : Int64;
+begin
+  if BufLen <= 0 then
+    begin
+      Value := 0;
+      StrLen := 0;
+      Result := convertFormatError;
+      exit;
+    end;
+  P := BufP;
+  Len := 0;
+  // check sign
+  Ch := P^;
+  if (Ch = '+') or (Ch = '-') then
+    begin
+      Inc(Len);
+      Inc(P);
+      Neg := Ch = '-';
+    end
+  else
+    Neg := False;
+  // skip leading zeros
+  HasDig := False;
+  while (Len < BufLen) and (P^ = '0') do
+    begin
+      Inc(Len);
+      Inc(P);
+      HasDig := True;
+    end;
+  // convert digits
+  Res := 0;
+  while Len < BufLen do
+    begin
+      Ch := P^;
+      if (Ch >= '0') and (Ch <= '9') then
+        begin
+          HasDig := True;
+          if (Res > 922337203685477580) or
+             (Res < -922337203685477580) then
+            begin
+              Value := 0;
+              StrLen := Len;
+              Result := convertOverflow;
+              exit;
+            end;
+          {$IFOPT Q+}{$DEFINE QOn}{$Q-}{$ELSE}{$UNDEF QOn}{$ENDIF} // overflowing for -922337203685477580 * 10 ?
+          Res := Res * 10;
+          {$IFDEF QOn}{$Q+}{$ENDIF}
+          DigVal := CharToInt(Ch);
+          if ((Res = 9223372036854775800) and (DigVal > 7)) or
+             ((Res = -9223372036854775800) and (DigVal > 8)) then
+            begin
+              Value := 0;
+              StrLen := Len;
+              Result := convertOverflow;
+              exit;
+            end;
+          if Neg then
+            Dec(Res, DigVal)
+          else
+            Inc(Res, DigVal);
+          Inc(Len);
+          Inc(P);
+        end
+      else
+        break;
+    end;
+  StrLen := Len;
+  if not HasDig then
+    begin
+      Value := 0;
+      Result := convertFormatError;
+    end
+  else
+    begin
+      Value := Res;
+      Result := convertOK;
+    end;
+end;
+
+function TryStringToInt64A(const S: AnsiString; out A: Int64): Boolean;
+var L, N : Integer;
+begin
+  L := Length(S);
+  Result := TryStringToInt64PA(PAnsiChar(S), L, A, N) = convertOK;
+  if Result then
+    if N < L then
+      Result := False;
+end;
+
+function TryStringToInt64W(const S: WideString; out A: Int64): Boolean;
+var L, N : Integer;
+begin
+  L := Length(S);
+  Result := TryStringToInt64PW(PWideChar(S), L, A, N) = convertOK;
+  if Result then
+    if N < L then
+      Result := False;
+end;
+
+function TryStringToInt64U(const S: UnicodeString; out A: Int64): Boolean;
+var L, N : Integer;
+begin
+  L := Length(S);
+  Result := TryStringToInt64PW(PWideChar(S), L, A, N) = convertOK;
+  if Result then
+    if N < L then
+      Result := False;
+end;
+
+function TryStringToInt64(const S: String; out A: Int64): Boolean;
+var L, N : Integer;
+begin
+  L := Length(S);
+  Result := TryStringToInt64P(PChar(S), L, A, N) = convertOK;
+  if Result then
+    if N < L then
+      Result := False;
+end;
+
+function StringToInt64DefA(const S: AnsiString; const Default: Int64): Int64;
+begin
+  if not TryStringToInt64A(S, Result) then
+    Result := Default;
+end;
+
+function StringToInt64DefW(const S: WideString; const Default: Int64): Int64;
+begin
+  if not TryStringToInt64W(S, Result) then
+    Result := Default;
+end;
+
+function StringToInt64DefU(const S: UnicodeString; const Default: Int64): Int64;
+begin
+  if not TryStringToInt64U(S, Result) then
+    Result := Default;
+end;
+
+function StringToInt64Def(const S: String; const Default: Int64): Int64;
+begin
+  if not TryStringToInt64(S, Result) then
+    Result := Default;
+end;
+
+function StringToInt64A(const S: AnsiString): Int64;
+begin
+  if not TryStringToInt64A(S, Result) then
+    RaiseRangeCheckError;
+end;
+
+function StringToInt64W(const S: WideString): Int64;
+begin
+  if not TryStringToInt64W(S, Result) then
+    RaiseRangeCheckError;
+end;
+
+function StringToInt64U(const S: UnicodeString): Int64;
+begin
+  if not TryStringToInt64U(S, Result) then
+    RaiseRangeCheckError;
+end;
+
+function StringToInt64(const S: String): Int64;
+begin
+  if not TryStringToInt64(S, Result) then
+    RaiseRangeCheckError;
+end;
+
+function TryStringToIntA(const S: AnsiString; out A: Integer): Boolean;
+var B : Int64;
+begin
+  Result := TryStringToInt64A(S, B);
+  if not Result then
+    begin
+      A := 0;
+      exit;
+    end;
+  if (B < MinInteger) or (B > MaxInteger) then
+    begin
+      A := 0;
       Result := False;
       exit;
     end;
-  P := Pointer(S);
-  while I > 0 do
-    if not (P^ in V) then
-      begin
-        Result := False;
-        exit;
-      end else
-      begin
-        Dec(I);
-        Inc(P);
-      end;
+  A := Integer(B);
   Result := True;
 end;
-{$ENDIF}
 
-function IsValidBinStr(const S: AnsiString): Boolean;
+function TryStringToIntW(const S: WideString; out A: Integer): Boolean;
+var B : Int64;
 begin
-  Result := IsValidBaseStr(S, ['0'..'1']);
+  Result := TryStringToInt64W(S, B);
+  if not Result then
+    begin
+      A := 0;
+      exit;
+    end;
+  if (B < MinInteger) or (B > MaxInteger) then
+    begin
+      A := 0;
+      Result := False;
+      exit;
+    end;
+  A := Integer(B);
+  Result := True;
 end;
 
-function IsValidOctStr(const S: AnsiString): Boolean;
+function TryStringToIntU(const S: UnicodeString; out A: Integer): Boolean;
+var B : Int64;
 begin
-  Result := IsValidBaseStr(S, ['0'..'7']);
+  Result := TryStringToInt64U(S, B);
+  if not Result then
+    begin
+      A := 0;
+      exit;
+    end;
+  if (B < MinInteger) or (B > MaxInteger) then
+    begin
+      A := 0;
+      Result := False;
+      exit;
+    end;
+  A := Integer(B);
+  Result := True;
 end;
 
-function IsValidDecStr(const S: AnsiString): Boolean;
+function TryStringToInt(const S: String; out A: Integer): Boolean;
+var B : Int64;
 begin
-  Result := IsValidBaseStr(S, ['0'..'9']);
+  Result := TryStringToInt64(S, B);
+  if not Result then
+    begin
+      A := 0;
+      exit;
+    end;
+  if (B < MinInteger) or (B > MaxInteger) then
+    begin
+      A := 0;
+      Result := False;
+      exit;
+    end;
+  A := Integer(B);
+  Result := True;
 end;
 
-function IsValidHexStr(const S: AnsiString): Boolean;
+function StringToIntDefA(const S: AnsiString; const Default: Integer): Integer;
 begin
-  Result := IsValidBaseStr(S, ['0'..'9', 'A'..'F', 'a'..'f']);
+  if not TryStringToIntA(S, Result) then
+    Result := Default;
 end;
 
-function BaseStrToLongWord(const S: AnsiString; const BaseLog2: Byte;
-    var Valid: Boolean): LongWord;
-var M : Byte;
-    L : LongWord;
-    P : Byte;
+function StringToIntDefW(const S: WideString; const Default: Integer): Integer;
+begin
+  if not TryStringToIntW(S, Result) then
+    Result := Default;
+end;
+
+function StringToIntDefU(const S: UnicodeString; const Default: Integer): Integer;
+begin
+  if not TryStringToIntU(S, Result) then
+    Result := Default;
+end;
+
+function StringToIntDef(const S: String; const Default: Integer): Integer;
+begin
+  if not TryStringToInt(S, Result) then
+    Result := Default;
+end;
+
+function StringToIntA(const S: AnsiString): Integer;
+begin
+  if not TryStringToIntA(S, Result) then
+    RaiseRangeCheckError;
+end;
+
+function StringToIntW(const S: WideString): Integer;
+begin
+  if not TryStringToIntW(S, Result) then
+    RaiseRangeCheckError;
+end;
+
+function StringToIntU(const S: UnicodeString): Integer;
+begin
+  if not TryStringToIntU(S, Result) then
+    RaiseRangeCheckError;
+end;
+
+function StringToInt(const S: String): Integer;
+begin
+  if not TryStringToInt(S, Result) then
+    RaiseRangeCheckError;
+end;
+
+function TryStringToLongWordA(const S: AnsiString; out A: LongWord): Boolean;
+var B : Int64;
+begin
+  Result := TryStringToInt64A(S, B);
+  if not Result then
+    begin
+      A := 0;
+      exit;
+    end;
+  if (B < MinLongWord) or (B > MaxLongWord) then
+    begin
+      A := 0;
+      Result := False;
+      exit;
+    end;
+  A := LongWord(B);
+  Result := True;
+end;
+
+function TryStringToLongWordW(const S: WideString; out A: LongWord): Boolean;
+var B : Int64;
+begin
+  Result := TryStringToInt64W(S, B);
+  if not Result then
+    begin
+      A := 0;
+      exit;
+    end;
+  if (B < MinLongWord) or (B > MaxLongWord) then
+    begin
+      A := 0;
+      Result := False;
+      exit;
+    end;
+  A := LongWord(B);
+  Result := True;
+end;
+
+function TryStringToLongWordU(const S: UnicodeString; out A: LongWord): Boolean;
+var B : Int64;
+begin
+  Result := TryStringToInt64U(S, B);
+  if not Result then
+    begin
+      A := 0;
+      exit;
+    end;
+  if (B < MinLongWord) or (B > MaxLongWord) then
+    begin
+      A := 0;
+      Result := False;
+      exit;
+    end;
+  A := LongWord(B);
+  Result := True;
+end;
+
+function TryStringToLongWord(const S: String; out A: LongWord): Boolean;
+var B : Int64;
+begin
+  Result := TryStringToInt64(S, B);
+  if not Result then
+    begin
+      A := 0;
+      exit;
+    end;
+  if (B < MinLongWord) or (B > MaxLongWord) then
+    begin
+      A := 0;
+      Result := False;
+      exit;
+    end;
+  A := LongWord(B);
+  Result := True;
+end;
+
+function StringToLongWordA(const S: AnsiString): LongWord;
+begin
+  if not TryStringToLongWordA(S, Result) then
+    RaiseRangeCheckError;
+end;
+
+function StringToLongWordW(const S: WideString): LongWord;
+begin
+  if not TryStringToLongWordW(S, Result) then
+    RaiseRangeCheckError;
+end;
+
+function StringToLongWordU(const S: UnicodeString): LongWord;
+begin
+  if not TryStringToLongWordU(S, Result) then
+    RaiseRangeCheckError;
+end;
+
+function StringToLongWord(const S: String): LongWord;
+begin
+  if not TryStringToLongWord(S, Result) then
+    RaiseRangeCheckError;
+end;
+
+function BaseStrToNativeUIntA(const S: AnsiString; const BaseLog2: Byte;
+    var Valid: Boolean): NativeUInt;
+var N : Byte;
+    L : Integer;
+    M : Byte;
     C : Byte;
 begin
-  Assert(BaseLog2 <= 4);
-  P := Length(S);
-  if P = 0 then // empty string is invalid
+  Assert(BaseLog2 <= 4); // maximum base 16
+  L := Length(S);
+  if L = 0 then // empty string is invalid
     begin
       Valid := False;
       Result := 0;
       exit;
     end;
   M := (1 shl BaseLog2) - 1; // maximum digit value
-  L := 0;
+  N := 0;
   Result := 0;
   repeat
-    C := HexLookup[S[P]];
+    C := HexLookup[S[L]];
     if C > M then // invalid digit
       begin
         Valid := False;
@@ -4470,99 +4577,985 @@ begin
         exit;
       end;
     {$IFDEF FPC}
-    Result := Result + LongWord(C) shl L;
+    Result := Result + NativeUInt(C) shl N;
     {$ELSE}
-    Inc(Result, LongWord(C) shl L);
+    Inc(Result, NativeUInt(C) shl N);
     {$ENDIF}
-    Inc(L, BaseLog2);
-    if L > 32 then // overflow
+    Inc(N, BaseLog2);
+    if N > BitsPerNativeWord then // overflow
       begin
         Valid := False;
         Result := 0;
         exit;
       end;
-    Dec(P);
-  until P = 0;
-  Valid := True;
-end;
-
-function BinStrToLongWord(const S: AnsiString; var Valid: Boolean): LongWord;
-begin
-  Result := BaseStrToLongWord(S, 1, Valid);
-end;
-
-function OctStrToLongWord(const S: AnsiString; var Valid: Boolean): LongWord;
-begin
-  Result := BaseStrToLongWord(S, 3, Valid);
-end;
-
-function HexStrToLongWord(const S: AnsiString; var Valid: Boolean): LongWord;
-begin
-  Result := BaseStrToLongWord(S, 4, Valid);
-end;
-
-function DecStrToLongWord(const S: AnsiString; var Valid: Boolean): LongWord;
-var L : Integer;
-    {$IFDEF CLR}
-    P : Integer;
-    {$ELSE}
-    P : PAnsiChar;
-    {$ENDIF}
-    C : AnsiChar;
-    F : LongWord;
-    R : Int64;
-begin
-  L := Length(S);
-  if L = 0 then // empty string
-    begin
-      Result := 0;
-      Valid := False;
-      exit;
-    end;
-  R := 0;
-  F := 1;
-  {$IFDEF CLR}
-  P := L;
-  {$ELSE}
-  P := Pointer(S);
-  Inc(P, L - 1);
-  {$ENDIF}
-  repeat
-    {$IFDEF CLR}
-    C := S[P];
-    {$ELSE}
-    C := P^;
-    {$ENDIF}
-    if not (C in ['0'..'9']) then // invalid character
-      begin
-        Valid := False;
-        Result := 0;
-        exit;
-      end;
-    Inc(R, Int64(Ord(C) - Ord('0')) * F);
-    if R > MaxLongWord then // overflow, value too large
-      begin
-        Valid := False;
-        Result := 0;
-        exit;
-      end;
-    Dec(P);
     Dec(L);
-    if L > 0 then
-      begin
-        if F = 1000000000 then // overflow, too many digits
-          begin
-            Valid := False;
-            Result := 0;
-            exit;
-          end;
-        F := F * 10;
-      end;
   until L = 0;
   Valid := True;
-  Result := LongWord(R);
 end;
 
+function BaseStrToNativeUIntW(const S: WideString; const BaseLog2: Byte;
+    var Valid: Boolean): NativeUInt;
+var N : Byte;
+    L : Integer;
+    M : Byte;
+    C : Byte;
+    D : WideChar;
+begin
+  Assert(BaseLog2 <= 4); // maximum base 16
+  L := Length(S);
+  if L = 0 then // empty string is invalid
+    begin
+      Valid := False;
+      Result := 0;
+      exit;
+    end;
+  M := (1 shl BaseLog2) - 1; // maximum digit value
+  N := 0;
+  Result := 0;
+  repeat
+    D := S[L];
+    if Ord(D) > $FF then
+      C := $FF
+    else
+      C := HexLookup[AnsiChar(Ord(D))];
+    if C > M then // invalid digit
+      begin
+        Valid := False;
+        Result := 0;
+        exit;
+      end;
+    {$IFDEF FPC}
+    Result := Result + NativeUInt(C) shl N;
+    {$ELSE}
+    Inc(Result, NativeUInt(C) shl N);
+    {$ENDIF}
+    Inc(N, BaseLog2);
+    if N > BitsPerNativeWord then // overflow
+      begin
+        Valid := False;
+        Result := 0;
+        exit;
+      end;
+    Dec(L);
+  until L = 0;
+  Valid := True;
+end;
+
+function BaseStrToNativeUIntU(const S: UnicodeString; const BaseLog2: Byte;
+    var Valid: Boolean): NativeUInt;
+var N : Byte;
+    L : Integer;
+    M : Byte;
+    C : Byte;
+    D : WideChar;
+begin
+  Assert(BaseLog2 <= 4); // maximum base 16
+  L := Length(S);
+  if L = 0 then // empty string is invalid
+    begin
+      Valid := False;
+      Result := 0;
+      exit;
+    end;
+  M := (1 shl BaseLog2) - 1; // maximum digit value
+  N := 0;
+  Result := 0;
+  repeat
+    D := S[L];
+    if Ord(D) > $FF then
+      C := $FF
+    else
+      C := HexLookup[AnsiChar(Ord(D))];
+    if C > M then // invalid digit
+      begin
+        Valid := False;
+        Result := 0;
+        exit;
+      end;
+    {$IFDEF FPC}
+    Result := Result + NativeUInt(C) shl N;
+    {$ELSE}
+    Inc(Result, NativeUInt(C) shl N);
+    {$ENDIF}
+    Inc(N, BaseLog2);
+    if N > BitsPerNativeWord then // overflow
+      begin
+        Valid := False;
+        Result := 0;
+        exit;
+      end;
+    Dec(L);
+  until L = 0;
+  Valid := True;
+end;
+
+function BaseStrToNativeUInt(const S: String; const BaseLog2: Byte;
+    var Valid: Boolean): NativeUInt;
+var N : Byte;
+    L : Integer;
+    M : Byte;
+    C : Byte;
+    D : Char;
+begin
+  Assert(BaseLog2 <= 4); // maximum base 16
+  L := Length(S);
+  if L = 0 then // empty string is invalid
+    begin
+      Valid := False;
+      Result := 0;
+      exit;
+    end;
+  M := (1 shl BaseLog2) - 1; // maximum digit value
+  N := 0;
+  Result := 0;
+  repeat
+    D := S[L];
+    {$IFDEF CharIsWide}
+    if Ord(D) > $FF then
+      C := $FF
+    else
+      C := HexLookup[AnsiChar(Ord(D))];
+    {$ELSE}
+    C := HexLookup[D];
+    {$ENDIF}
+    if C > M then // invalid digit
+      begin
+        Valid := False;
+        Result := 0;
+        exit;
+      end;
+    {$IFDEF FPC}
+    Result := Result + NativeUInt(C) shl N;
+    {$ELSE}
+    Inc(Result, NativeUInt(C) shl N);
+    {$ENDIF}
+    Inc(N, BaseLog2);
+    if N > BitsPerNativeWord then // overflow
+      begin
+        Valid := False;
+        Result := 0;
+        exit;
+      end;
+    Dec(L);
+  until L = 0;
+  Valid := True;
+end;
+
+function HexToUIntA(const S: AnsiString): NativeUInt;
+var R : Boolean;
+begin
+  Result := BaseStrToNativeUIntA(S, 4, R);
+  if not R then
+    RaiseRangeCheckError;
+end;
+
+function HexToUIntW(const S: WideString): NativeUInt;
+var R : Boolean;
+begin
+  Result := BaseStrToNativeUIntW(S, 4, R);
+  if not R then
+    RaiseRangeCheckError;
+end;
+
+function HexToUIntU(const S: UnicodeString): NativeUInt;
+var R : Boolean;
+begin
+  Result := BaseStrToNativeUIntU(S, 4, R);
+  if not R then
+    RaiseRangeCheckError;
+end;
+
+function HexToUInt(const S: String): NativeUInt;
+var R : Boolean;
+begin
+  Result := BaseStrToNativeUInt(S, 4, R);
+  if not R then
+    RaiseRangeCheckError;
+end;
+
+function TryHexToLongWordA(const S: AnsiString; out A: LongWord): Boolean;
+begin
+  A := BaseStrToNativeUIntA(S, 4, Result);
+end;
+
+function TryHexToLongWordW(const S: WideString; out A: LongWord): Boolean;
+begin
+  A := BaseStrToNativeUIntW(S, 4, Result);
+end;
+
+function TryHexToLongWordU(const S: UnicodeString; out A: LongWord): Boolean;
+begin
+  A := BaseStrToNativeUIntU(S, 4, Result);
+end;
+
+function TryHexToLongWord(const S: String; out A: LongWord): Boolean;
+begin
+  A := BaseStrToNativeUInt(S, 4, Result);
+end;
+
+function HexToLongWordA(const S: AnsiString): LongWord;
+var R : Boolean;
+begin
+  Result := BaseStrToNativeUIntA(S, 4, R);
+  if not R then
+    RaiseRangeCheckError;
+end;
+
+function HexToLongWordW(const S: WideString): LongWord;
+var R : Boolean;
+begin
+  Result := BaseStrToNativeUIntW(S, 4, R);
+  if not R then
+    RaiseRangeCheckError;
+end;
+
+function HexToLongWordU(const S: UnicodeString): LongWord;
+var R : Boolean;
+begin
+  Result := BaseStrToNativeUIntU(S, 4, R);
+  if not R then
+    RaiseRangeCheckError;
+end;
+
+function HexToLongWord(const S: String): LongWord;
+var R : Boolean;
+begin
+  Result := BaseStrToNativeUInt(S, 4, R);
+  if not R then
+    RaiseRangeCheckError;
+end;
+
+function TryOctToLongWordA(const S: AnsiString; out A: LongWord): Boolean;
+begin
+  A := BaseStrToNativeUIntA(S, 3, Result);
+end;
+
+function TryOctToLongWordW(const S: WideString; out A: LongWord): Boolean;
+begin
+  A := BaseStrToNativeUIntW(S, 3, Result);
+end;
+
+function TryOctToLongWordU(const S: UnicodeString; out A: LongWord): Boolean;
+begin
+  A := BaseStrToNativeUIntU(S, 3, Result);
+end;
+
+function TryOctToLongWord(const S: String; out A: LongWord): Boolean;
+begin
+  A := BaseStrToNativeUInt(S, 3, Result);
+end;
+
+function OctToLongWordA(const S: AnsiString): LongWord;
+var R : Boolean;
+begin
+  Result := BaseStrToNativeUIntA(S, 3, R);
+  if not R then
+    RaiseRangeCheckError;
+end;
+
+function OctToLongWordW(const S: WideString): LongWord;
+var R : Boolean;
+begin
+  Result := BaseStrToNativeUIntW(S, 3, R);
+  if not R then
+    RaiseRangeCheckError;
+end;
+
+function OctToLongWordU(const S: UnicodeString): LongWord;
+var R : Boolean;
+begin
+  Result := BaseStrToNativeUIntU(S, 3, R);
+  if not R then
+    RaiseRangeCheckError;
+end;
+
+function OctToLongWord(const S: String): LongWord;
+var R : Boolean;
+begin
+  Result := BaseStrToNativeUIntW(S, 3, R);
+  if not R then
+    RaiseRangeCheckError;
+end;
+
+function TryBinToLongWordA(const S: AnsiString; out A: LongWord): Boolean;
+begin
+  A := BaseStrToNativeUIntA(S, 1, Result);
+end;
+
+function TryBinToLongWordW(const S: WideString; out A: LongWord): Boolean;
+begin
+  A := BaseStrToNativeUIntW(S, 1, Result);
+end;
+
+function TryBinToLongWordU(const S: UnicodeString; out A: LongWord): Boolean;
+begin
+  A := BaseStrToNativeUIntU(S, 1, Result);
+end;
+
+function TryBinToLongWord(const S: String; out A: LongWord): Boolean;
+begin
+  A := BaseStrToNativeUInt(S, 1, Result);
+end;
+
+function BinToLongWordA(const S: AnsiString): LongWord;
+var R : Boolean;
+begin
+  Result := BaseStrToNativeUIntA(S, 1, R);
+  if not R then
+    RaiseRangeCheckError;
+end;
+
+function BinToLongWordW(const S: WideString): LongWord;
+var R : Boolean;
+begin
+  Result := BaseStrToNativeUIntW(S, 1, R);
+  if not R then
+    RaiseRangeCheckError;
+end;
+
+function BinToLongWordU(const S: UnicodeString): LongWord;
+var R : Boolean;
+begin
+  Result := BaseStrToNativeUIntU(S, 1, R);
+  if not R then
+    RaiseRangeCheckError;
+end;
+
+function BinToLongWord(const S: String): LongWord;
+var R : Boolean;
+begin
+  Result := BaseStrToNativeUInt(S, 1, R);
+  if not R then
+    RaiseRangeCheckError;
+end;
+
+
+
+{                                                                              }
+{ Float-String conversions                                                     }
+{                                                                              }
+function FloatToStringS(const A: Extended): ShortString;
+var B : Extended;
+    S : ShortString;
+    L, I : Integer;
+    E : Integer;
+begin
+  // handle special floating point values
+  if FloatIsInfinity(A) or FloatIsNaN(A) then
+    begin
+      Result := '';
+      exit;
+    end;
+  B := Abs(A);
+  // very small numbers (Extended precision) are zero
+  if B < 1e-2000 then
+    begin
+      Result := '0';
+      exit;
+    end;
+  // up to 15 digits (around Double precsion) before or after decimal use non-scientific notation
+  if (B < 1e-15) or (B >= 1e+15) then
+    Str(A, S)
+  else
+    Str(A:0:15, S);
+  // trim preceding spaces
+  I := 1;
+  while S[I] = ' ' do
+    Inc(I);
+  if I > 1 then
+    S := Copy(S, I, Length(S) - I + 1);
+  // find exponent
+  L := Length(S);
+  E := 0;
+  for I := 1 to L do
+    if S[I] = 'E' then
+      begin
+        E := I;
+        break;
+      end;
+  if E = 0 then
+    begin
+      // trim trailing zeros
+      I := L;
+      while S[I] = '0' do
+        Dec(I);
+      if S[I] = '.' then
+        Dec(I);
+      if I < L then
+        SetLength(S, I);
+    end
+  else
+    begin
+      // trim trailing zeros in mantissa
+      I := E - 1;
+      while S[I] = '0' do
+        Dec(I);
+      if S[I] = '.' then
+        Dec(I);
+      if I < E - 1 then
+        S := Copy(S, 1, I) + Copy(S, E, L - E + 1);
+    end;
+  // return formatted float string
+  Result := S;
+end;
+
+function FloatToStringA(const A: Extended): AnsiString;
+begin
+  Result := AnsiString(FloatToStringS(A));
+end;
+
+function FloatToStringW(const A: Extended): WideString;
+begin
+  Result := WideString(FloatToStringS(A));
+end;
+
+function FloatToStringU(const A: Extended): UnicodeString;
+begin
+  Result := UnicodeString(FloatToStringS(A));
+end;
+
+function FloatToString(const A: Extended): String;
+begin
+  Result := String(FloatToStringS(A));
+end;
+
+function TryStringToFloatPA(const BufP: Pointer; const BufLen: Integer; out Value: Extended; out StrLen: Integer): TConvertResult;
+var Len : Integer;
+    DigVal : Integer;
+    DigValF : Extended;
+    P : PAnsiChar;
+    Ch : AnsiChar;
+    HasDig : Boolean;
+    Neg : Boolean;
+    Res : Extended;
+    Ex : Extended;
+    ExI : Int64;
+    L : Integer;
+begin
+  if BufLen <= 0 then
+    begin
+      Value := 0;
+      StrLen := 0;
+      Result := convertFormatError;
+      exit;
+    end;
+  P := BufP;
+  Len := 0;
+  // check sign
+  Ch := P^;
+  if (Ch = '+') or (Ch = '-') then
+    begin
+      Inc(Len);
+      Inc(P);
+      Neg := Ch = '-';
+    end
+  else
+    Neg := False;
+  // skip leading zeros
+  HasDig := False;
+  while (Len < BufLen) and (P^ = '0') do
+    begin
+      Inc(Len);
+      Inc(P);
+      HasDig := True;
+    end;
+  // convert integer digits
+  Res := 0.0;
+  while Len < BufLen do
+    begin
+      Ch := P^;
+      if (Ch >= '0') and (Ch <= '9') then
+        begin
+          HasDig := True;
+          // maximum Extended is roughly 1.1e4932, maximum Double is roughly 1.7e308
+          if ApproxCompare(Abs(Res), 1.0e+1000) in [crEqual, crGreater] then
+            begin
+              Value := 0;
+              StrLen := Len;
+              Result := convertOverflow;
+              exit;
+            end;
+          Res := Res * 10.0;
+          DigVal := AnsiCharToInt(Ch);
+          if Neg then
+            Res := Res - DigVal
+          else
+            Res := Res + DigVal;
+          Inc(Len);
+          Inc(P);
+        end
+      else
+        break;
+    end;
+  // convert decimal digits
+  if (Len < BufLen) and (P^ = '.') then
+    begin
+      Inc(Len);
+      Inc(P);
+      ExI := 0;
+      while Len < BufLen do
+        begin
+          Ch := P^;
+          if (Ch >= '0') and (Ch <= '9') then
+            begin
+              HasDig := True;
+              // minimum Extended is roughly 3.6e-4951, minimum Double is roughly 5e-324
+              if ExI >= 1000 then
+                begin
+                  Value := 0;
+                  StrLen := Len;
+                  Result := convertOverflow;
+                  exit;
+                end;
+              DigVal := AnsiCharToInt(Ch);
+              Inc(ExI);
+              DigValF := DigVal;
+              DigValF := DigValF / Power(10.0, ExI);
+              if Neg then
+                Res := Res - DigValF
+              else
+                Res := Res + DigValF;
+              Inc(Len);
+              Inc(P);
+            end
+          else
+            break;
+        end;
+    end;
+  // check valid digit
+  if not HasDig then
+    begin
+      Value := 0;
+      StrLen := Len;
+      Result := convertFormatError;
+      exit;
+    end;
+  // convert exponent
+  if Len < BufLen then
+    begin
+      Ch := P^;
+      if (Ch = 'e') or (Ch = 'E') then
+        begin
+          Inc(Len);
+          Inc(P);
+          Result := TryStringToInt64PA(P, BufLen - Len, ExI, L);
+          Inc(Len, L);
+          if Result <> convertOK then
+            begin
+              Value := 0;
+              StrLen := Len;
+              exit;
+            end;
+          if ExI <> 0 then
+            begin
+              if (ExI > 1000) or (ExI < -1000) then
+                begin
+                  Value := 0;
+                  StrLen := Len;
+                  Result := convertOverflow;
+                  exit;
+                end;
+              Ex := ExI;
+              Ex := Power(10.0, Ex);
+              Res := Res * Ex;
+            end;
+        end;
+    end;
+  // success
+  Value := Res;
+  StrLen := Len;
+  Result := convertOK;
+end;
+
+function TryStringToFloatPW(const BufP: Pointer; const BufLen: Integer; out Value: Extended; out StrLen: Integer): TConvertResult;
+var Len : Integer;
+    DigVal : Integer;
+    DigValF : Extended;
+    P : PWideChar;
+    Ch : WideChar;
+    HasDig : Boolean;
+    Neg : Boolean;
+    Res : Extended;
+    Ex : Extended;
+    ExI : Int64;
+    L : Integer;
+begin
+  if BufLen <= 0 then
+    begin
+      Value := 0;
+      StrLen := 0;
+      Result := convertFormatError;
+      exit;
+    end;
+  P := BufP;
+  Len := 0;
+  // check sign
+  Ch := P^;
+  if (Ch = '+') or (Ch = '-') then
+    begin
+      Inc(Len);
+      Inc(P);
+      Neg := Ch = '-';
+    end
+  else
+    Neg := False;
+  // skip leading zeros
+  HasDig := False;
+  while (Len < BufLen) and (P^ = '0') do
+    begin
+      Inc(Len);
+      Inc(P);
+      HasDig := True;
+    end;
+  // convert integer digits
+  Res := 0.0;
+  while Len < BufLen do
+    begin
+      Ch := P^;
+      if (Ch >= '0') and (Ch <= '9') then
+        begin
+          HasDig := True;
+          // maximum Extended is roughly 1.1e4932, maximum Double is roughly 1.7e308
+          if ApproxCompare(Abs(Res), 1.0e+1000) in [crEqual, crGreater] then
+            begin
+              Value := 0;
+              StrLen := Len;
+              Result := convertOverflow;
+              exit;
+            end;
+          Res := Res * 10.0;
+          DigVal := WideCharToInt(Ch);
+          if Neg then
+            Res := Res - DigVal
+          else
+            Res := Res + DigVal;
+          Inc(Len);
+          Inc(P);
+        end
+      else
+        break;
+    end;
+  // convert decimal digits
+  if (Len < BufLen) and (P^ = '.') then
+    begin
+      Inc(Len);
+      Inc(P);
+      ExI := 0;
+      while Len < BufLen do
+        begin
+          Ch := P^;
+          if (Ch >= '0') and (Ch <= '9') then
+            begin
+              HasDig := True;
+              // minimum Extended is roughly 3.6e-4951, minimum Double is roughly 5e-324
+              if ExI >= 1000 then
+                begin
+                  Value := 0;
+                  StrLen := Len;
+                  Result := convertOverflow;
+                  exit;
+                end;
+              DigVal := WideCharToInt(Ch);
+              Inc(ExI);
+              DigValF := DigVal;
+              DigValF := DigValF / Power(10.0, ExI);
+              if Neg then
+                Res := Res - DigValF
+              else
+                Res := Res + DigValF;
+              Inc(Len);
+              Inc(P);
+            end
+          else
+            break;
+        end;
+    end;
+  // check valid digit
+  if not HasDig then
+    begin
+      Value := 0;
+      StrLen := Len;
+      Result := convertFormatError;
+      exit;
+    end;
+  // convert exponent
+  if Len < BufLen then
+    begin
+      Ch := P^;
+      if (Ch = 'e') or (Ch = 'E') then
+        begin
+          Inc(Len);
+          Inc(P);
+          Result := TryStringToInt64PW(P, BufLen - Len, ExI, L);
+          Inc(Len, L);
+          if Result <> convertOK then
+            begin
+              Value := 0;
+              StrLen := Len;
+              exit;
+            end;
+          if ExI <> 0 then
+            begin
+              if (ExI > 1000) or (ExI < -1000) then
+                begin
+                  Value := 0;
+                  StrLen := Len;
+                  Result := convertOverflow;
+                  exit;
+                end;
+              Ex := ExI;
+              Ex := Power(10.0, Ex);
+              Res := Res * Ex;
+            end;
+        end;
+    end;
+  // success
+  Value := Res;
+  StrLen := Len;
+  Result := convertOK;
+end;
+
+function TryStringToFloatP(const BufP: Pointer; const BufLen: Integer; out Value: Extended; out StrLen: Integer): TConvertResult;
+var Len : Integer;
+    DigVal : Integer;
+    DigValF : Extended;
+    P : PChar;
+    Ch : Char;
+    HasDig : Boolean;
+    Neg : Boolean;
+    Res : Extended;
+    Ex : Extended;
+    ExI : Int64;
+    L : Integer;
+begin
+  if BufLen <= 0 then
+    begin
+      Value := 0;
+      StrLen := 0;
+      Result := convertFormatError;
+      exit;
+    end;
+  P := BufP;
+  Len := 0;
+  // check sign
+  Ch := P^;
+  if (Ch = '+') or (Ch = '-') then
+    begin
+      Inc(Len);
+      Inc(P);
+      Neg := Ch = '-';
+    end
+  else
+    Neg := False;
+  // skip leading zeros
+  HasDig := False;
+  while (Len < BufLen) and (P^ = '0') do
+    begin
+      Inc(Len);
+      Inc(P);
+      HasDig := True;
+    end;
+  // convert integer digits
+  Res := 0.0;
+  while Len < BufLen do
+    begin
+      Ch := P^;
+      if (Ch >= '0') and (Ch <= '9') then
+        begin
+          HasDig := True;
+          // maximum Extended is roughly 1.1e4932, maximum Double is roughly 1.7e308
+          if ApproxCompare(Abs(Res), 1.0e+1000) in [crEqual, crGreater] then
+            begin
+              Value := 0;
+              StrLen := Len;
+              Result := convertOverflow;
+              exit;
+            end;
+          Res := Res * 10.0;
+          DigVal := CharToInt(Ch);
+          if Neg then
+            Res := Res - DigVal
+          else
+            Res := Res + DigVal;
+          Inc(Len);
+          Inc(P);
+        end
+      else
+        break;
+    end;
+  // convert decimal digits
+  if (Len < BufLen) and (P^ = '.') then
+    begin
+      Inc(Len);
+      Inc(P);
+      ExI := 0;
+      while Len < BufLen do
+        begin
+          Ch := P^;
+          if (Ch >= '0') and (Ch <= '9') then
+            begin
+              HasDig := True;
+              // minimum Extended is roughly 3.6e-4951, minimum Double is roughly 5e-324
+              if ExI >= 1000 then
+                begin
+                  Value := 0;
+                  StrLen := Len;
+                  Result := convertOverflow;
+                  exit;
+                end;
+              DigVal := CharToInt(Ch);
+              Inc(ExI);
+              DigValF := DigVal;
+              DigValF := DigValF / Power(10.0, ExI);
+              if Neg then
+                Res := Res - DigValF
+              else
+                Res := Res + DigValF;
+              Inc(Len);
+              Inc(P);
+            end
+          else
+            break;
+        end;
+    end;
+  // check valid digit
+  if not HasDig then
+    begin
+      Value := 0;
+      StrLen := Len;
+      Result := convertFormatError;
+      exit;
+    end;
+  // convert exponent
+  if Len < BufLen then
+    begin
+      Ch := P^;
+      if (Ch = 'e') or (Ch = 'E') then
+        begin
+          Inc(Len);
+          Inc(P);
+          Result := TryStringToInt64P(P, BufLen - Len, ExI, L);
+          Inc(Len, L);
+          if Result <> convertOK then
+            begin
+              Value := 0;
+              StrLen := Len;
+              exit;
+            end;
+          if ExI <> 0 then
+            begin
+              if (ExI > 1000) or (ExI < -1000) then
+                begin
+                  Value := 0;
+                  StrLen := Len;
+                  Result := convertOverflow;
+                  exit;
+                end;
+              Ex := ExI;
+              Ex := Power(10.0, Ex);
+              Res := Res * Ex;
+            end;
+        end;
+    end;
+  // success
+  Value := Res;
+  StrLen := Len;
+  Result := convertOK;
+end;
+
+function TryStringToFloatA(const A: AnsiString; out B: Extended): Boolean;
+var L, N : Integer;
+begin
+  L := Length(A);
+  Result := TryStringToFloatPA(PAnsiChar(A), L, B, N) = convertOK;
+  if Result then
+    if N < L then
+      Result := False;
+end;
+
+function TryStringToFloatW(const A: WideString; out B: Extended): Boolean;
+var L, N : Integer;
+begin
+  L := Length(A);
+  Result := TryStringToFloatPW(PWideChar(A), L, B, N) = convertOK;
+  if Result then
+    if N < L then
+      Result := False;
+end;
+
+function TryStringToFloatU(const A: UnicodeString; out B: Extended): Boolean;
+var L, N : Integer;
+begin
+  L := Length(A);
+  Result := TryStringToFloatPW(PWideChar(A), L, B, N) = convertOK;
+  if Result then
+    if N < L then
+      Result := False;
+end;
+
+function TryStringToFloat(const A: String; out B: Extended): Boolean;
+var L, N : Integer;
+begin
+  L := Length(A);
+  Result := TryStringToFloatP(PChar(A), L, B, N) = convertOK;
+  if Result then
+    if N < L then
+      Result := False;
+end;
+
+function StringToFloatA(const A: AnsiString): Extended;
+begin
+  if not TryStringToFloatA(A, Result) then
+    RaiseRangeCheckError;
+end;
+
+function StringToFloatW(const A: WideString): Extended;
+begin
+  if not TryStringToFloatW(A, Result) then
+    RaiseRangeCheckError;
+end;
+
+function StringToFloatU(const A: UnicodeString): Extended;
+begin
+  if not TryStringToFloatU(A, Result) then
+    RaiseRangeCheckError;
+end;
+
+function StringToFloat(const A: String): Extended;
+begin
+  if not TryStringToFloat(A, Result) then
+    RaiseRangeCheckError;
+end;
+
+function StringToFloatDefA(const A: AnsiString; const Default: Extended): Extended;
+begin
+  if not TryStringToFloatA(A, Result) then
+    Result := Default;
+end;
+
+function StringToFloatDefW(const A: WideString; const Default: Extended): Extended;
+begin
+  if not TryStringToFloatW(A, Result) then
+    Result := Default;
+end;
+
+function StringToFloatDefU(const A: UnicodeString; const Default: Extended): Extended;
+begin
+  if not TryStringToFloatU(A, Result) then
+    Result := Default;
+end;
+
+function StringToFloatDef(const A: String; const Default: Extended): Extended;
+begin
+  if not TryStringToFloat(A, Result) then
+    Result := Default;
+end;
+
+
+
+{                                                                              }
+{ Base64                                                                       }
+{                                                                              }
 {$IFDEF CLR}
 function EncodeBase64(const S, Alphabet: AnsiString; const Pad: Boolean;
     const PadMultiple: Integer; const PadChar: AnsiChar): AnsiString;
@@ -4938,15 +5931,52 @@ end;
 { Type conversion                                                              }
 {                                                                              }
 {$IFNDEF ManagedCode}
-function PointerToStr(const P: Pointer): AnsiString;
+function PointerToStrA(const P: Pointer): AnsiString;
 begin
-  Result := '$' + LongWordToHex(LongWord(P), 8);
+  Result := NativeUIntToBaseA(NativeUInt(P), BytesPerNativeWord * 2, 16, True);
 end;
 
-function StrToPointer(const S: AnsiString): Pointer;
+function PointerToStrW(const P: Pointer): WideString;
+begin
+  Result := NativeUIntToBaseW(NativeUInt(P), BytesPerNativeWord * 2, 16, True);
+end;
+
+function PointerToStr(const P: Pointer): String;
+begin
+  Result := NativeUIntToBase(NativeUInt(P), BytesPerNativeWord * 2, 16, True);
+end;
+
+function StrToPointerA(const S: AnsiString): Pointer;
 var V : Boolean;
 begin
-  Result := Pointer(HexStrToLongWord(S, V));
+  Result := Pointer(BaseStrToNativeUIntA(S, 4, V));
+end;
+
+function StrToPointerW(const S: WideString): Pointer;
+var V : Boolean;
+begin
+  Result := Pointer(BaseStrToNativeUIntW(S, 4, V));
+end;
+
+function StrToPointer(const S: String): Pointer;
+var V : Boolean;
+begin
+  Result := Pointer(BaseStrToNativeUInt(S, 4, V));
+end;
+
+function InterfaceToStrA(const I: IInterface): AnsiString;
+begin
+  Result := NativeUIntToBaseA(NativeUInt(I), BytesPerNativeWord * 2, 16, True);
+end;
+
+function InterfaceToStrW(const I: IInterface): WideString;
+begin
+  Result := NativeUIntToBaseW(NativeUInt(I), BytesPerNativeWord * 2, 16, True);
+end;
+
+function InterfaceToStr(const I: IInterface): String;
+begin
+  Result := NativeUIntToBase(NativeUInt(I), BytesPerNativeWord * 2, 16, True);
 end;
 {$ENDIF}
 
@@ -4971,7 +6001,7 @@ begin
   if not Assigned(O) then
     Result := 'nil'
   else
-    Result := O.ClassName{$IFNDEF CLR} + '@' + LongWordToHexString(LongWord(O), 8){$ENDIF};
+    Result := O.ClassName{$IFNDEF CLR} + '@' + LongWordToHex(LongWord(O), 8){$ENDIF};
 end;
 
 {$IFDEF ASM386_DELPHI}
@@ -5119,230 +6149,205 @@ begin
   HashTableInit := True;
 end;
 
-{$IFDEF ManagedCode}
-function Hash(const Hash: LongWord; const Buf: AnsiString;
-    const Index, Size: Integer): LongWord;
-var I : Integer;
+function HashByte(const Hash: LongWord; const C: Byte): LongWord; {$IFDEF UseInline}inline;{$ENDIF}
 begin
-  Result := Hash;
-  for I := 0 to Size - 1 do
-    Result := HashTable[Byte(Result) xor Byte(Buf[Index + I])] xor (Result shr 8);
+  Result := HashTable[Byte(Hash) xor C] xor (Hash shr 8);
 end;
-{$ELSE}
-function Hash(const Hash: LongWord; const Buf; const BufSize: Integer): LongWord;
+
+function HashCharA(const Hash: LongWord; const Ch: AnsiChar): LongWord; {$IFDEF UseInline}inline;{$ENDIF}
+begin
+  Result := HashByte(Hash, Byte(Ch));
+end;
+
+function HashCharW(const Hash: LongWord; const Ch: WideChar): LongWord; {$IFDEF UseInline}inline;{$ENDIF}
+var C1, C2 : Byte;
+begin
+  C1 := Byte(Ord(Ch) and $FF);
+  C2 := Byte(Ord(Ch) shr 8);
+  Result := Hash;
+  Result := HashByte(Result, C1);
+  Result := HashByte(Result, C2);
+end;
+
+function HashChar(const Hash: LongWord; const Ch: Char): LongWord; {$IFDEF UseInline}inline;{$ENDIF}
+begin
+  {$IFDEF CharIsWide}
+  Result := HashCharW(Hash, Ch);
+  {$ELSE}
+  Result := HashCharA(Hash, Ch);
+  {$ENDIF}
+end;
+
+function HashCharNoAsciiCaseA(const Hash: LongWord; const Ch: AnsiChar): LongWord; {$IFDEF UseInline}inline;{$ENDIF}
+var C : Byte;
+begin
+  C := Byte(Ch);
+  if C in [Ord('A')..Ord('Z')] then
+    C := C or 32;
+  Result := HashCharA(Hash, AnsiChar(C));
+end;
+
+function HashCharNoAsciiCaseW(const Hash: LongWord; const Ch: WideChar): LongWord; {$IFDEF UseInline}inline;{$ENDIF}
+var C : Word;
+begin
+  C := Word(Ch);
+  if C <= $FF then
+    if Byte(C) in [Ord('A')..Ord('Z')] then
+      C := C or 32;
+  Result := HashCharW(Hash, WideChar(C));
+end;
+
+function HashCharNoAsciiCase(const Hash: LongWord; const Ch: Char): LongWord; {$IFDEF UseInline}inline;{$ENDIF}
+begin
+  {$IFDEF CharIsWide}
+  Result := HashCharNoAsciiCaseW(Hash, Ch);
+  {$ELSE}
+  Result := HashCharNoAsciiCaseA(Hash, Ch);
+  {$ENDIF}
+end;
+
+function HashBuf(const Hash: LongWord; const Buf; const BufSize: Integer): LongWord;
 var P : PByte;
     I : Integer;
 begin
-  P := @Buf;
+  if not HashTableInit then
+    InitHashTable;
   Result := Hash;
-  for I := 1 to BufSize do
+  P := @Buf;
+  for I := 0 to BufSize - 1 do
     begin
-      Result := HashTable[Byte(Result) xor P^] xor (Result shr 8);
+      Result := HashByte(Result, P^);
       Inc(P);
     end;
 end;
-{$ENDIF}
 
-{$IFDEF ManagedCode}
-function HashNoCase(const Hash: LongWord; const Buf: AnsiString;
-    const Index, Size: Integer): LongWord;
-var I : Integer;
-    C : Byte;
+function HashStrA(const S: AnsiString;
+         const Index: Integer; const Count: Integer;
+         const AsciiCaseSensitive: Boolean;
+         const Slots: LongWord): LongWord;
+var I, L, A, B : Integer;
 begin
-  Result := Hash;
-  for I := 0 to Size - 1 do
+  if not HashTableInit then
+    InitHashTable;
+  A := Index;
+  if A < 1 then
+    A := 1;
+  L := Length(S);
+  B := Count;
+  if B < 0 then
+    B := L
+  else
     begin
-      C := Byte(Buf[Index + I]);
-      if C in [Ord('A')..Ord('Z')] then
-        C := C or 32;
-      Result := HashTable[Byte(Result) xor C] xor (Result shr 8);
+      B := A + B - 1;
+      if B > L then
+        B := L;
     end;
+  Result := $FFFFFFFF;
+  if AsciiCaseSensitive then
+    for I := A to B do
+      Result := HashCharA(Result, S[I])
+  else
+    for I := A to B do
+      Result := HashCharNoAsciiCaseA(Result, S[I]);
+  if Slots > 0 then
+    Result := Result mod Slots;
 end;
-{$ELSE}
-function HashNoCase(const Hash: LongWord; const Buf; const BufSize: Integer): LongWord;
-var P : PByte;
-    I : Integer;
-    C : Byte;
-begin
-  P := @Buf;
-  Result := Hash;
-  for I := 1 to BufSize do
-    begin
-      C := P^;
-      if C in [Ord('A')..Ord('Z')] then
-        C := C or 32;
-      Result := HashTable[Byte(Result) xor C] xor (Result shr 8);
-      Inc(P);
-    end;
-end;
-{$ENDIF}
 
-{$IFDEF ManagedCode}
-function HashBuf(const Buf: AnsiString; const Index, Size: Integer;
-    const Slots: LongWord): LongWord;
+function HashStrW(const S: WideString;
+         const Index: Integer; const Count: Integer;
+         const AsciiCaseSensitive: Boolean;
+         const Slots: LongWord): LongWord;
+var I, L, A, B : Integer;
 begin
   if not HashTableInit then
     InitHashTable;
-  Result := not Hash($FFFFFFFF, Buf, Index, Size);
-  // Mod into slots
-  if Slots <> 0 then
+  A := Index;
+  if A < 1 then
+    A := 1;
+  L := Length(S);
+  B := Count;
+  if B < 0 then
+    B := L
+  else
+    begin
+      B := A + B - 1;
+      if B > L then
+        B := L;
+    end;
+  Result := $FFFFFFFF;
+  if AsciiCaseSensitive then
+    for I := A to B do
+      Result := HashCharW(Result, S[I])
+  else
+    for I := A to B do
+      Result := HashCharNoAsciiCaseW(Result, S[I]);
+  if Slots > 0 then
     Result := Result mod Slots;
 end;
-{$ELSE}
-function HashBuf(const Buf; const BufSize: Integer; const Slots: LongWord): LongWord;
-begin
-  if not HashTableInit then
-    InitHashTable;
-  Result := not Hash($FFFFFFFF, Buf, BufSize);
-  // Mod into slots
-  if Slots <> 0 then
-    Result := Result mod Slots;
-end;
-{$ENDIF}
 
-{$IFDEF ManagedCode}
-function HashStrBuf(const StrBuf: AnsiString; const StrLength: Integer;
-    const Slots: LongWord): LongWord;
-var I, J : Integer;
+function HashStrU(const S: UnicodeString;
+         const Index: Integer; const Count: Integer;
+         const AsciiCaseSensitive: Boolean;
+         const Slots: LongWord): LongWord;
+var I, L, A, B : Integer;
 begin
   if not HashTableInit then
     InitHashTable;
-  if StrLength <= 48 then // Hash all characters for short strings
-    Result := Hash($FFFFFFFF, StrBuf, 1, StrLength)
+  A := Index;
+  if A < 1 then
+    A := 1;
+  L := Length(S);
+  B := Count;
+  if B < 0 then
+    B := L
   else
     begin
-      // Hash first 16 bytes
-      Result := Hash($FFFFFFFF, StrBuf, 1, 16);
-      // Hash last 16 bytes
-      Result := Hash(Result, StrBuf, StrLength - 15, 16);
-      // Hash 16 bytes sampled from rest of string
-      I := (StrLength - 48) div 16;
-      for J := 1 to 16 do
-        Result := HashTable[Byte(Result) xor Byte(StrBuf[16 + J * I])] xor (Result shr 8);
+      B := A + B - 1;
+      if B > L then
+        B := L;
     end;
-  // Mod into slots
-  if Slots <> 0 then
-    Result := Result mod Slots;
-end;
-{$ELSE}
-function HashStrBuf(const StrBuf: Pointer; const StrLength: Integer;
-    const Slots: LongWord): LongWord;
-var P    : PAnsiChar;
-    I, J : Integer;
-begin
-  if not HashTableInit then
-    InitHashTable;
-  P := StrBuf;
-  if StrLength <= 48 then // Hash all characters for short strings
-    Result := Hash($FFFFFFFF, P^, StrLength)
+  Result := $FFFFFFFF;
+  if AsciiCaseSensitive then
+    for I := A to B do
+      Result := HashCharW(Result, S[I])
   else
-    begin
-      // Hash first 16 bytes
-      Result := Hash($FFFFFFFF, P^, 16);
-      // Hash last 16 bytes
-      Inc(P, StrLength - 16);
-      Result := Hash(Result, P^, 16);
-      // Hash 16 bytes sampled from rest of string
-      I := (StrLength - 48) div 16;
-      P := StrBuf;
-      Inc(P, 16);
-      for J := 1 to 16 do
-        begin
-          Result := HashTable[Byte(Result) xor Byte(P^)] xor (Result shr 8);
-          Inc(P, I + 1);
-        end;
-    end;
-  // Mod into slots
-  if Slots <> 0 then
+    for I := A to B do
+      Result := HashCharNoAsciiCaseW(Result, S[I]);
+  if Slots > 0 then
     Result := Result mod Slots;
 end;
-{$ENDIF}
 
-{$IFDEF ManagedCode}
-function HashStrBufNoCase(const StrBuf: AnsiString; const StrLength: Integer;
-    const Slots: LongWord): LongWord;
-var I, J : Integer;
-    C    : Byte;
+function HashStr(const S: String;
+         const Index: Integer; const Count: Integer;
+         const AsciiCaseSensitive: Boolean;
+         const Slots: LongWord): LongWord;
+var I, L, A, B : Integer;
 begin
   if not HashTableInit then
     InitHashTable;
-  if StrLength <= 48 then // Hash all characters for short strings
-    Result := HashNoCase($FFFFFFFF, StrBuf, 1, StrLength)
+  A := Index;
+  if A < 1 then
+    A := 1;
+  L := Length(S);
+  B := Count;
+  if B < 0 then
+    B := L
   else
     begin
-      // Hash first 16 bytes
-      Result := HashNoCase($FFFFFFFF, StrBuf, 1, 16);
-      // Hash last 16 bytes
-      Result := HashNoCase(Result, StrBuf, StrLength - 15, 16);
-      // Hash 16 bytes sampled from rest of string
-      I := (StrLength - 48) div 16;
-      for J := 1 to 16 do
-        begin
-          C := Byte(StrBuf[16 + J * I]);
-          if C in [Ord('A')..Ord('Z')] then
-            C := C or 32;
-          Result := HashTable[Byte(Result) xor C] xor (Result shr 8);
-        end;
+      B := A + B - 1;
+      if B > L then
+        B := L;
     end;
-  // Mod into slots
-  if Slots <> 0 then
+  Result := $FFFFFFFF;
+  if AsciiCaseSensitive then
+    for I := A to B do
+      Result := HashChar(Result, S[I])
+  else
+    for I := A to B do
+      Result := HashCharNoAsciiCase(Result, S[I]);
+  if Slots > 0 then
     Result := Result mod Slots;
 end;
-{$ELSE}
-function HashStrBufNoCase(const StrBuf: Pointer; const StrLength: Integer;
-    const Slots: LongWord): LongWord;
-var P    : PAnsiChar;
-    I, J : Integer;
-    C    : Byte;
-begin
-  if not HashTableInit then
-    InitHashTable;
-  P := StrBuf;
-  if StrLength <= 48 then // Hash all characters for short strings
-    Result := HashNoCase($FFFFFFFF, P^, StrLength)
-  else
-    begin
-      // Hash first 16 bytes
-      Result := HashNoCase($FFFFFFFF, P^, 16);
-      // Hash last 16 bytes
-      Inc(P, StrLength - 16);
-      Result := HashNoCase(Result, P^, 16);
-      // Hash 16 bytes sampled from rest of string
-      I := (StrLength - 48) div 16;
-      P := StrBuf;
-      Inc(P, 16);
-      for J := 1 to 16 do
-        begin
-          C := Byte(P^);
-          if C in [Ord('A')..Ord('Z')] then
-            C := C or 32;
-          Result := HashTable[Byte(Result) xor C] xor (Result shr 8);
-          Inc(P, I + 1);
-        end;
-    end;
-  // Mod into slots
-  if Slots <> 0 then
-    Result := Result mod Slots;
-end;
-{$ENDIF}
-
-{$IFDEF ManagedCode}
-function HashStr(const S: AnsiString; const Slots: LongWord; const CaseSensitive: Boolean): LongWord;
-begin
-  if CaseSensitive then
-    Result := HashStrBuf(S, Length(S), Slots)
-  else
-    Result := HashStrBufNoCase(S, Length(S), Slots);
-end;
-{$ELSE}
-function HashStr(const S: AnsiString; const Slots: LongWord; const CaseSensitive: Boolean): LongWord;
-begin
-  if CaseSensitive then
-    Result := HashStrBuf(Pointer(S), Length(S), Slots)
-  else
-    Result := HashStrBufNoCase(Pointer(S), Length(S), Slots);
-end;
-{$ENDIF}
 
 { HashInteger based on the CRC32 algorithm. It is a very good all purpose hash }
 { with a highly uniform distribution of results.                               }
@@ -5983,581 +6988,6 @@ end;
 
 
 {                                                                              }
-{ Append                                                                       }
-{                                                                              }
-function Append(var V: ByteArray; const R: Byte): Integer;
-begin
-  Result := Length(V);
-  SetLength(V, Result + 1);
-  V[Result] := R;
-end;
-
-function Append(var V: WordArray; const R: Word): Integer;
-begin
-  Result := Length(V);
-  SetLength(V, Result + 1);
-  V[Result] := R;
-end;
-
-function Append(var V: LongWordArray; const R: LongWord): Integer;
-begin
-  Result := Length(V);
-  SetLength(V, Result + 1);
-  V[Result] := R;
-end;
-
-function Append(var V: ShortIntArray; const R: ShortInt): Integer;
-begin
-  Result := Length(V);
-  SetLength(V, Result + 1);
-  V[Result] := R;
-end;
-
-function Append(var V: SmallIntArray; const R: SmallInt): Integer;
-begin
-  Result := Length(V);
-  SetLength(V, Result + 1);
-  V[Result] := R;
-end;
-
-function Append(var V: LongIntArray; const R: LongInt): Integer;
-begin
-  Result := Length(V);
-  SetLength(V, Result + 1);
-  V[Result] := R;
-end;
-
-function Append(var V: Int64Array; const R: Int64): Integer;
-begin
-  Result := Length(V);
-  SetLength(V, Result + 1);
-  V[Result] := R;
-end;
-
-function Append(var V: SingleArray; const R: Single): Integer;
-begin
-  Result := Length(V);
-  SetLength(V, Result + 1);
-  V[Result] := R;
-end;
-
-function Append(var V: DoubleArray; const R: Double): Integer;
-begin
-  Result := Length(V);
-  SetLength(V, Result + 1);
-  V[Result] := R;
-end;
-
-function Append(var V: ExtendedArray; const R: Extended): Integer;
-begin
-  Result := Length(V);
-  SetLength(V, Result + 1);
-  V[Result] := R;
-end;
-
-function Append(var V: CurrencyArray; const R: Currency): Integer;
-begin
-  Result := Length(V);
-  SetLength(V, Result + 1);
-  V[Result] := R;
-end;
-
-function Append(var V: BooleanArray; const R: Boolean): Integer;
-begin
-  Result := Length(V);
-  SetLength(V, Result + 1);
-  V[Result] := R;
-end;
-
-function Append(var V: AnsiStringArray; const R: AnsiString): Integer;
-begin
-  Result := Length(V);
-  SetLength(V, Result + 1);
-  V[Result] := R;
-end;
-
-function Append(var V: WideStringArray; const R: WideString): Integer;
-begin
-  Result := Length(V);
-  SetLength(V, Result + 1);
-  V[Result] := R;
-end;
-
-{$IFNDEF ManagedCode}
-function Append(var V: PointerArray; const R: Pointer): Integer;
-begin
-  Result := Length(V);
-  SetLength(V, Result + 1);
-  V[Result] := R;
-end;
-
-{$ENDIF}
-function Append(var V: ObjectArray; const R: TObject): Integer;
-begin
-  Result := Length(V);
-  SetLength(V, Result + 1);
-  V[Result] := R;
-end;
-
-function Append(var V: InterfaceArray; const R: IInterface): Integer;
-begin
-  Result := Length(V);
-  SetLength(V, Result + 1);
-  V[Result] := R;
-end;
-
-function Append(var V: ByteSetArray; const R: ByteSet): Integer;
-begin
-  Result := Length(V);
-  SetLength(V, Result + 1);
-  V[Result] := R;
-end;
-
-function Append(var V: CharSetArray; const R: CharSet): Integer;
-begin
-  Result := Length(V);
-  SetLength(V, Result + 1);
-  V[Result] := R;
-end;
-
-
-
-{$IFDEF ManagedCode}
-function AppendByteArray(var V: ByteArray; const R: array of Byte): Integer;
-var I, L : Integer;
-begin
-  Result := Length(V);
-  L := Length(R);
-  if L > 0 then
-    begin
-      SetLength(V, Result + L);
-      for I := 0 to L - 1 do
-        V[Result + I] := R[I];
-    end;
-end;
-{$ELSE}
-function AppendByteArray(var V: ByteArray; const R: array of Byte): Integer;
-var L : Integer;
-begin
-  Result := Length(V);
-  L := Length(R);
-  if L > 0 then
-    begin
-      SetLength(V, Result + L);
-      Move(R[0], V[Result], Sizeof(Byte) * L);
-    end;
-end;
-{$ENDIF}
-
-{$IFDEF ManagedCode}
-function AppendWordArray(var V: WordArray; const R: array of Word): Integer;
-var I, L : Integer;
-begin
-  Result := Length(V);
-  L := Length(R);
-  if L > 0 then
-    begin
-      SetLength(V, Result + L);
-      for I := 0 to L - 1 do
-        V[Result + I] := R[I];
-    end;
-end;
-{$ELSE}
-function AppendWordArray(var V: WordArray; const R: array of Word): Integer;
-var L : Integer;
-begin
-  Result := Length(V);
-  L := Length(R);
-  if L > 0 then
-    begin
-      SetLength(V, Result + L);
-      Move(R[0], V[Result], Sizeof(Word) * L);
-    end;
-end;
-{$ENDIF}
-
-{$IFDEF ManagedCode}
-function AppendCardinalArray(var V: CardinalArray; const R: array of LongWord): Integer;
-var I, L : Integer;
-begin
-  Result := Length(V);
-  L := Length(R);
-  if L > 0 then
-    begin
-      SetLength(V, Result + L);
-      for I := 0 to L - 1 do
-        V[Result + I] := R[I];
-    end;
-end;
-{$ELSE}
-function AppendCardinalArray(var V: CardinalArray; const R: array of LongWord): Integer;
-var L : Integer;
-begin
-  Result := Length(V);
-  L := Length(R);
-  if L > 0 then
-    begin
-      SetLength(V, Result + L);
-      Move(R[0], V[Result], Sizeof(LongWord) * L);
-    end;
-end;
-{$ENDIF}
-
-{$IFDEF ManagedCode}
-function AppendShortIntArray(var V: ShortIntArray; const R: array of ShortInt): Integer;
-var I, L : Integer;
-begin
-  Result := Length(V);
-  L := Length(R);
-  if L > 0 then
-    begin
-      SetLength(V, Result + L);
-      for I := 0 to L - 1 do
-        V[Result + I] := R[I];
-    end;
-end;
-{$ELSE}
-function AppendShortIntArray(var V: ShortIntArray; const R: array of ShortInt): Integer;
-var L : Integer;
-begin
-  Result := Length(V);
-  L := Length(R);
-  if L > 0 then
-    begin
-      SetLength(V, Result + L);
-      Move(R[0], V[Result], Sizeof(ShortInt) * L);
-    end;
-end;
-{$ENDIF}
-
-{$IFDEF ManagedCode}
-function AppendSmallIntArray(var V: SmallIntArray; const R: array of SmallInt): Integer;
-var I, L : Integer;
-begin
-  Result := Length(V);
-  L := Length(R);
-  if L > 0 then
-    begin
-      SetLength(V, Result + L);
-      for I := 0 to L - 1 do
-        V[Result + I] := R[I];
-    end;
-end;
-{$ELSE}
-function AppendSmallIntArray(var V: SmallIntArray; const R: array of SmallInt): Integer;
-var L : Integer;
-begin
-  Result := Length(V);
-  L := Length(R);
-  if L > 0 then
-    begin
-      SetLength(V, Result + L);
-      Move(R[0], V[Result], Sizeof(SmallInt) * L);
-    end;
-end;
-{$ENDIF}
-
-{$IFDEF ManagedCode}
-function AppendIntegerArray(var V: IntegerArray; const R: array of LongInt): Integer;
-var I, L : Integer;
-begin
-  Result := Length(V);
-  L := Length(R);
-  if L > 0 then
-    begin
-      SetLength(V, Result + L);
-      for I := 0 to L - 1 do
-        V[Result + I] := R[I];
-    end;
-end;
-{$ELSE}
-function AppendIntegerArray(var V: IntegerArray; const R: array of LongInt): Integer;
-var L : Integer;
-begin
-  Result := Length(V);
-  L := Length(R);
-  if L > 0 then
-    begin
-      SetLength(V, Result + L);
-      Move(R[0], V[Result], Sizeof(LongInt) * L);
-    end;
-end;
-{$ENDIF}
-
-{$IFDEF ManagedCode}
-function AppendInt64Array(var V: Int64Array; const R: array of Int64): Integer;
-var I, L : Integer;
-begin
-  Result := Length(V);
-  L := Length(R);
-  if L > 0 then
-    begin
-      SetLength(V, Result + L);
-      for I := 0 to L - 1 do
-        V[Result + I] := R[I];
-    end;
-end;
-{$ELSE}
-function AppendInt64Array(var V: Int64Array; const R: array of Int64): Integer;
-var L : Integer;
-begin
-  Result := Length(V);
-  L := Length(R);
-  if L > 0 then
-    begin
-      SetLength(V, Result + L);
-      Move(R[0], V[Result], Sizeof(Int64) * L);
-    end;
-end;
-{$ENDIF}
-
-{$IFDEF ManagedCode}
-function AppendSingleArray(var V: SingleArray; const R: array of Single): Integer;
-var I, L : Integer;
-begin
-  Result := Length(V);
-  L := Length(R);
-  if L > 0 then
-    begin
-      SetLength(V, Result + L);
-      for I := 0 to L - 1 do
-        V[Result + I] := R[I];
-    end;
-end;
-{$ELSE}
-function AppendSingleArray(var V: SingleArray; const R: array of Single): Integer;
-var L : Integer;
-begin
-  Result := Length(V);
-  L := Length(R);
-  if L > 0 then
-    begin
-      SetLength(V, Result + L);
-      Move(R[0], V[Result], Sizeof(Single) * L);
-    end;
-end;
-{$ENDIF}
-
-{$IFDEF ManagedCode}
-function AppendDoubleArray(var V: DoubleArray; const R: array of Double): Integer;
-var I, L : Integer;
-begin
-  Result := Length(V);
-  L := Length(R);
-  if L > 0 then
-    begin
-      SetLength(V, Result + L);
-      for I := 0 to L - 1 do
-        V[Result + I] := R[I];
-    end;
-end;
-{$ELSE}
-function AppendDoubleArray(var V: DoubleArray; const R: array of Double): Integer;
-var L : Integer;
-begin
-  Result := Length(V);
-  L := Length(R);
-  if L > 0 then
-    begin
-      SetLength(V, Result + L);
-      Move(R[0], V[Result], Sizeof(Double) * L);
-    end;
-end;
-{$ENDIF}
-
-{$IFDEF ManagedCode}
-function AppendExtendedArray(var V: ExtendedArray; const R: array of Extended): Integer;
-var I, L : Integer;
-begin
-  Result := Length(V);
-  L := Length(R);
-  if L > 0 then
-    begin
-      SetLength(V, Result + L);
-      for I := 0 to L - 1 do
-        V[Result + I] := R[I];
-    end;
-end;
-{$ELSE}
-function AppendExtendedArray(var V: ExtendedArray; const R: array of Extended): Integer;
-var L : Integer;
-begin
-  Result := Length(V);
-  L := Length(R);
-  if L > 0 then
-    begin
-      SetLength(V, Result + L);
-      Move(R[0], V[Result], Sizeof(Extended) * L);
-    end;
-end;
-{$ENDIF}
-
-{$IFNDEF CLR}
-{$IFDEF ManagedCode}
-function AppendCurrencyArray(var V: CurrencyArray; const R: array of Currency): Integer;
-var I, L : Integer;
-begin
-  Result := Length(V);
-  L := Length(R);
-  if L > 0 then
-    begin
-      SetLength(V, Result + L);
-      for I := 0 to L - 1 do
-        V[Result + I] := R[I];
-    end;
-end;
-{$ELSE}
-function AppendCurrencyArray(var V: CurrencyArray; const R: array of Currency): Integer;
-var L : Integer;
-begin
-  Result := Length(V);
-  L := Length(R);
-  if L > 0 then
-    begin
-      SetLength(V, Result + L);
-      Move(R[0], V[Result], Sizeof(Currency) * L);
-    end;
-end;
-{$ENDIF}
-
-{$IFDEF ManagedCode}
-function AppendPointerArray(var V: PointerArray; const R: array of Pointer): Integer;
-var I, L : Integer;
-begin
-  Result := Length(V);
-  L := Length(R);
-  if L > 0 then
-    begin
-      SetLength(V, Result + L);
-      for I := 0 to L - 1 do
-        V[Result + I] := R[I];
-    end;
-end;
-{$ELSE}
-function AppendPointerArray(var V: PointerArray; const R: array of Pointer): Integer;
-var L : Integer;
-begin
-  Result := Length(V);
-  L := Length(R);
-  if L > 0 then
-    begin
-      SetLength(V, Result + L);
-      Move(R[0], V[Result], Sizeof(Pointer) * L);
-    end;
-end;
-{$ENDIF}
-
-{$IFDEF ManagedCode}
-function AppendCharSetArray(var V: CharSetArray; const R: array of CharSet): Integer;
-var I, L : Integer;
-begin
-  Result := Length(V);
-  L := Length(R);
-  if L > 0 then
-    begin
-      SetLength(V, Result + L);
-      for I := 0 to L - 1 do
-        V[Result + I] := R[I];
-    end;
-end;
-{$ELSE}
-function AppendCharSetArray(var V: CharSetArray; const R: array of CharSet): Integer;
-var L : Integer;
-begin
-  Result := Length(V);
-  L := Length(R);
-  if L > 0 then
-    begin
-      SetLength(V, Result + L);
-      Move(R[0], V[Result], Sizeof(CharSet) * L);
-    end;
-end;
-{$ENDIF}
-
-{$IFDEF ManagedCode}
-function AppendByteSetArray(var V: ByteSetArray; const R: array of ByteSet): Integer;
-var I, L : Integer;
-begin
-  Result := Length(V);
-  L := Length(R);
-  if L > 0 then
-    begin
-      SetLength(V, Result + L);
-      for I := 0 to L - 1 do
-        V[Result + I] := R[I];
-    end;
-end;
-{$ELSE}
-function AppendByteSetArray(var V: ByteSetArray; const R: array of ByteSet): Integer;
-var L : Integer;
-begin
-  Result := Length(V);
-  L := Length(R);
-  if L > 0 then
-    begin
-      SetLength(V, Result + L);
-      Move(R[0], V[Result], Sizeof(ByteSet) * L);
-    end;
-end;
-{$ENDIF}
-
-{$ENDIF}
-
-function AppendObjectArray(var V: ObjectArray; const R: ObjectArray): Integer;
-var I, LR : Integer;
-begin
-  Result := Length(V);
-  LR := Length(R);
-  if LR > 0 then
-    begin
-      SetLength(V, Result + LR);
-      for I := 0 to LR - 1 do
-        V[Result + I] := R[I];
-    end;
-end;
-
-function AppendAnsiStringArray(var V: AnsiStringArray; const R: array of AnsiString): Integer;
-var I, LR : Integer;
-begin
-  Result := Length(V);
-  LR := Length(R);
-  if LR > 0 then
-    begin
-      SetLength(V, Result + LR);
-      for I := 0 to LR - 1 do
-        V[Result + I] := R[I];
-    end;
-end;
-
-function AppendWideStringArray(var V: WideStringArray; const R: array of WideString): Integer;
-var I, LR : Integer;
-begin
-  Result := Length(V);
-  LR := Length(R);
-  if LR > 0 then
-    begin
-      SetLength(V, Result + LR);
-      for I := 0 to LR - 1 do
-        V[Result + I] := R[I];
-    end;
-end;
-
-function AppendStringArray(var V: StringArray; const R: array of String): Integer;
-var I, LR : Integer;
-begin
-  Result := Length(V);
-  LR := Length(R);
-  if LR > 0 then
-    begin
-      SetLength(V, Result + LR);
-      for I := 0 to LR - 1 do
-        V[Result + I] := R[I];
-    end;
-end;
-
-
-
-{                                                                              }
 { FreeAndNil                                                                   }
 {                                                                              }
 {$IFDEF ManagedCode}
@@ -6575,391 +7005,6 @@ begin
   Temp := TObject(Obj);
   Pointer(Obj) := nil;
   Temp.Free;
-end;
-{$ENDIF}
-
-
-
-{                                                                              }
-{ Remove                                                                       }
-{                                                                              }
-function Remove(var V: ByteArray; const Idx: Integer; const Count: Integer): Integer;
-var I, J, L, M{$IFDEF CLR}, F{$ENDIF}: Integer;
-begin
-  L := Length(V);
-  if (Idx >= L) or (Idx + Count <= 0) or (L = 0) or (Count = 0) then
-    begin
-      Result := 0;
-      exit;
-    end;
-  I := MaxI(Idx, 0);
-  J := MinI(Count, L - I);
-  M := L - J - I;
-  {$IFDEF CLR}
-  for F := 0 to M - 1 do
-    V[I + F] := V[I + J + F];
-  {$ELSE}
-  if M > 0 then
-    Move(V[I + J], V[I], M * SizeOf(Byte));
-  {$ENDIF}
-  SetLength(V, L - J);
-  Result := J;
-end;
-
-function Remove(var V: WordArray; const Idx: Integer; const Count: Integer): Integer;
-var I, J, L, M{$IFDEF CLR}, F{$ENDIF}: Integer;
-begin
-  L := Length(V);
-  if (Idx >= L) or (Idx + Count <= 0) or (L = 0) or (Count = 0) then
-    begin
-      Result := 0;
-      exit;
-    end;
-  I := MaxI(Idx, 0);
-  J := MinI(Count, L - I);
-  M := L - J - I;
-  {$IFDEF CLR}
-  for F := 0 to M - 1 do
-    V[I + F] := V[I + J + F];
-  {$ELSE}
-  if M > 0 then
-    Move(V[I + J], V[I], M * SizeOf(Word));
-  {$ENDIF}
-  SetLength(V, L - J);
-  Result := J;
-end;
-
-function Remove(var V: LongWordArray; const Idx: Integer; const Count: Integer): Integer;
-var I, J, L, M{$IFDEF CLR}, F{$ENDIF}: Integer;
-begin
-  L := Length(V);
-  if (Idx >= L) or (Idx + Count <= 0) or (L = 0) or (Count = 0) then
-    begin
-      Result := 0;
-      exit;
-    end;
-  I := MaxI(Idx, 0);
-  J := MinI(Count, L - I);
-  M := L - J - I;
-  {$IFDEF CLR}
-  for F := 0 to M - 1 do
-    V[I + F] := V[I + J + F];
-  {$ELSE}
-  if M > 0 then
-    Move(V[I + J], V[I], M * SizeOf(LongWord));
-  {$ENDIF}
-  SetLength(V, L - J);
-  Result := J;
-end;
-
-function Remove(var V: ShortIntArray; const Idx: Integer; const Count: Integer): Integer;
-var I, J, L, M{$IFDEF CLR}, F{$ENDIF}: Integer;
-begin
-  L := Length(V);
-  if (Idx >= L) or (Idx + Count <= 0) or (L = 0) or (Count = 0) then
-    begin
-      Result := 0;
-      exit;
-    end;
-  I := MaxI(Idx, 0);
-  J := MinI(Count, L - I);
-  M := L - J - I;
-  {$IFDEF CLR}
-  for F := 0 to M - 1 do
-    V[I + F] := V[I + J + F];
-  {$ELSE}
-  if M > 0 then
-    Move(V[I + J], V[I], M * SizeOf(ShortInt));
-  {$ENDIF}
-  SetLength(V, L - J);
-  Result := J;
-end;
-
-function Remove(var V: SmallIntArray; const Idx: Integer; const Count: Integer): Integer;
-var I, J, L, M{$IFDEF CLR}, F{$ENDIF}: Integer;
-begin
-  L := Length(V);
-  if (Idx >= L) or (Idx + Count <= 0) or (L = 0) or (Count = 0) then
-    begin
-      Result := 0;
-      exit;
-    end;
-  I := MaxI(Idx, 0);
-  J := MinI(Count, L - I);
-  M := L - J - I;
-  {$IFDEF CLR}
-  for F := 0 to M - 1 do
-    V[I + F] := V[I + J + F];
-  {$ELSE}
-  if M > 0 then
-    Move(V[I + J], V[I], M * SizeOf(SmallInt));
-  {$ENDIF}
-  SetLength(V, L - J);
-  Result := J;
-end;
-
-function Remove(var V: LongIntArray; const Idx: Integer; const Count: Integer): Integer;
-var I, J, L, M{$IFDEF CLR}, F{$ENDIF}: Integer;
-begin
-  L := Length(V);
-  if (Idx >= L) or (Idx + Count <= 0) or (L = 0) or (Count = 0) then
-    begin
-      Result := 0;
-      exit;
-    end;
-  I := MaxI(Idx, 0);
-  J := MinI(Count, L - I);
-  M := L - J - I;
-  {$IFDEF CLR}
-  for F := 0 to M - 1 do
-    V[I + F] := V[I + J + F];
-  {$ELSE}
-  if M > 0 then
-    Move(V[I + J], V[I], M * SizeOf(LongInt));
-  {$ENDIF}
-  SetLength(V, L - J);
-  Result := J;
-end;
-
-function Remove(var V: Int64Array; const Idx: Integer; const Count: Integer): Integer;
-var I, J, L, M{$IFDEF CLR}, F{$ENDIF}: Integer;
-begin
-  L := Length(V);
-  if (Idx >= L) or (Idx + Count <= 0) or (L = 0) or (Count = 0) then
-    begin
-      Result := 0;
-      exit;
-    end;
-  I := MaxI(Idx, 0);
-  J := MinI(Count, L - I);
-  M := L - J - I;
-  {$IFDEF CLR}
-  for F := 0 to M - 1 do
-    V[I + F] := V[I + J + F];
-  {$ELSE}
-  if M > 0 then
-    Move(V[I + J], V[I], M * SizeOf(Int64));
-  {$ENDIF}
-  SetLength(V, L - J);
-  Result := J;
-end;
-
-function Remove(var V: SingleArray; const Idx: Integer; const Count: Integer): Integer;
-var I, J, L, M{$IFDEF CLR}, F{$ENDIF}: Integer;
-begin
-  L := Length(V);
-  if (Idx >= L) or (Idx + Count <= 0) or (L = 0) or (Count = 0) then
-    begin
-      Result := 0;
-      exit;
-    end;
-  I := MaxI(Idx, 0);
-  J := MinI(Count, L - I);
-  M := L - J - I;
-  {$IFDEF CLR}
-  for F := 0 to M - 1 do
-    V[I + F] := V[I + J + F];
-  {$ELSE}
-  if M > 0 then
-    Move(V[I + J], V[I], M * SizeOf(Single));
-  {$ENDIF}
-  SetLength(V, L - J);
-  Result := J;
-end;
-
-function Remove(var V: DoubleArray; const Idx: Integer; const Count: Integer): Integer;
-var I, J, L, M{$IFDEF CLR}, F{$ENDIF}: Integer;
-begin
-  L := Length(V);
-  if (Idx >= L) or (Idx + Count <= 0) or (L = 0) or (Count = 0) then
-    begin
-      Result := 0;
-      exit;
-    end;
-  I := MaxI(Idx, 0);
-  J := MinI(Count, L - I);
-  M := L - J - I;
-  {$IFDEF CLR}
-  for F := 0 to M - 1 do
-    V[I + F] := V[I + J + F];
-  {$ELSE}
-  if M > 0 then
-    Move(V[I + J], V[I], M * SizeOf(Double));
-  {$ENDIF}
-  SetLength(V, L - J);
-  Result := J;
-end;
-
-function Remove(var V: ExtendedArray; const Idx: Integer; const Count: Integer): Integer;
-var I, J, L, M{$IFDEF CLR}, F{$ENDIF}: Integer;
-begin
-  L := Length(V);
-  if (Idx >= L) or (Idx + Count <= 0) or (L = 0) or (Count = 0) then
-    begin
-      Result := 0;
-      exit;
-    end;
-  I := MaxI(Idx, 0);
-  J := MinI(Count, L - I);
-  M := L - J - I;
-  {$IFDEF CLR}
-  for F := 0 to M - 1 do
-    V[I + F] := V[I + J + F];
-  {$ELSE}
-  if M > 0 then
-    Move(V[I + J], V[I], M * SizeOf(Extended));
-  {$ENDIF}
-  SetLength(V, L - J);
-  Result := J;
-end;
-
-{$IFNDEF CLR}
-function Remove(var V: CurrencyArray; const Idx: Integer; const Count: Integer): Integer;
-var I, J, L, M{$IFDEF CLR}, F{$ENDIF}: Integer;
-begin
-  L := Length(V);
-  if (Idx >= L) or (Idx + Count <= 0) or (L = 0) or (Count = 0) then
-    begin
-      Result := 0;
-      exit;
-    end;
-  I := MaxI(Idx, 0);
-  J := MinI(Count, L - I);
-  M := L - J - I;
-  {$IFDEF CLR}
-  for F := 0 to M - 1 do
-    V[I + F] := V[I + J + F];
-  {$ELSE}
-  if M > 0 then
-    Move(V[I + J], V[I], M * SizeOf(Currency));
-  {$ENDIF}
-  SetLength(V, L - J);
-  Result := J;
-end;
-
-function Remove(var V: PointerArray; const Idx: Integer; const Count: Integer): Integer;
-var I, J, L, M{$IFDEF CLR}, F{$ENDIF}: Integer;
-begin
-  L := Length(V);
-  if (Idx >= L) or (Idx + Count <= 0) or (L = 0) or (Count = 0) then
-    begin
-      Result := 0;
-      exit;
-    end;
-  I := MaxI(Idx, 0);
-  J := MinI(Count, L - I);
-  M := L - J - I;
-  {$IFDEF CLR}
-  for F := 0 to M - 1 do
-    V[I + F] := V[I + J + F];
-  {$ELSE}
-  if M > 0 then
-    Move(V[I + J], V[I], M * SizeOf(Pointer));
-  {$ENDIF}
-  SetLength(V, L - J);
-  Result := J;
-end;
-
-{$ENDIF}
-
-function Remove(var V: ObjectArray; const Idx: Integer; const Count: Integer;
-    const FreeObjects: Boolean): Integer;
-var I, J, K, L, M, F : Integer;
-begin
-  L := Length(V);
-  if (Idx >= L) or (Idx + Count <= 0) or (L = 0) or (Count = 0) then
-    begin
-      Result := 0;
-      exit;
-    end;
-  I := MaxI(Idx, 0);
-  J := MinI(Count, L - I);
-  if FreeObjects then
-    for K := I to I + J - 1 do
-      FreeAndNil(V[K]);
-  M := L - J - I;
-  for F := I to I + M - 1 do
-    V[F] := V[F + J];
-  SetLength(V, L - J);
-  Result := J;
-end;
-
-function Remove(var V: AnsiStringArray; const Idx: Integer; const Count: Integer): Integer;
-var I, J, K, L : Integer;
-begin
-  L := Length(V);
-  if (Idx >= L) or (Idx + Count <= 0) or (L = 0) or (Count = 0) then
-    begin
-      Result := 0;
-      exit;
-    end;
-  I := MaxI(Idx, 0);
-  J := MinI(Count, L - I);
-  for K := I to L - J - 1 do
-    V[K] := V[K + J];
-  SetLength(V, L - J);
-  Result := J;
-end;
-
-function Remove(var V: WideStringArray; const Idx: Integer; const Count: Integer): Integer;
-var I, J, K, L : Integer;
-begin
-  L := Length(V);
-  if (Idx >= L) or (Idx + Count <= 0) or (L = 0) or (Count = 0) then
-    begin
-      Result := 0;
-      exit;
-    end;
-  I := MaxI(Idx, 0);
-  J := MinI(Count, L - I);
-  for K := I to L - J - 1 do
-    V[K] := V[K + J];
-  SetLength(V, L - J);
-  Result := J;
-end;
-
-{$IFDEF ManagedCode}
-function Remove(var V: InterfaceArray; const Idx: Integer; const Count: Integer): Integer;
-var I, J, K, L, M, F : Integer;
-begin
-  L := Length(V);
-  if (Idx >= L) or (Idx + Count <= 0) or (L = 0) or (Count = 0) then
-    begin
-      Result := 0;
-      exit;
-    end;
-  I := MaxI(Idx, 0);
-  J := MinI(Count, L - I);
-  for K := I to I + J - 1 do
-    V[K] := nil;
-  M := L - J - I;
-  for F := 0 to M - 1 do
-    V[I + F] := V[I + J + F];
-  for F := 0 to J - 1 do
-    V[L - J + F] := nil;
-  SetLength(V, L - J);
-  Result := J;
-end;
-{$ELSE}
-function Remove(var V: InterfaceArray; const Idx: Integer; const Count: Integer): Integer;
-var I, J, K, L, M : Integer;
-begin
-  L := Length(V);
-  if (Idx >= L) or (Idx + Count <= 0) or (L = 0) or (Count = 0) then
-    begin
-      Result := 0;
-      exit;
-    end;
-  I := MaxI(Idx, 0);
-  J := MinI(Count, L - I);
-  for K := I to I + J - 1 do
-    V[K] := nil;
-  M := L - J - I;
-  if M > 0 then
-    Move(V[I + J], V[I], M * SizeOf(IInterface));
-  FillChar(V[L - J], J * SizeOf(IInterface), #0);
-  SetLength(V, L - J);
-  Result := J;
 end;
 {$ENDIF}
 
@@ -7005,8788 +7050,6 @@ begin
   V := nil;
   FreeObjectArray(W);
 end;
-
-
-
-{                                                                              }
-{ RemoveDuplicates                                                             }
-{                                                                              }
-procedure RemoveDuplicates(var V: ByteArray; const IsSorted: Boolean);
-var I, C, J, L : Integer;
-    F          : Byte;
-begin
-  L := Length(V);
-  if L = 0 then
-    exit;
-
-  if IsSorted then
-    begin
-      J := 0;
-      repeat
-        F := V[J];
-        I := J + 1;
-        while (I < L) and (V[I] = F) do
-          Inc(I);
-        C := I - J;
-        if C > 1 then
-          begin
-            Remove(V, J + 1, C - 1);
-            Dec(L, C - 1);
-            Inc(J);
-          end
-        else
-          J := I;
-      until J >= L;
-    end else
-    begin
-      J := 0;
-      repeat
-        repeat
-          I := PosNext(V[J], V, J);
-          if I >= 0 then
-            Remove(V, I, 1);
-        until I < 0;
-        Inc(J);
-      until J >= Length(V);
-    end;
-end;
-
-procedure RemoveDuplicates(var V: WordArray; const IsSorted: Boolean);
-var I, C, J, L : Integer;
-    F          : Word;
-begin
-  L := Length(V);
-  if L = 0 then
-    exit;
-
-  if IsSorted then
-    begin
-      J := 0;
-      repeat
-        F := V[J];
-        I := J + 1;
-        while (I < L) and (V[I] = F) do
-          Inc(I);
-        C := I - J;
-        if C > 1 then
-          begin
-            Remove(V, J + 1, C - 1);
-            Dec(L, C - 1);
-            Inc(J);
-          end
-        else
-          J := I;
-      until J >= L;
-    end else
-    begin
-      J := 0;
-      repeat
-        repeat
-          I := PosNext(V[J], V, J);
-          if I >= 0 then
-            Remove(V, I, 1);
-        until I < 0;
-        Inc(J);
-      until J >= Length(V);
-    end;
-end;
-
-procedure RemoveDuplicates(var V: LongWordArray; const IsSorted: Boolean);
-var I, C, J, L : Integer;
-    F          : LongWord;
-begin
-  L := Length(V);
-  if L = 0 then
-    exit;
-
-  if IsSorted then
-    begin
-      J := 0;
-      repeat
-        F := V[J];
-        I := J + 1;
-        while (I < L) and (V[I] = F) do
-          Inc(I);
-        C := I - J;
-        if C > 1 then
-          begin
-            Remove(V, J + 1, C - 1);
-            Dec(L, C - 1);
-            Inc(J);
-          end
-        else
-          J := I;
-      until J >= L;
-    end else
-    begin
-      J := 0;
-      repeat
-        repeat
-          I := PosNext(V[J], V, J);
-          if I >= 0 then
-            Remove(V, I, 1);
-        until I < 0;
-        Inc(J);
-      until J >= Length(V);
-    end;
-end;
-
-procedure RemoveDuplicates(var V: ShortIntArray; const IsSorted: Boolean);
-var I, C, J, L : Integer;
-    F          : ShortInt;
-begin
-  L := Length(V);
-  if L = 0 then
-    exit;
-
-  if IsSorted then
-    begin
-      J := 0;
-      repeat
-        F := V[J];
-        I := J + 1;
-        while (I < L) and (V[I] = F) do
-          Inc(I);
-        C := I - J;
-        if C > 1 then
-          begin
-            Remove(V, J + 1, C - 1);
-            Dec(L, C - 1);
-            Inc(J);
-          end
-        else
-          J := I;
-      until J >= L;
-    end else
-    begin
-      J := 0;
-      repeat
-        repeat
-          I := PosNext(V[J], V, J);
-          if I >= 0 then
-            Remove(V, I, 1);
-        until I < 0;
-        Inc(J);
-      until J >= Length(V);
-    end;
-end;
-
-procedure RemoveDuplicates(var V: SmallIntArray; const IsSorted: Boolean);
-var I, C, J, L : Integer;
-    F          : SmallInt;
-begin
-  L := Length(V);
-  if L = 0 then
-    exit;
-
-  if IsSorted then
-    begin
-      J := 0;
-      repeat
-        F := V[J];
-        I := J + 1;
-        while (I < L) and (V[I] = F) do
-          Inc(I);
-        C := I - J;
-        if C > 1 then
-          begin
-            Remove(V, J + 1, C - 1);
-            Dec(L, C - 1);
-            Inc(J);
-          end
-        else
-          J := I;
-      until J >= L;
-    end else
-    begin
-      J := 0;
-      repeat
-        repeat
-          I := PosNext(V[J], V, J);
-          if I >= 0 then
-            Remove(V, I, 1);
-        until I < 0;
-        Inc(J);
-      until J >= Length(V);
-    end;
-end;
-
-procedure RemoveDuplicates(var V: LongIntArray; const IsSorted: Boolean);
-var I, C, J, L : Integer;
-    F          : LongInt;
-begin
-  L := Length(V);
-  if L = 0 then
-    exit;
-
-  if IsSorted then
-    begin
-      J := 0;
-      repeat
-        F := V[J];
-        I := J + 1;
-        while (I < L) and (V[I] = F) do
-          Inc(I);
-        C := I - J;
-        if C > 1 then
-          begin
-            Remove(V, J + 1, C - 1);
-            Dec(L, C - 1);
-            Inc(J);
-          end
-        else
-          J := I;
-      until J >= L;
-    end else
-    begin
-      J := 0;
-      repeat
-        repeat
-          I := PosNext(V[J], V, J);
-          if I >= 0 then
-            Remove(V, I, 1);
-        until I < 0;
-        Inc(J);
-      until J >= Length(V);
-    end;
-end;
-
-procedure RemoveDuplicates(var V: Int64Array; const IsSorted: Boolean);
-var I, C, J, L : Integer;
-    F          : Int64;
-begin
-  L := Length(V);
-  if L = 0 then
-    exit;
-
-  if IsSorted then
-    begin
-      J := 0;
-      repeat
-        F := V[J];
-        I := J + 1;
-        while (I < L) and (V[I] = F) do
-          Inc(I);
-        C := I - J;
-        if C > 1 then
-          begin
-            Remove(V, J + 1, C - 1);
-            Dec(L, C - 1);
-            Inc(J);
-          end
-        else
-          J := I;
-      until J >= L;
-    end else
-    begin
-      J := 0;
-      repeat
-        repeat
-          I := PosNext(V[J], V, J);
-          if I >= 0 then
-            Remove(V, I, 1);
-        until I < 0;
-        Inc(J);
-      until J >= Length(V);
-    end;
-end;
-
-procedure RemoveDuplicates(var V: SingleArray; const IsSorted: Boolean);
-var I, C, J, L : Integer;
-    F          : Single;
-begin
-  L := Length(V);
-  if L = 0 then
-    exit;
-
-  if IsSorted then
-    begin
-      J := 0;
-      repeat
-        F := V[J];
-        I := J + 1;
-        while (I < L) and (V[I] = F) do
-          Inc(I);
-        C := I - J;
-        if C > 1 then
-          begin
-            Remove(V, J + 1, C - 1);
-            Dec(L, C - 1);
-            Inc(J);
-          end
-        else
-          J := I;
-      until J >= L;
-    end else
-    begin
-      J := 0;
-      repeat
-        repeat
-          I := PosNext(V[J], V, J);
-          if I >= 0 then
-            Remove(V, I, 1);
-        until I < 0;
-        Inc(J);
-      until J >= Length(V);
-    end;
-end;
-
-procedure RemoveDuplicates(var V: DoubleArray; const IsSorted: Boolean);
-var I, C, J, L : Integer;
-    F          : Double;
-begin
-  L := Length(V);
-  if L = 0 then
-    exit;
-
-  if IsSorted then
-    begin
-      J := 0;
-      repeat
-        F := V[J];
-        I := J + 1;
-        while (I < L) and (V[I] = F) do
-          Inc(I);
-        C := I - J;
-        if C > 1 then
-          begin
-            Remove(V, J + 1, C - 1);
-            Dec(L, C - 1);
-            Inc(J);
-          end
-        else
-          J := I;
-      until J >= L;
-    end else
-    begin
-      J := 0;
-      repeat
-        repeat
-          I := PosNext(V[J], V, J);
-          if I >= 0 then
-            Remove(V, I, 1);
-        until I < 0;
-        Inc(J);
-      until J >= Length(V);
-    end;
-end;
-
-procedure RemoveDuplicates(var V: ExtendedArray; const IsSorted: Boolean);
-var I, C, J, L : Integer;
-    F          : Extended;
-begin
-  L := Length(V);
-  if L = 0 then
-    exit;
-
-  if IsSorted then
-    begin
-      J := 0;
-      repeat
-        F := V[J];
-        I := J + 1;
-        while (I < L) and (V[I] = F) do
-          Inc(I);
-        C := I - J;
-        if C > 1 then
-          begin
-            Remove(V, J + 1, C - 1);
-            Dec(L, C - 1);
-            Inc(J);
-          end
-        else
-          J := I;
-      until J >= L;
-    end else
-    begin
-      J := 0;
-      repeat
-        repeat
-          I := PosNext(V[J], V, J);
-          if I >= 0 then
-            Remove(V, I, 1);
-        until I < 0;
-        Inc(J);
-      until J >= Length(V);
-    end;
-end;
-
-procedure RemoveDuplicates(var V: AnsiStringArray; const IsSorted: Boolean);
-var I, C, J, L : Integer;
-    F          : AnsiString;
-begin
-  L := Length(V);
-  if L = 0 then
-    exit;
-
-  if IsSorted then
-    begin
-      J := 0;
-      repeat
-        F := V[J];
-        I := J + 1;
-        while (I < L) and (V[I] = F) do
-          Inc(I);
-        C := I - J;
-        if C > 1 then
-          begin
-            Remove(V, J + 1, C - 1);
-            Dec(L, C - 1);
-            Inc(J);
-          end
-        else
-          J := I;
-      until J >= L;
-    end else
-    begin
-      J := 0;
-      repeat
-        repeat
-          I := PosNext(V[J], V, J);
-          if I >= 0 then
-            Remove(V, I, 1);
-        until I < 0;
-        Inc(J);
-      until J >= Length(V);
-    end;
-end;
-
-procedure RemoveDuplicates(var V: WideStringArray; const IsSorted: Boolean);
-var I, C, J, L : Integer;
-    F          : WideString;
-begin
-  L := Length(V);
-  if L = 0 then
-    exit;
-
-  if IsSorted then
-    begin
-      J := 0;
-      repeat
-        F := V[J];
-        I := J + 1;
-        while (I < L) and (V[I] = F) do
-          Inc(I);
-        C := I - J;
-        if C > 1 then
-          begin
-            Remove(V, J + 1, C - 1);
-            Dec(L, C - 1);
-            Inc(J);
-          end
-        else
-          J := I;
-      until J >= L;
-    end else
-    begin
-      J := 0;
-      repeat
-        repeat
-          I := PosNext(V[J], V, J);
-          if I >= 0 then
-            Remove(V, I, 1);
-        until I < 0;
-        Inc(J);
-      until J >= Length(V);
-    end;
-end;
-
-{$IFNDEF ManagedCode}
-procedure RemoveDuplicates(var V: PointerArray; const IsSorted: Boolean);
-var I, C, J, L : Integer;
-    F          : Pointer;
-begin
-  L := Length(V);
-  if L = 0 then
-    exit;
-
-  if IsSorted then
-    begin
-      J := 0;
-      repeat
-        F := V[J];
-        I := J + 1;
-        while (I < L) and (V[I] = F) do
-          Inc(I);
-        C := I - J;
-        if C > 1 then
-          begin
-            Remove(V, J + 1, C - 1);
-            Dec(L, C - 1);
-            Inc(J);
-          end
-        else
-          J := I;
-      until J >= L;
-    end else
-    begin
-      J := 0;
-      repeat
-        repeat
-          I := PosNext(V[J], V, J);
-          if I >= 0 then
-            Remove(V, I, 1);
-        until I < 0;
-        Inc(J);
-      until J >= Length(V);
-    end;
-end;
-
-{$ENDIF}
-
-
-procedure TrimArrayLeft(var S: ByteArray; const TrimList: array of Byte); overload;
-var I, J : Integer;
-    R    : Boolean;
-begin
-  I := 0;
-  R := True;
-  while R and (I < Length(S)) do
-    begin
-      R := False;
-      for J := 0 to High(TrimList) do
-        if S[I] = TrimList[J] then
-          begin
-            R := True;
-            Inc(I);
-            break;
-          end;
-    end;
-  if I > 0 then
-    Remove(S, 0, I - 1);
-end;
-
-procedure TrimArrayLeft(var S: WordArray; const TrimList: array of Word); overload;
-var I, J : Integer;
-    R    : Boolean;
-begin
-  I := 0;
-  R := True;
-  while R and (I < Length(S)) do
-    begin
-      R := False;
-      for J := 0 to High(TrimList) do
-        if S[I] = TrimList[J] then
-          begin
-            R := True;
-            Inc(I);
-            break;
-          end;
-    end;
-  if I > 0 then
-    Remove(S, 0, I - 1);
-end;
-
-procedure TrimArrayLeft(var S: LongWordArray; const TrimList: array of LongWord); overload;
-var I, J : Integer;
-    R    : Boolean;
-begin
-  I := 0;
-  R := True;
-  while R and (I < Length(S)) do
-    begin
-      R := False;
-      for J := 0 to High(TrimList) do
-        if S[I] = TrimList[J] then
-          begin
-            R := True;
-            Inc(I);
-            break;
-          end;
-    end;
-  if I > 0 then
-    Remove(S, 0, I - 1);
-end;
-
-procedure TrimArrayLeft(var S: ShortIntArray; const TrimList: array of ShortInt); overload;
-var I, J : Integer;
-    R    : Boolean;
-begin
-  I := 0;
-  R := True;
-  while R and (I < Length(S)) do
-    begin
-      R := False;
-      for J := 0 to High(TrimList) do
-        if S[I] = TrimList[J] then
-          begin
-            R := True;
-            Inc(I);
-            break;
-          end;
-    end;
-  if I > 0 then
-    Remove(S, 0, I - 1);
-end;
-
-procedure TrimArrayLeft(var S: SmallIntArray; const TrimList: array of SmallInt); overload;
-var I, J : Integer;
-    R    : Boolean;
-begin
-  I := 0;
-  R := True;
-  while R and (I < Length(S)) do
-    begin
-      R := False;
-      for J := 0 to High(TrimList) do
-        if S[I] = TrimList[J] then
-          begin
-            R := True;
-            Inc(I);
-            break;
-          end;
-    end;
-  if I > 0 then
-    Remove(S, 0, I - 1);
-end;
-
-procedure TrimArrayLeft(var S: LongIntArray; const TrimList: array of LongInt); overload;
-var I, J : Integer;
-    R    : Boolean;
-begin
-  I := 0;
-  R := True;
-  while R and (I < Length(S)) do
-    begin
-      R := False;
-      for J := 0 to High(TrimList) do
-        if S[I] = TrimList[J] then
-          begin
-            R := True;
-            Inc(I);
-            break;
-          end;
-    end;
-  if I > 0 then
-    Remove(S, 0, I - 1);
-end;
-
-procedure TrimArrayLeft(var S: Int64Array; const TrimList: array of Int64); overload;
-var I, J : Integer;
-    R    : Boolean;
-begin
-  I := 0;
-  R := True;
-  while R and (I < Length(S)) do
-    begin
-      R := False;
-      for J := 0 to High(TrimList) do
-        if S[I] = TrimList[J] then
-          begin
-            R := True;
-            Inc(I);
-            break;
-          end;
-    end;
-  if I > 0 then
-    Remove(S, 0, I - 1);
-end;
-
-procedure TrimArrayLeft(var S: SingleArray; const TrimList: array of Single); overload;
-var I, J : Integer;
-    R    : Boolean;
-begin
-  I := 0;
-  R := True;
-  while R and (I < Length(S)) do
-    begin
-      R := False;
-      for J := 0 to High(TrimList) do
-        if S[I] = TrimList[J] then
-          begin
-            R := True;
-            Inc(I);
-            break;
-          end;
-    end;
-  if I > 0 then
-    Remove(S, 0, I - 1);
-end;
-
-procedure TrimArrayLeft(var S: DoubleArray; const TrimList: array of Double); overload;
-var I, J : Integer;
-    R    : Boolean;
-begin
-  I := 0;
-  R := True;
-  while R and (I < Length(S)) do
-    begin
-      R := False;
-      for J := 0 to High(TrimList) do
-        if S[I] = TrimList[J] then
-          begin
-            R := True;
-            Inc(I);
-            break;
-          end;
-    end;
-  if I > 0 then
-    Remove(S, 0, I - 1);
-end;
-
-procedure TrimArrayLeft(var S: ExtendedArray; const TrimList: array of Extended); overload;
-var I, J : Integer;
-    R    : Boolean;
-begin
-  I := 0;
-  R := True;
-  while R and (I < Length(S)) do
-    begin
-      R := False;
-      for J := 0 to High(TrimList) do
-        if S[I] = TrimList[J] then
-          begin
-            R := True;
-            Inc(I);
-            break;
-          end;
-    end;
-  if I > 0 then
-    Remove(S, 0, I - 1);
-end;
-
-procedure TrimArrayLeft(var S: AnsiStringArray; const TrimList: array of AnsiString); overload;
-var I, J : Integer;
-    R    : Boolean;
-begin
-  I := 0;
-  R := True;
-  while R and (I < Length(S)) do
-    begin
-      R := False;
-      for J := 0 to High(TrimList) do
-        if S[I] = TrimList[J] then
-          begin
-            R := True;
-            Inc(I);
-            break;
-          end;
-    end;
-  if I > 0 then
-    Remove(S, 0, I - 1);
-end;
-
-procedure TrimArrayLeft(var S: WideStringArray; const TrimList: array of WideString); overload;
-var I, J : Integer;
-    R    : Boolean;
-begin
-  I := 0;
-  R := True;
-  while R and (I < Length(S)) do
-    begin
-      R := False;
-      for J := 0 to High(TrimList) do
-        if S[I] = TrimList[J] then
-          begin
-            R := True;
-            Inc(I);
-            break;
-          end;
-    end;
-  if I > 0 then
-    Remove(S, 0, I - 1);
-end;
-
-{$IFNDEF ManagedCode}
-procedure TrimArrayLeft(var S: PointerArray; const TrimList: array of Pointer); overload;
-var I, J : Integer;
-    R    : Boolean;
-begin
-  I := 0;
-  R := True;
-  while R and (I < Length(S)) do
-    begin
-      R := False;
-      for J := 0 to High(TrimList) do
-        if S[I] = TrimList[J] then
-          begin
-            R := True;
-            Inc(I);
-            break;
-          end;
-    end;
-  if I > 0 then
-    Remove(S, 0, I - 1);
-end;
-
-{$ENDIF}
-
-procedure TrimArrayRight(var S: ByteArray; const TrimList: array of Byte); overload;
-var I, J : Integer;
-    R    : Boolean;
-begin
-  I := Length(S) - 1;
-  R := True;
-  while R and (I >= 0) do
-    begin
-      R := False;
-      for J := 0 to High(TrimList) do
-        if S[I] = TrimList[J] then
-          begin
-            R := True;
-            Dec(I);
-            break;
-          end;
-    end;
-  if I < Length(S) - 1 then
-    SetLength(S, I + 1);
-end;
-
-procedure TrimArrayRight(var S: WordArray; const TrimList: array of Word); overload;
-var I, J : Integer;
-    R    : Boolean;
-begin
-  I := Length(S) - 1;
-  R := True;
-  while R and (I >= 0) do
-    begin
-      R := False;
-      for J := 0 to High(TrimList) do
-        if S[I] = TrimList[J] then
-          begin
-            R := True;
-            Dec(I);
-            break;
-          end;
-    end;
-  if I < Length(S) - 1 then
-    SetLength(S, I + 1);
-end;
-
-procedure TrimArrayRight(var S: LongWordArray; const TrimList: array of LongWord); overload;
-var I, J : Integer;
-    R    : Boolean;
-begin
-  I := Length(S) - 1;
-  R := True;
-  while R and (I >= 0) do
-    begin
-      R := False;
-      for J := 0 to High(TrimList) do
-        if S[I] = TrimList[J] then
-          begin
-            R := True;
-            Dec(I);
-            break;
-          end;
-    end;
-  if I < Length(S) - 1 then
-    SetLength(S, I + 1);
-end;
-
-procedure TrimArrayRight(var S: ShortIntArray; const TrimList: array of ShortInt); overload;
-var I, J : Integer;
-    R    : Boolean;
-begin
-  I := Length(S) - 1;
-  R := True;
-  while R and (I >= 0) do
-    begin
-      R := False;
-      for J := 0 to High(TrimList) do
-        if S[I] = TrimList[J] then
-          begin
-            R := True;
-            Dec(I);
-            break;
-          end;
-    end;
-  if I < Length(S) - 1 then
-    SetLength(S, I + 1);
-end;
-
-procedure TrimArrayRight(var S: SmallIntArray; const TrimList: array of SmallInt); overload;
-var I, J : Integer;
-    R    : Boolean;
-begin
-  I := Length(S) - 1;
-  R := True;
-  while R and (I >= 0) do
-    begin
-      R := False;
-      for J := 0 to High(TrimList) do
-        if S[I] = TrimList[J] then
-          begin
-            R := True;
-            Dec(I);
-            break;
-          end;
-    end;
-  if I < Length(S) - 1 then
-    SetLength(S, I + 1);
-end;
-
-procedure TrimArrayRight(var S: LongIntArray; const TrimList: array of LongInt); overload;
-var I, J : Integer;
-    R    : Boolean;
-begin
-  I := Length(S) - 1;
-  R := True;
-  while R and (I >= 0) do
-    begin
-      R := False;
-      for J := 0 to High(TrimList) do
-        if S[I] = TrimList[J] then
-          begin
-            R := True;
-            Dec(I);
-            break;
-          end;
-    end;
-  if I < Length(S) - 1 then
-    SetLength(S, I + 1);
-end;
-
-procedure TrimArrayRight(var S: Int64Array; const TrimList: array of Int64); overload;
-var I, J : Integer;
-    R    : Boolean;
-begin
-  I := Length(S) - 1;
-  R := True;
-  while R and (I >= 0) do
-    begin
-      R := False;
-      for J := 0 to High(TrimList) do
-        if S[I] = TrimList[J] then
-          begin
-            R := True;
-            Dec(I);
-            break;
-          end;
-    end;
-  if I < Length(S) - 1 then
-    SetLength(S, I + 1);
-end;
-
-procedure TrimArrayRight(var S: SingleArray; const TrimList: array of Single); overload;
-var I, J : Integer;
-    R    : Boolean;
-begin
-  I := Length(S) - 1;
-  R := True;
-  while R and (I >= 0) do
-    begin
-      R := False;
-      for J := 0 to High(TrimList) do
-        if S[I] = TrimList[J] then
-          begin
-            R := True;
-            Dec(I);
-            break;
-          end;
-    end;
-  if I < Length(S) - 1 then
-    SetLength(S, I + 1);
-end;
-
-procedure TrimArrayRight(var S: DoubleArray; const TrimList: array of Double); overload;
-var I, J : Integer;
-    R    : Boolean;
-begin
-  I := Length(S) - 1;
-  R := True;
-  while R and (I >= 0) do
-    begin
-      R := False;
-      for J := 0 to High(TrimList) do
-        if S[I] = TrimList[J] then
-          begin
-            R := True;
-            Dec(I);
-            break;
-          end;
-    end;
-  if I < Length(S) - 1 then
-    SetLength(S, I + 1);
-end;
-
-procedure TrimArrayRight(var S: ExtendedArray; const TrimList: array of Extended); overload;
-var I, J : Integer;
-    R    : Boolean;
-begin
-  I := Length(S) - 1;
-  R := True;
-  while R and (I >= 0) do
-    begin
-      R := False;
-      for J := 0 to High(TrimList) do
-        if S[I] = TrimList[J] then
-          begin
-            R := True;
-            Dec(I);
-            break;
-          end;
-    end;
-  if I < Length(S) - 1 then
-    SetLength(S, I + 1);
-end;
-
-procedure TrimArrayRight(var S: AnsiStringArray; const TrimList: array of AnsiString); overload;
-var I, J : Integer;
-    R    : Boolean;
-begin
-  I := Length(S) - 1;
-  R := True;
-  while R and (I >= 0) do
-    begin
-      R := False;
-      for J := 0 to High(TrimList) do
-        if S[I] = TrimList[J] then
-          begin
-            R := True;
-            Dec(I);
-            break;
-          end;
-    end;
-  if I < Length(S) - 1 then
-    SetLength(S, I + 1);
-end;
-
-procedure TrimArrayRight(var S: WideStringArray; const TrimList: array of WideString); overload;
-var I, J : Integer;
-    R    : Boolean;
-begin
-  I := Length(S) - 1;
-  R := True;
-  while R and (I >= 0) do
-    begin
-      R := False;
-      for J := 0 to High(TrimList) do
-        if S[I] = TrimList[J] then
-          begin
-            R := True;
-            Dec(I);
-            break;
-          end;
-    end;
-  if I < Length(S) - 1 then
-    SetLength(S, I + 1);
-end;
-
-{$IFNDEF ManagedCode}
-procedure TrimArrayRight(var S: PointerArray; const TrimList: array of Pointer); overload;
-var I, J : Integer;
-    R    : Boolean;
-begin
-  I := Length(S) - 1;
-  R := True;
-  while R and (I >= 0) do
-    begin
-      R := False;
-      for J := 0 to High(TrimList) do
-        if S[I] = TrimList[J] then
-          begin
-            R := True;
-            Dec(I);
-            break;
-          end;
-    end;
-  if I < Length(S) - 1 then
-    SetLength(S, I + 1);
-end;
-
-{$ENDIF}
-
-{                                                                              }
-{ ArrayInsert                                                                  }
-{                                                                              }
-{$IFDEF ManagedCode}
-function ArrayInsert(var V: ByteArray; const Idx: Integer; const Count: Integer): Integer;
-var I, L, J : Integer;
-begin
-  L := Length(V);
-  if (Idx > L) or (Idx + Count <= 0) or (Count <= 0) then
-    begin
-      Result := -1;
-      exit;
-    end;
-  SetLength(V, L + Count);
-  I := Idx;
-  if I < 0 then
-    I := 0;
-  for J := 0 to L - I - 1 do
-    V[I + Count + J] := V[I + J];
-  for J := 0 to Count - 1 do
-    V[I + J] := 0;
-  Result := I;
-end;
-{$ELSE}
-function ArrayInsert(var V: ByteArray; const Idx: Integer; const Count: Integer): Integer;
-var I, L : Integer;
-    P    : Pointer;
-begin
-  L := Length(V);
-  if (Idx > L) or (Idx + Count <= 0) or (Count <= 0) then
-    begin
-      Result := -1;
-      exit;
-    end;
-  SetLength(V, L + Count);
-  I := Idx;
-  if I < 0 then
-    I := 0;
-  P := @V[I];
-  if I < L then
-    Move(P^, V[I + Count], (L - I) * Sizeof(Byte));
-  FillChar(P^, Count * Sizeof(Byte), #0);
-  Result := I;
-end;
-{$ENDIF}
-
-{$IFDEF ManagedCode}
-function ArrayInsert(var V: WordArray; const Idx: Integer; const Count: Integer): Integer;
-var I, L, J : Integer;
-begin
-  L := Length(V);
-  if (Idx > L) or (Idx + Count <= 0) or (Count <= 0) then
-    begin
-      Result := -1;
-      exit;
-    end;
-  SetLength(V, L + Count);
-  I := Idx;
-  if I < 0 then
-    I := 0;
-  for J := 0 to L - I - 1 do
-    V[I + Count + J] := V[I + J];
-  for J := 0 to Count - 1 do
-    V[I + J] := 0;
-  Result := I;
-end;
-{$ELSE}
-function ArrayInsert(var V: WordArray; const Idx: Integer; const Count: Integer): Integer;
-var I, L : Integer;
-    P    : Pointer;
-begin
-  L := Length(V);
-  if (Idx > L) or (Idx + Count <= 0) or (Count <= 0) then
-    begin
-      Result := -1;
-      exit;
-    end;
-  SetLength(V, L + Count);
-  I := Idx;
-  if I < 0 then
-    I := 0;
-  P := @V[I];
-  if I < L then
-    Move(P^, V[I + Count], (L - I) * Sizeof(Word));
-  FillChar(P^, Count * Sizeof(Word), #0);
-  Result := I;
-end;
-{$ENDIF}
-
-{$IFDEF ManagedCode}
-function ArrayInsert(var V: LongWordArray; const Idx: Integer; const Count: Integer): Integer;
-var I, L, J : Integer;
-begin
-  L := Length(V);
-  if (Idx > L) or (Idx + Count <= 0) or (Count <= 0) then
-    begin
-      Result := -1;
-      exit;
-    end;
-  SetLength(V, L + Count);
-  I := Idx;
-  if I < 0 then
-    I := 0;
-  for J := 0 to L - I - 1 do
-    V[I + Count + J] := V[I + J];
-  for J := 0 to Count - 1 do
-    V[I + J] := 0;
-  Result := I;
-end;
-{$ELSE}
-function ArrayInsert(var V: LongWordArray; const Idx: Integer; const Count: Integer): Integer;
-var I, L : Integer;
-    P    : Pointer;
-begin
-  L := Length(V);
-  if (Idx > L) or (Idx + Count <= 0) or (Count <= 0) then
-    begin
-      Result := -1;
-      exit;
-    end;
-  SetLength(V, L + Count);
-  I := Idx;
-  if I < 0 then
-    I := 0;
-  P := @V[I];
-  if I < L then
-    Move(P^, V[I + Count], (L - I) * Sizeof(LongWord));
-  FillChar(P^, Count * Sizeof(LongWord), #0);
-  Result := I;
-end;
-{$ENDIF}
-
-{$IFDEF ManagedCode}
-function ArrayInsert(var V: ShortIntArray; const Idx: Integer; const Count: Integer): Integer;
-var I, L, J : Integer;
-begin
-  L := Length(V);
-  if (Idx > L) or (Idx + Count <= 0) or (Count <= 0) then
-    begin
-      Result := -1;
-      exit;
-    end;
-  SetLength(V, L + Count);
-  I := Idx;
-  if I < 0 then
-    I := 0;
-  for J := 0 to L - I - 1 do
-    V[I + Count + J] := V[I + J];
-  for J := 0 to Count - 1 do
-    V[I + J] := 0;
-  Result := I;
-end;
-{$ELSE}
-function ArrayInsert(var V: ShortIntArray; const Idx: Integer; const Count: Integer): Integer;
-var I, L : Integer;
-    P    : Pointer;
-begin
-  L := Length(V);
-  if (Idx > L) or (Idx + Count <= 0) or (Count <= 0) then
-    begin
-      Result := -1;
-      exit;
-    end;
-  SetLength(V, L + Count);
-  I := Idx;
-  if I < 0 then
-    I := 0;
-  P := @V[I];
-  if I < L then
-    Move(P^, V[I + Count], (L - I) * Sizeof(ShortInt));
-  FillChar(P^, Count * Sizeof(ShortInt), #0);
-  Result := I;
-end;
-{$ENDIF}
-
-{$IFDEF ManagedCode}
-function ArrayInsert(var V: SmallIntArray; const Idx: Integer; const Count: Integer): Integer;
-var I, L, J : Integer;
-begin
-  L := Length(V);
-  if (Idx > L) or (Idx + Count <= 0) or (Count <= 0) then
-    begin
-      Result := -1;
-      exit;
-    end;
-  SetLength(V, L + Count);
-  I := Idx;
-  if I < 0 then
-    I := 0;
-  for J := 0 to L - I - 1 do
-    V[I + Count + J] := V[I + J];
-  for J := 0 to Count - 1 do
-    V[I + J] := 0;
-  Result := I;
-end;
-{$ELSE}
-function ArrayInsert(var V: SmallIntArray; const Idx: Integer; const Count: Integer): Integer;
-var I, L : Integer;
-    P    : Pointer;
-begin
-  L := Length(V);
-  if (Idx > L) or (Idx + Count <= 0) or (Count <= 0) then
-    begin
-      Result := -1;
-      exit;
-    end;
-  SetLength(V, L + Count);
-  I := Idx;
-  if I < 0 then
-    I := 0;
-  P := @V[I];
-  if I < L then
-    Move(P^, V[I + Count], (L - I) * Sizeof(SmallInt));
-  FillChar(P^, Count * Sizeof(SmallInt), #0);
-  Result := I;
-end;
-{$ENDIF}
-
-{$IFDEF ManagedCode}
-function ArrayInsert(var V: LongIntArray; const Idx: Integer; const Count: Integer): Integer;
-var I, L, J : Integer;
-begin
-  L := Length(V);
-  if (Idx > L) or (Idx + Count <= 0) or (Count <= 0) then
-    begin
-      Result := -1;
-      exit;
-    end;
-  SetLength(V, L + Count);
-  I := Idx;
-  if I < 0 then
-    I := 0;
-  for J := 0 to L - I - 1 do
-    V[I + Count + J] := V[I + J];
-  for J := 0 to Count - 1 do
-    V[I + J] := 0;
-  Result := I;
-end;
-{$ELSE}
-function ArrayInsert(var V: LongIntArray; const Idx: Integer; const Count: Integer): Integer;
-var I, L : Integer;
-    P    : Pointer;
-begin
-  L := Length(V);
-  if (Idx > L) or (Idx + Count <= 0) or (Count <= 0) then
-    begin
-      Result := -1;
-      exit;
-    end;
-  SetLength(V, L + Count);
-  I := Idx;
-  if I < 0 then
-    I := 0;
-  P := @V[I];
-  if I < L then
-    Move(P^, V[I + Count], (L - I) * Sizeof(LongInt));
-  FillChar(P^, Count * Sizeof(LongInt), #0);
-  Result := I;
-end;
-{$ENDIF}
-
-{$IFDEF ManagedCode}
-function ArrayInsert(var V: Int64Array; const Idx: Integer; const Count: Integer): Integer;
-var I, L, J : Integer;
-begin
-  L := Length(V);
-  if (Idx > L) or (Idx + Count <= 0) or (Count <= 0) then
-    begin
-      Result := -1;
-      exit;
-    end;
-  SetLength(V, L + Count);
-  I := Idx;
-  if I < 0 then
-    I := 0;
-  for J := 0 to L - I - 1 do
-    V[I + Count + J] := V[I + J];
-  for J := 0 to Count - 1 do
-    V[I + J] := 0;
-  Result := I;
-end;
-{$ELSE}
-function ArrayInsert(var V: Int64Array; const Idx: Integer; const Count: Integer): Integer;
-var I, L : Integer;
-    P    : Pointer;
-begin
-  L := Length(V);
-  if (Idx > L) or (Idx + Count <= 0) or (Count <= 0) then
-    begin
-      Result := -1;
-      exit;
-    end;
-  SetLength(V, L + Count);
-  I := Idx;
-  if I < 0 then
-    I := 0;
-  P := @V[I];
-  if I < L then
-    Move(P^, V[I + Count], (L - I) * Sizeof(Int64));
-  FillChar(P^, Count * Sizeof(Int64), #0);
-  Result := I;
-end;
-{$ENDIF}
-
-{$IFDEF ManagedCode}
-function ArrayInsert(var V: SingleArray; const Idx: Integer; const Count: Integer): Integer;
-var I, L, J : Integer;
-begin
-  L := Length(V);
-  if (Idx > L) or (Idx + Count <= 0) or (Count <= 0) then
-    begin
-      Result := -1;
-      exit;
-    end;
-  SetLength(V, L + Count);
-  I := Idx;
-  if I < 0 then
-    I := 0;
-  for J := 0 to L - I - 1 do
-    V[I + Count + J] := V[I + J];
-  for J := 0 to Count - 1 do
-    V[I + J] := 0.0;
-  Result := I;
-end;
-{$ELSE}
-function ArrayInsert(var V: SingleArray; const Idx: Integer; const Count: Integer): Integer;
-var I, L : Integer;
-    P    : Pointer;
-begin
-  L := Length(V);
-  if (Idx > L) or (Idx + Count <= 0) or (Count <= 0) then
-    begin
-      Result := -1;
-      exit;
-    end;
-  SetLength(V, L + Count);
-  I := Idx;
-  if I < 0 then
-    I := 0;
-  P := @V[I];
-  if I < L then
-    Move(P^, V[I + Count], (L - I) * Sizeof(Single));
-  FillChar(P^, Count * Sizeof(Single), #0);
-  Result := I;
-end;
-{$ENDIF}
-
-{$IFDEF ManagedCode}
-function ArrayInsert(var V: DoubleArray; const Idx: Integer; const Count: Integer): Integer;
-var I, L, J : Integer;
-begin
-  L := Length(V);
-  if (Idx > L) or (Idx + Count <= 0) or (Count <= 0) then
-    begin
-      Result := -1;
-      exit;
-    end;
-  SetLength(V, L + Count);
-  I := Idx;
-  if I < 0 then
-    I := 0;
-  for J := 0 to L - I - 1 do
-    V[I + Count + J] := V[I + J];
-  for J := 0 to Count - 1 do
-    V[I + J] := 0.0;
-  Result := I;
-end;
-{$ELSE}
-function ArrayInsert(var V: DoubleArray; const Idx: Integer; const Count: Integer): Integer;
-var I, L : Integer;
-    P    : Pointer;
-begin
-  L := Length(V);
-  if (Idx > L) or (Idx + Count <= 0) or (Count <= 0) then
-    begin
-      Result := -1;
-      exit;
-    end;
-  SetLength(V, L + Count);
-  I := Idx;
-  if I < 0 then
-    I := 0;
-  P := @V[I];
-  if I < L then
-    Move(P^, V[I + Count], (L - I) * Sizeof(Double));
-  FillChar(P^, Count * Sizeof(Double), #0);
-  Result := I;
-end;
-{$ENDIF}
-
-{$IFDEF ManagedCode}
-function ArrayInsert(var V: ExtendedArray; const Idx: Integer; const Count: Integer): Integer;
-var I, L, J : Integer;
-begin
-  L := Length(V);
-  if (Idx > L) or (Idx + Count <= 0) or (Count <= 0) then
-    begin
-      Result := -1;
-      exit;
-    end;
-  SetLength(V, L + Count);
-  I := Idx;
-  if I < 0 then
-    I := 0;
-  for J := 0 to L - I - 1 do
-    V[I + Count + J] := V[I + J];
-  for J := 0 to Count - 1 do
-    V[I + J] := 0.0;
-  Result := I;
-end;
-{$ELSE}
-function ArrayInsert(var V: ExtendedArray; const Idx: Integer; const Count: Integer): Integer;
-var I, L : Integer;
-    P    : Pointer;
-begin
-  L := Length(V);
-  if (Idx > L) or (Idx + Count <= 0) or (Count <= 0) then
-    begin
-      Result := -1;
-      exit;
-    end;
-  SetLength(V, L + Count);
-  I := Idx;
-  if I < 0 then
-    I := 0;
-  P := @V[I];
-  if I < L then
-    Move(P^, V[I + Count], (L - I) * Sizeof(Extended));
-  FillChar(P^, Count * Sizeof(Extended), #0);
-  Result := I;
-end;
-{$ENDIF}
-
-{$IFDEF ManagedCode}
-function ArrayInsert(var V: CurrencyArray; const Idx: Integer; const Count: Integer): Integer;
-var I, L, J : Integer;
-begin
-  L := Length(V);
-  if (Idx > L) or (Idx + Count <= 0) or (Count <= 0) then
-    begin
-      Result := -1;
-      exit;
-    end;
-  SetLength(V, L + Count);
-  I := Idx;
-  if I < 0 then
-    I := 0;
-  for J := 0 to L - I - 1 do
-    V[I + Count + J] := V[I + J];
-  for J := 0 to Count - 1 do
-    V[I + J] := 0.0;
-  Result := I;
-end;
-{$ELSE}
-function ArrayInsert(var V: CurrencyArray; const Idx: Integer; const Count: Integer): Integer;
-var I, L : Integer;
-    P    : Pointer;
-begin
-  L := Length(V);
-  if (Idx > L) or (Idx + Count <= 0) or (Count <= 0) then
-    begin
-      Result := -1;
-      exit;
-    end;
-  SetLength(V, L + Count);
-  I := Idx;
-  if I < 0 then
-    I := 0;
-  P := @V[I];
-  if I < L then
-    Move(P^, V[I + Count], (L - I) * Sizeof(Currency));
-  FillChar(P^, Count * Sizeof(Currency), #0);
-  Result := I;
-end;
-{$ENDIF}
-
-{$IFDEF ManagedCode}
-function ArrayInsert(var V: AnsiStringArray; const Idx: Integer; const Count: Integer): Integer;
-var I, L, J : Integer;
-begin
-  L := Length(V);
-  if (Idx > L) or (Idx + Count <= 0) or (Count <= 0) then
-    begin
-      Result := -1;
-      exit;
-    end;
-  SetLength(V, L + Count);
-  I := Idx;
-  if I < 0 then
-    I := 0;
-  for J := 0 to L - I - 1 do
-    V[I + Count + J] := V[I + J];
-  for J := 0 to Count - 1 do
-    V[I + J] := '';
-  Result := I;
-end;
-{$ELSE}
-function ArrayInsert(var V: AnsiStringArray; const Idx: Integer; const Count: Integer): Integer;
-var I, L : Integer;
-    P    : Pointer;
-begin
-  L := Length(V);
-  if (Idx > L) or (Idx + Count <= 0) or (Count <= 0) then
-    begin
-      Result := -1;
-      exit;
-    end;
-  SetLength(V, L + Count);
-  I := Idx;
-  if I < 0 then
-    I := 0;
-  P := @V[I];
-  if I < L then
-    Move(P^, V[I + Count], (L - I) * Sizeof(AnsiString));
-  FillChar(P^, Count * Sizeof(AnsiString), #0);
-  Result := I;
-end;
-{$ENDIF}
-
-{$IFDEF ManagedCode}
-function ArrayInsert(var V: WideStringArray; const Idx: Integer; const Count: Integer): Integer;
-var I, L, J : Integer;
-begin
-  L := Length(V);
-  if (Idx > L) or (Idx + Count <= 0) or (Count <= 0) then
-    begin
-      Result := -1;
-      exit;
-    end;
-  SetLength(V, L + Count);
-  I := Idx;
-  if I < 0 then
-    I := 0;
-  for J := 0 to L - I - 1 do
-    V[I + Count + J] := V[I + J];
-  for J := 0 to Count - 1 do
-    V[I + J] := '';
-  Result := I;
-end;
-{$ELSE}
-function ArrayInsert(var V: WideStringArray; const Idx: Integer; const Count: Integer): Integer;
-var I, L : Integer;
-    P    : Pointer;
-begin
-  L := Length(V);
-  if (Idx > L) or (Idx + Count <= 0) or (Count <= 0) then
-    begin
-      Result := -1;
-      exit;
-    end;
-  SetLength(V, L + Count);
-  I := Idx;
-  if I < 0 then
-    I := 0;
-  P := @V[I];
-  if I < L then
-    Move(P^, V[I + Count], (L - I) * Sizeof(WideString));
-  FillChar(P^, Count * Sizeof(WideString), #0);
-  Result := I;
-end;
-{$ENDIF}
-
-{$IFNDEF ManagedCode}
-{$IFDEF ManagedCode}
-function ArrayInsert(var V: PointerArray; const Idx: Integer; const Count: Integer): Integer;
-var I, L, J : Integer;
-begin
-  L := Length(V);
-  if (Idx > L) or (Idx + Count <= 0) or (Count <= 0) then
-    begin
-      Result := -1;
-      exit;
-    end;
-  SetLength(V, L + Count);
-  I := Idx;
-  if I < 0 then
-    I := 0;
-  for J := 0 to L - I - 1 do
-    V[I + Count + J] := V[I + J];
-  for J := 0 to Count - 1 do
-    V[I + J] := nil;
-  Result := I;
-end;
-{$ELSE}
-function ArrayInsert(var V: PointerArray; const Idx: Integer; const Count: Integer): Integer;
-var I, L : Integer;
-    P    : Pointer;
-begin
-  L := Length(V);
-  if (Idx > L) or (Idx + Count <= 0) or (Count <= 0) then
-    begin
-      Result := -1;
-      exit;
-    end;
-  SetLength(V, L + Count);
-  I := Idx;
-  if I < 0 then
-    I := 0;
-  P := @V[I];
-  if I < L then
-    Move(P^, V[I + Count], (L - I) * Sizeof(Pointer));
-  FillChar(P^, Count * Sizeof(Pointer), #0);
-  Result := I;
-end;
-{$ENDIF}
-
-{$IFDEF ManagedCode}
-function ArrayInsert(var V: ObjectArray; const Idx: Integer; const Count: Integer): Integer;
-var I, L, J : Integer;
-begin
-  L := Length(V);
-  if (Idx > L) or (Idx + Count <= 0) or (Count <= 0) then
-    begin
-      Result := -1;
-      exit;
-    end;
-  SetLength(V, L + Count);
-  I := Idx;
-  if I < 0 then
-    I := 0;
-  for J := 0 to L - I - 1 do
-    V[I + Count + J] := V[I + J];
-  for J := 0 to Count - 1 do
-    V[I + J] := nil;
-  Result := I;
-end;
-{$ELSE}
-function ArrayInsert(var V: ObjectArray; const Idx: Integer; const Count: Integer): Integer;
-var I, L : Integer;
-    P    : Pointer;
-begin
-  L := Length(V);
-  if (Idx > L) or (Idx + Count <= 0) or (Count <= 0) then
-    begin
-      Result := -1;
-      exit;
-    end;
-  SetLength(V, L + Count);
-  I := Idx;
-  if I < 0 then
-    I := 0;
-  P := @V[I];
-  if I < L then
-    Move(P^, V[I + Count], (L - I) * Sizeof(Pointer));
-  FillChar(P^, Count * Sizeof(Pointer), #0);
-  Result := I;
-end;
-{$ENDIF}
-
-{$ENDIF}
-{$IFDEF ManagedCode}
-function ArrayInsert(var V: InterfaceArray; const Idx: Integer; const Count: Integer): Integer;
-var I, L, J : Integer;
-begin
-  L := Length(V);
-  if (Idx > L) or (Idx + Count <= 0) or (Count <= 0) then
-    begin
-      Result := -1;
-      exit;
-    end;
-  SetLength(V, L + Count);
-  I := Idx;
-  if I < 0 then
-    I := 0;
-  for J := 0 to L - I - 1 do
-    V[I + Count + J] := V[I + J];
-  for J := 0 to Count - 1 do
-    V[I + J] := nil;
-  Result := I;
-end;
-{$ELSE}
-function ArrayInsert(var V: InterfaceArray; const Idx: Integer; const Count: Integer): Integer;
-var I, L : Integer;
-    P    : Pointer;
-begin
-  L := Length(V);
-  if (Idx > L) or (Idx + Count <= 0) or (Count <= 0) then
-    begin
-      Result := -1;
-      exit;
-    end;
-  SetLength(V, L + Count);
-  I := Idx;
-  if I < 0 then
-    I := 0;
-  P := @V[I];
-  if I < L then
-    Move(P^, V[I + Count], (L - I) * Sizeof(IInterface));
-  FillChar(P^, Count * Sizeof(IInterface), #0);
-  Result := I;
-end;
-{$ENDIF}
-
-
-
-{                                                                              }
-{ PosNext                                                                      }
-{   PosNext finds the next occurance of Find in V, -1 if it was not found.     }
-{     Searches from Item[PrevPos + 1], ie PrevPos = -1 to find first           }
-{     occurance.                                                               }
-{                                                                              }
-function PosNext(const Find: Byte; const V: ByteArray; const PrevPos: Integer;
-    const IsSortedAscending: Boolean): Integer;
-var I, L, H : Integer;
-    D       : Byte;
-begin
-  if IsSortedAscending then // binary search
-    begin
-      if MaxI(PrevPos + 1, 0) = 0 then // find first
-        begin
-          L := 0;
-          H := Length(V) - 1;
-          while L <= H do
-            begin
-              I := (L + H) div 2;
-              D := V[I];
-              if Find = D then
-                begin
-                  while (I > 0) and (V[I - 1] = Find) do
-                    Dec(I);
-                  Result := I;
-                  exit;
-                end else
-              if D > Find then
-                H := I - 1
-              else
-                L := I + 1;
-            end;
-          Result := -1;
-        end
-      else // find next
-        if PrevPos >= Length(V) - 1 then
-          Result := -1
-        else
-          if V[PrevPos + 1] = Find then
-            Result := PrevPos + 1
-          else
-            Result := -1;
-    end
-  else
-    begin // linear search
-      for I := MaxI(PrevPos + 1, 0) to Length(V) - 1 do
-        if V[I] = Find then
-          begin
-            Result := I;
-            exit;
-          end;
-      Result := -1;
-    end;
-end;
-
-function PosNext(const Find: Word; const V: WordArray; const PrevPos: Integer;
-    const IsSortedAscending: Boolean): Integer;
-var I, L, H : Integer;
-    D       : Word;
-begin
-  if IsSortedAscending then // binary search
-    begin
-      if MaxI(PrevPos + 1, 0) = 0 then // find first
-        begin
-          L := 0;
-          H := Length(V) - 1;
-          while L <= H do
-            begin
-              I := (L + H) div 2;
-              D := V[I];
-              if Find = D then
-                begin
-                  while (I > 0) and (V[I - 1] = Find) do
-                    Dec(I);
-                  Result := I;
-                  exit;
-                end else
-              if D > Find then
-                H := I - 1
-              else
-                L := I + 1;
-            end;
-          Result := -1;
-        end
-      else // find next
-        if PrevPos >= Length(V) - 1 then
-          Result := -1
-        else
-          if V[PrevPos + 1] = Find then
-            Result := PrevPos + 1
-          else
-            Result := -1;
-    end
-  else
-    begin // linear search
-      for I := MaxI(PrevPos + 1, 0) to Length(V) - 1 do
-        if V[I] = Find then
-          begin
-            Result := I;
-            exit;
-          end;
-      Result := -1;
-    end;
-end;
-
-function PosNext(const Find: LongWord; const V: LongWordArray; const PrevPos: Integer;
-    const IsSortedAscending: Boolean): Integer;
-var I, L, H : Integer;
-    D       : LongWord;
-begin
-  if IsSortedAscending then // binary search
-    begin
-      if MaxI(PrevPos + 1, 0) = 0 then // find first
-        begin
-          L := 0;
-          H := Length(V) - 1;
-          while L <= H do
-            begin
-              I := (L + H) div 2;
-              D := V[I];
-              if Find = D then
-                begin
-                  while (I > 0) and (V[I - 1] = Find) do
-                    Dec(I);
-                  Result := I;
-                  exit;
-                end else
-              if D > Find then
-                H := I - 1
-              else
-                L := I + 1;
-            end;
-          Result := -1;
-        end
-      else // find next
-        if PrevPos >= Length(V) - 1 then
-          Result := -1
-        else
-          if V[PrevPos + 1] = Find then
-            Result := PrevPos + 1
-          else
-            Result := -1;
-    end
-  else
-    begin // linear search
-      for I := MaxI(PrevPos + 1, 0) to Length(V) - 1 do
-        if V[I] = Find then
-          begin
-            Result := I;
-            exit;
-          end;
-      Result := -1;
-    end;
-end;
-
-function PosNext(const Find: ShortInt; const V: ShortIntArray; const PrevPos: Integer;
-    const IsSortedAscending: Boolean): Integer;
-var I, L, H : Integer;
-    D       : ShortInt;
-begin
-  if IsSortedAscending then // binary search
-    begin
-      if MaxI(PrevPos + 1, 0) = 0 then // find first
-        begin
-          L := 0;
-          H := Length(V) - 1;
-          while L <= H do
-            begin
-              I := (L + H) div 2;
-              D := V[I];
-              if Find = D then
-                begin
-                  while (I > 0) and (V[I - 1] = Find) do
-                    Dec(I);
-                  Result := I;
-                  exit;
-                end else
-              if D > Find then
-                H := I - 1
-              else
-                L := I + 1;
-            end;
-          Result := -1;
-        end
-      else // find next
-        if PrevPos >= Length(V) - 1 then
-          Result := -1
-        else
-          if V[PrevPos + 1] = Find then
-            Result := PrevPos + 1
-          else
-            Result := -1;
-    end
-  else
-    begin // linear search
-      for I := MaxI(PrevPos + 1, 0) to Length(V) - 1 do
-        if V[I] = Find then
-          begin
-            Result := I;
-            exit;
-          end;
-      Result := -1;
-    end;
-end;
-
-function PosNext(const Find: SmallInt; const V: SmallIntArray; const PrevPos: Integer;
-    const IsSortedAscending: Boolean): Integer;
-var I, L, H : Integer;
-    D       : SmallInt;
-begin
-  if IsSortedAscending then // binary search
-    begin
-      if MaxI(PrevPos + 1, 0) = 0 then // find first
-        begin
-          L := 0;
-          H := Length(V) - 1;
-          while L <= H do
-            begin
-              I := (L + H) div 2;
-              D := V[I];
-              if Find = D then
-                begin
-                  while (I > 0) and (V[I - 1] = Find) do
-                    Dec(I);
-                  Result := I;
-                  exit;
-                end else
-              if D > Find then
-                H := I - 1
-              else
-                L := I + 1;
-            end;
-          Result := -1;
-        end
-      else // find next
-        if PrevPos >= Length(V) - 1 then
-          Result := -1
-        else
-          if V[PrevPos + 1] = Find then
-            Result := PrevPos + 1
-          else
-            Result := -1;
-    end
-  else
-    begin // linear search
-      for I := MaxI(PrevPos + 1, 0) to Length(V) - 1 do
-        if V[I] = Find then
-          begin
-            Result := I;
-            exit;
-          end;
-      Result := -1;
-    end;
-end;
-
-function PosNext(const Find: LongInt; const V: LongIntArray; const PrevPos: Integer;
-    const IsSortedAscending: Boolean): Integer;
-var I, L, H : Integer;
-    D       : LongInt;
-begin
-  if IsSortedAscending then // binary search
-    begin
-      if MaxI(PrevPos + 1, 0) = 0 then // find first
-        begin
-          L := 0;
-          H := Length(V) - 1;
-          while L <= H do
-            begin
-              I := (L + H) div 2;
-              D := V[I];
-              if Find = D then
-                begin
-                  while (I > 0) and (V[I - 1] = Find) do
-                    Dec(I);
-                  Result := I;
-                  exit;
-                end else
-              if D > Find then
-                H := I - 1
-              else
-                L := I + 1;
-            end;
-          Result := -1;
-        end
-      else // find next
-        if PrevPos >= Length(V) - 1 then
-          Result := -1
-        else
-          if V[PrevPos + 1] = Find then
-            Result := PrevPos + 1
-          else
-            Result := -1;
-    end
-  else
-    begin // linear search
-      for I := MaxI(PrevPos + 1, 0) to Length(V) - 1 do
-        if V[I] = Find then
-          begin
-            Result := I;
-            exit;
-          end;
-      Result := -1;
-    end;
-end;
-
-function PosNext(const Find: Int64; const V: Int64Array; const PrevPos: Integer;
-    const IsSortedAscending: Boolean): Integer;
-var I, L, H : Integer;
-    D       : Int64;
-begin
-  if IsSortedAscending then // binary search
-    begin
-      if MaxI(PrevPos + 1, 0) = 0 then // find first
-        begin
-          L := 0;
-          H := Length(V) - 1;
-          while L <= H do
-            begin
-              I := (L + H) div 2;
-              D := V[I];
-              if Find = D then
-                begin
-                  while (I > 0) and (V[I - 1] = Find) do
-                    Dec(I);
-                  Result := I;
-                  exit;
-                end else
-              if D > Find then
-                H := I - 1
-              else
-                L := I + 1;
-            end;
-          Result := -1;
-        end
-      else // find next
-        if PrevPos >= Length(V) - 1 then
-          Result := -1
-        else
-          if V[PrevPos + 1] = Find then
-            Result := PrevPos + 1
-          else
-            Result := -1;
-    end
-  else
-    begin // linear search
-      for I := MaxI(PrevPos + 1, 0) to Length(V) - 1 do
-        if V[I] = Find then
-          begin
-            Result := I;
-            exit;
-          end;
-      Result := -1;
-    end;
-end;
-
-function PosNext(const Find: Single; const V: SingleArray; const PrevPos: Integer;
-    const IsSortedAscending: Boolean): Integer;
-var I, L, H : Integer;
-    D       : Single;
-begin
-  if IsSortedAscending then // binary search
-    begin
-      if MaxI(PrevPos + 1, 0) = 0 then // find first
-        begin
-          L := 0;
-          H := Length(V) - 1;
-          while L <= H do
-            begin
-              I := (L + H) div 2;
-              D := V[I];
-              if Find = D then
-                begin
-                  while (I > 0) and (V[I - 1] = Find) do
-                    Dec(I);
-                  Result := I;
-                  exit;
-                end else
-              if D > Find then
-                H := I - 1
-              else
-                L := I + 1;
-            end;
-          Result := -1;
-        end
-      else // find next
-        if PrevPos >= Length(V) - 1 then
-          Result := -1
-        else
-          if V[PrevPos + 1] = Find then
-            Result := PrevPos + 1
-          else
-            Result := -1;
-    end
-  else
-    begin // linear search
-      for I := MaxI(PrevPos + 1, 0) to Length(V) - 1 do
-        if V[I] = Find then
-          begin
-            Result := I;
-            exit;
-          end;
-      Result := -1;
-    end;
-end;
-
-function PosNext(const Find: Double; const V: DoubleArray; const PrevPos: Integer;
-    const IsSortedAscending: Boolean): Integer;
-var I, L, H : Integer;
-    D       : Double;
-begin
-  if IsSortedAscending then // binary search
-    begin
-      if MaxI(PrevPos + 1, 0) = 0 then // find first
-        begin
-          L := 0;
-          H := Length(V) - 1;
-          while L <= H do
-            begin
-              I := (L + H) div 2;
-              D := V[I];
-              if Find = D then
-                begin
-                  while (I > 0) and (V[I - 1] = Find) do
-                    Dec(I);
-                  Result := I;
-                  exit;
-                end else
-              if D > Find then
-                H := I - 1
-              else
-                L := I + 1;
-            end;
-          Result := -1;
-        end
-      else // find next
-        if PrevPos >= Length(V) - 1 then
-          Result := -1
-        else
-          if V[PrevPos + 1] = Find then
-            Result := PrevPos + 1
-          else
-            Result := -1;
-    end
-  else
-    begin // linear search
-      for I := MaxI(PrevPos + 1, 0) to Length(V) - 1 do
-        if V[I] = Find then
-          begin
-            Result := I;
-            exit;
-          end;
-      Result := -1;
-    end;
-end;
-
-function PosNext(const Find: Extended; const V: ExtendedArray; const PrevPos: Integer;
-    const IsSortedAscending: Boolean): Integer;
-var I, L, H : Integer;
-    D       : Extended;
-begin
-  if IsSortedAscending then // binary search
-    begin
-      if MaxI(PrevPos + 1, 0) = 0 then // find first
-        begin
-          L := 0;
-          H := Length(V) - 1;
-          while L <= H do
-            begin
-              I := (L + H) div 2;
-              D := V[I];
-              if Find = D then
-                begin
-                  while (I > 0) and (V[I - 1] = Find) do
-                    Dec(I);
-                  Result := I;
-                  exit;
-                end else
-              if D > Find then
-                H := I - 1
-              else
-                L := I + 1;
-            end;
-          Result := -1;
-        end
-      else // find next
-        if PrevPos >= Length(V) - 1 then
-          Result := -1
-        else
-          if V[PrevPos + 1] = Find then
-            Result := PrevPos + 1
-          else
-            Result := -1;
-    end
-  else
-    begin // linear search
-      for I := MaxI(PrevPos + 1, 0) to Length(V) - 1 do
-        if V[I] = Find then
-          begin
-            Result := I;
-            exit;
-          end;
-      Result := -1;
-    end;
-end;
-
-function PosNext(const Find: Boolean; const V: BooleanArray; const PrevPos: Integer;
-    const IsSortedAscending: Boolean): Integer;
-var I, L, H : Integer;
-    D       : Boolean;
-begin
-  if IsSortedAscending then // binary search
-    begin
-      if MaxI(PrevPos + 1, 0) = 0 then // find first
-        begin
-          L := 0;
-          H := Length(V) - 1;
-          while L <= H do
-            begin
-              I := (L + H) div 2;
-              D := V[I];
-              if Find = D then
-                begin
-                  while (I > 0) and (V[I - 1] = Find) do
-                    Dec(I);
-                  Result := I;
-                  exit;
-                end else
-              if D > Find then
-                H := I - 1
-              else
-                L := I + 1;
-            end;
-          Result := -1;
-        end
-      else // find next
-        if PrevPos >= Length(V) - 1 then
-          Result := -1
-        else
-          if V[PrevPos + 1] = Find then
-            Result := PrevPos + 1
-          else
-            Result := -1;
-    end
-  else
-    begin // linear search
-      for I := MaxI(PrevPos + 1, 0) to Length(V) - 1 do
-        if V[I] = Find then
-          begin
-            Result := I;
-            exit;
-          end;
-      Result := -1;
-    end;
-end;
-
-function PosNext(const Find: AnsiString; const V: AnsiStringArray; const PrevPos: Integer;
-    const IsSortedAscending: Boolean): Integer;
-var I, L, H : Integer;
-    D       : AnsiString;
-begin
-  if IsSortedAscending then // binary search
-    begin
-      if MaxI(PrevPos + 1, 0) = 0 then // find first
-        begin
-          L := 0;
-          H := Length(V) - 1;
-          while L <= H do
-            begin
-              I := (L + H) div 2;
-              D := V[I];
-              if Find = D then
-                begin
-                  while (I > 0) and (V[I - 1] = Find) do
-                    Dec(I);
-                  Result := I;
-                  exit;
-                end else
-              if D > Find then
-                H := I - 1
-              else
-                L := I + 1;
-            end;
-          Result := -1;
-        end
-      else // find next
-        if PrevPos >= Length(V) - 1 then
-          Result := -1
-        else
-          if V[PrevPos + 1] = Find then
-            Result := PrevPos + 1
-          else
-            Result := -1;
-    end
-  else
-    begin // linear search
-      for I := MaxI(PrevPos + 1, 0) to Length(V) - 1 do
-        if V[I] = Find then
-          begin
-            Result := I;
-            exit;
-          end;
-      Result := -1;
-    end;
-end;
-
-function PosNext(const Find: WideString; const V: WideStringArray; const PrevPos: Integer;
-    const IsSortedAscending: Boolean): Integer;
-var I, L, H : Integer;
-    D       : WideString;
-begin
-  if IsSortedAscending then // binary search
-    begin
-      if MaxI(PrevPos + 1, 0) = 0 then // find first
-        begin
-          L := 0;
-          H := Length(V) - 1;
-          while L <= H do
-            begin
-              I := (L + H) div 2;
-              D := V[I];
-              if Find = D then
-                begin
-                  while (I > 0) and (V[I - 1] = Find) do
-                    Dec(I);
-                  Result := I;
-                  exit;
-                end else
-              if D > Find then
-                H := I - 1
-              else
-                L := I + 1;
-            end;
-          Result := -1;
-        end
-      else // find next
-        if PrevPos >= Length(V) - 1 then
-          Result := -1
-        else
-          if V[PrevPos + 1] = Find then
-            Result := PrevPos + 1
-          else
-            Result := -1;
-    end
-  else
-    begin // linear search
-      for I := MaxI(PrevPos + 1, 0) to Length(V) - 1 do
-        if V[I] = Find then
-          begin
-            Result := I;
-            exit;
-          end;
-      Result := -1;
-    end;
-end;
-
-function PosNext(const Find: TObject; const V: ObjectArray; const PrevPos: Integer): Integer;
-var I : Integer;
-begin
-  for I := MaxI(PrevPos + 1, 0) to Length(V) - 1 do
-    if V[I] = Find then
-      begin
-        Result := I;
-        exit;
-       end;
-  Result := -1;
-end;
-
-function PosNext(const ClassType: TClass; const V: ObjectArray; const PrevPos: Integer): Integer;
-var I : Integer;
-begin
-  for I := MaxI(PrevPos + 1, 0) to Length(V) - 1 do
-    if V[I] is ClassType then
-      begin
-        Result := I;
-        exit;
-       end;
-  Result := -1;
-end;
-
-function PosNext(const ClassName: String; const V: ObjectArray; const PrevPos: Integer): Integer;
-var I : Integer;
-    T : TObject;
-begin
-  for I := MaxI(PrevPos + 1, 0) to Length(V) - 1 do
-    begin
-      T := V[I];
-      if Assigned(T) and (T.ClassName = ClassName) then
-        begin
-          Result := I;
-          exit;
-         end;
-    end;
-  Result := -1;
-end;
-
-{$IFNDEF ManagedCode}
-function PosNext(const Find: Pointer; const V: PointerArray; const PrevPos: Integer): Integer;
-var I : Integer;
-begin
-  for I := MaxI(PrevPos + 1, 0) to Length(V) - 1 do
-    if V[I] = Find then
-      begin
-        Result := I;
-        exit;
-       end;
-  Result := -1;
-end;
-{$ENDIF}
-
-
-
-{                                                                              }
-{ Count                                                                        }
-{                                                                              }
-function Count(const Find: Byte; const V: ByteArray; const IsSortedAscending: Boolean = False): Integer;
-var I, J : Integer;
-begin
-  if IsSortedAscending then
-    begin
-      I := PosNext(Find, V, -1, True);
-      if I = -1 then
-        Result := 0 else
-        begin
-          Result := 1;
-          J := Length(V);
-          while (I + Result < J) and (V[I + Result] = Find) do
-            Inc(Result);
-        end;
-    end
-  else
-    begin
-      J := -1;
-      Result := 0;
-      repeat
-        I := PosNext(Find, V, J, False);
-        if I >= 0 then
-          begin
-            Inc(Result);
-            J := I;
-          end;
-      until I < 0;
-    end;
-end;
-
-function Count(const Find: Word; const V: WordArray; const IsSortedAscending: Boolean = False): Integer;
-var I, J : Integer;
-begin
-  if IsSortedAscending then
-    begin
-      I := PosNext(Find, V, -1, True);
-      if I = -1 then
-        Result := 0 else
-        begin
-          Result := 1;
-          J := Length(V);
-          while (I + Result < J) and (V[I + Result] = Find) do
-            Inc(Result);
-        end;
-    end
-  else
-    begin
-      J := -1;
-      Result := 0;
-      repeat
-        I := PosNext(Find, V, J, False);
-        if I >= 0 then
-          begin
-            Inc(Result);
-            J := I;
-          end;
-      until I < 0;
-    end;
-end;
-
-function Count(const Find: LongWord; const V: LongWordArray; const IsSortedAscending: Boolean = False): Integer;
-var I, J : Integer;
-begin
-  if IsSortedAscending then
-    begin
-      I := PosNext(Find, V, -1, True);
-      if I = -1 then
-        Result := 0 else
-        begin
-          Result := 1;
-          J := Length(V);
-          while (I + Result < J) and (V[I + Result] = Find) do
-            Inc(Result);
-        end;
-    end
-  else
-    begin
-      J := -1;
-      Result := 0;
-      repeat
-        I := PosNext(Find, V, J, False);
-        if I >= 0 then
-          begin
-            Inc(Result);
-            J := I;
-          end;
-      until I < 0;
-    end;
-end;
-
-function Count(const Find: ShortInt; const V: ShortIntArray; const IsSortedAscending: Boolean = False): Integer;
-var I, J : Integer;
-begin
-  if IsSortedAscending then
-    begin
-      I := PosNext(Find, V, -1, True);
-      if I = -1 then
-        Result := 0 else
-        begin
-          Result := 1;
-          J := Length(V);
-          while (I + Result < J) and (V[I + Result] = Find) do
-            Inc(Result);
-        end;
-    end
-  else
-    begin
-      J := -1;
-      Result := 0;
-      repeat
-        I := PosNext(Find, V, J, False);
-        if I >= 0 then
-          begin
-            Inc(Result);
-            J := I;
-          end;
-      until I < 0;
-    end;
-end;
-
-function Count(const Find: SmallInt; const V: SmallIntArray; const IsSortedAscending: Boolean = False): Integer;
-var I, J : Integer;
-begin
-  if IsSortedAscending then
-    begin
-      I := PosNext(Find, V, -1, True);
-      if I = -1 then
-        Result := 0 else
-        begin
-          Result := 1;
-          J := Length(V);
-          while (I + Result < J) and (V[I + Result] = Find) do
-            Inc(Result);
-        end;
-    end
-  else
-    begin
-      J := -1;
-      Result := 0;
-      repeat
-        I := PosNext(Find, V, J, False);
-        if I >= 0 then
-          begin
-            Inc(Result);
-            J := I;
-          end;
-      until I < 0;
-    end;
-end;
-
-function Count(const Find: LongInt; const V: LongIntArray; const IsSortedAscending: Boolean = False): Integer;
-var I, J : Integer;
-begin
-  if IsSortedAscending then
-    begin
-      I := PosNext(Find, V, -1, True);
-      if I = -1 then
-        Result := 0 else
-        begin
-          Result := 1;
-          J := Length(V);
-          while (I + Result < J) and (V[I + Result] = Find) do
-            Inc(Result);
-        end;
-    end
-  else
-    begin
-      J := -1;
-      Result := 0;
-      repeat
-        I := PosNext(Find, V, J, False);
-        if I >= 0 then
-          begin
-            Inc(Result);
-            J := I;
-          end;
-      until I < 0;
-    end;
-end;
-
-function Count(const Find: Int64; const V: Int64Array; const IsSortedAscending: Boolean = False): Integer;
-var I, J : Integer;
-begin
-  if IsSortedAscending then
-    begin
-      I := PosNext(Find, V, -1, True);
-      if I = -1 then
-        Result := 0 else
-        begin
-          Result := 1;
-          J := Length(V);
-          while (I + Result < J) and (V[I + Result] = Find) do
-            Inc(Result);
-        end;
-    end
-  else
-    begin
-      J := -1;
-      Result := 0;
-      repeat
-        I := PosNext(Find, V, J, False);
-        if I >= 0 then
-          begin
-            Inc(Result);
-            J := I;
-          end;
-      until I < 0;
-    end;
-end;
-
-function Count(const Find: Single; const V: SingleArray; const IsSortedAscending: Boolean = False): Integer;
-var I, J : Integer;
-begin
-  if IsSortedAscending then
-    begin
-      I := PosNext(Find, V, -1, True);
-      if I = -1 then
-        Result := 0 else
-        begin
-          Result := 1;
-          J := Length(V);
-          while (I + Result < J) and (V[I + Result] = Find) do
-            Inc(Result);
-        end;
-    end
-  else
-    begin
-      J := -1;
-      Result := 0;
-      repeat
-        I := PosNext(Find, V, J, False);
-        if I >= 0 then
-          begin
-            Inc(Result);
-            J := I;
-          end;
-      until I < 0;
-    end;
-end;
-
-function Count(const Find: Double; const V: DoubleArray; const IsSortedAscending: Boolean = False): Integer;
-var I, J : Integer;
-begin
-  if IsSortedAscending then
-    begin
-      I := PosNext(Find, V, -1, True);
-      if I = -1 then
-        Result := 0 else
-        begin
-          Result := 1;
-          J := Length(V);
-          while (I + Result < J) and (V[I + Result] = Find) do
-            Inc(Result);
-        end;
-    end
-  else
-    begin
-      J := -1;
-      Result := 0;
-      repeat
-        I := PosNext(Find, V, J, False);
-        if I >= 0 then
-          begin
-            Inc(Result);
-            J := I;
-          end;
-      until I < 0;
-    end;
-end;
-
-function Count(const Find: Extended; const V: ExtendedArray; const IsSortedAscending: Boolean = False): Integer;
-var I, J : Integer;
-begin
-  if IsSortedAscending then
-    begin
-      I := PosNext(Find, V, -1, True);
-      if I = -1 then
-        Result := 0 else
-        begin
-          Result := 1;
-          J := Length(V);
-          while (I + Result < J) and (V[I + Result] = Find) do
-            Inc(Result);
-        end;
-    end
-  else
-    begin
-      J := -1;
-      Result := 0;
-      repeat
-        I := PosNext(Find, V, J, False);
-        if I >= 0 then
-          begin
-            Inc(Result);
-            J := I;
-          end;
-      until I < 0;
-    end;
-end;
-
-function Count(const Find: AnsiString; const V: AnsiStringArray; const IsSortedAscending: Boolean = False): Integer;
-var I, J : Integer;
-begin
-  if IsSortedAscending then
-    begin
-      I := PosNext(Find, V, -1, True);
-      if I = -1 then
-        Result := 0 else
-        begin
-          Result := 1;
-          J := Length(V);
-          while (I + Result < J) and (V[I + Result] = Find) do
-            Inc(Result);
-        end;
-    end
-  else
-    begin
-      J := -1;
-      Result := 0;
-      repeat
-        I := PosNext(Find, V, J, False);
-        if I >= 0 then
-          begin
-            Inc(Result);
-            J := I;
-          end;
-      until I < 0;
-    end;
-end;
-
-function Count(const Find: WideString; const V: WideStringArray; const IsSortedAscending: Boolean = False): Integer;
-var I, J : Integer;
-begin
-  if IsSortedAscending then
-    begin
-      I := PosNext(Find, V, -1, True);
-      if I = -1 then
-        Result := 0 else
-        begin
-          Result := 1;
-          J := Length(V);
-          while (I + Result < J) and (V[I + Result] = Find) do
-            Inc(Result);
-        end;
-    end
-  else
-    begin
-      J := -1;
-      Result := 0;
-      repeat
-        I := PosNext(Find, V, J, False);
-        if I >= 0 then
-          begin
-            Inc(Result);
-            J := I;
-          end;
-      until I < 0;
-    end;
-end;
-
-function Count(const Find: Boolean; const V: BooleanArray; const IsSortedAscending: Boolean = False): Integer;
-var I, J : Integer;
-begin
-  if IsSortedAscending then
-    begin
-      I := PosNext(Find, V, -1, True);
-      if I = -1 then
-        Result := 0 else
-        begin
-          Result := 1;
-          J := Length(V);
-          while (I + Result < J) and (V[I + Result] = Find) do
-            Inc(Result);
-        end;
-    end
-  else
-    begin
-      J := -1;
-      Result := 0;
-      repeat
-        I := PosNext(Find, V, J, False);
-        if I >= 0 then
-          begin
-            Inc(Result);
-            J := I;
-          end;
-      until I < 0;
-    end;
-end;
-
-
-
-{                                                                              }
-{ RemoveAll                                                                    }
-{                                                                              }
-procedure RemoveAll(const Find: Byte; var V: ByteArray; const IsSortedAscending: Boolean = False);
-var I, J : Integer;
-begin
-  I := PosNext(Find, V, -1, IsSortedAscending);
-  while I >= 0 do
-    begin
-      J := 1;
-      while (I + J < Length(V)) and (V[I + J] = Find) do
-        Inc(J);
-      Remove(V, I, J);
-      I := PosNext(Find, V, I, IsSortedAscending);
-    end;
-end;
-
-procedure RemoveAll(const Find: Word; var V: WordArray; const IsSortedAscending: Boolean = False);
-var I, J : Integer;
-begin
-  I := PosNext(Find, V, -1, IsSortedAscending);
-  while I >= 0 do
-    begin
-      J := 1;
-      while (I + J < Length(V)) and (V[I + J] = Find) do
-        Inc(J);
-      Remove(V, I, J);
-      I := PosNext(Find, V, I, IsSortedAscending);
-    end;
-end;
-
-procedure RemoveAll(const Find: LongWord; var V: LongWordArray; const IsSortedAscending: Boolean = False);
-var I, J : Integer;
-begin
-  I := PosNext(Find, V, -1, IsSortedAscending);
-  while I >= 0 do
-    begin
-      J := 1;
-      while (I + J < Length(V)) and (V[I + J] = Find) do
-        Inc(J);
-      Remove(V, I, J);
-      I := PosNext(Find, V, I, IsSortedAscending);
-    end;
-end;
-
-procedure RemoveAll(const Find: ShortInt; var V: ShortIntArray; const IsSortedAscending: Boolean = False);
-var I, J : Integer;
-begin
-  I := PosNext(Find, V, -1, IsSortedAscending);
-  while I >= 0 do
-    begin
-      J := 1;
-      while (I + J < Length(V)) and (V[I + J] = Find) do
-        Inc(J);
-      Remove(V, I, J);
-      I := PosNext(Find, V, I, IsSortedAscending);
-    end;
-end;
-
-procedure RemoveAll(const Find: SmallInt; var V: SmallIntArray; const IsSortedAscending: Boolean = False);
-var I, J : Integer;
-begin
-  I := PosNext(Find, V, -1, IsSortedAscending);
-  while I >= 0 do
-    begin
-      J := 1;
-      while (I + J < Length(V)) and (V[I + J] = Find) do
-        Inc(J);
-      Remove(V, I, J);
-      I := PosNext(Find, V, I, IsSortedAscending);
-    end;
-end;
-
-procedure RemoveAll(const Find: LongInt; var V: LongIntArray; const IsSortedAscending: Boolean = False);
-var I, J : Integer;
-begin
-  I := PosNext(Find, V, -1, IsSortedAscending);
-  while I >= 0 do
-    begin
-      J := 1;
-      while (I + J < Length(V)) and (V[I + J] = Find) do
-        Inc(J);
-      Remove(V, I, J);
-      I := PosNext(Find, V, I, IsSortedAscending);
-    end;
-end;
-
-procedure RemoveAll(const Find: Int64; var V: Int64Array; const IsSortedAscending: Boolean = False);
-var I, J : Integer;
-begin
-  I := PosNext(Find, V, -1, IsSortedAscending);
-  while I >= 0 do
-    begin
-      J := 1;
-      while (I + J < Length(V)) and (V[I + J] = Find) do
-        Inc(J);
-      Remove(V, I, J);
-      I := PosNext(Find, V, I, IsSortedAscending);
-    end;
-end;
-
-procedure RemoveAll(const Find: Single; var V: SingleArray; const IsSortedAscending: Boolean = False);
-var I, J : Integer;
-begin
-  I := PosNext(Find, V, -1, IsSortedAscending);
-  while I >= 0 do
-    begin
-      J := 1;
-      while (I + J < Length(V)) and (V[I + J] = Find) do
-        Inc(J);
-      Remove(V, I, J);
-      I := PosNext(Find, V, I, IsSortedAscending);
-    end;
-end;
-
-procedure RemoveAll(const Find: Double; var V: DoubleArray; const IsSortedAscending: Boolean = False);
-var I, J : Integer;
-begin
-  I := PosNext(Find, V, -1, IsSortedAscending);
-  while I >= 0 do
-    begin
-      J := 1;
-      while (I + J < Length(V)) and (V[I + J] = Find) do
-        Inc(J);
-      Remove(V, I, J);
-      I := PosNext(Find, V, I, IsSortedAscending);
-    end;
-end;
-
-procedure RemoveAll(const Find: Extended; var V: ExtendedArray; const IsSortedAscending: Boolean = False);
-var I, J : Integer;
-begin
-  I := PosNext(Find, V, -1, IsSortedAscending);
-  while I >= 0 do
-    begin
-      J := 1;
-      while (I + J < Length(V)) and (V[I + J] = Find) do
-        Inc(J);
-      Remove(V, I, J);
-      I := PosNext(Find, V, I, IsSortedAscending);
-    end;
-end;
-
-procedure RemoveAll(const Find: AnsiString; var V: AnsiStringArray; const IsSortedAscending: Boolean = False);
-var I, J : Integer;
-begin
-  I := PosNext(Find, V, -1, IsSortedAscending);
-  while I >= 0 do
-    begin
-      J := 1;
-      while (I + J < Length(V)) and (V[I + J] = Find) do
-        Inc(J);
-      Remove(V, I, J);
-      I := PosNext(Find, V, I, IsSortedAscending);
-    end;
-end;
-
-procedure RemoveAll(const Find: WideString; var V: WideStringArray; const IsSortedAscending: Boolean = False);
-var I, J : Integer;
-begin
-  I := PosNext(Find, V, -1, IsSortedAscending);
-  while I >= 0 do
-    begin
-      J := 1;
-      while (I + J < Length(V)) and (V[I + J] = Find) do
-        Inc(J);
-      Remove(V, I, J);
-      I := PosNext(Find, V, I, IsSortedAscending);
-    end;
-end;
-
-
-
-{                                                                              }
-{ Intersection                                                                 }
-{   If both arrays are sorted ascending then time is o(n) instead of o(n^2).   }
-{                                                                              }
-function Intersection(const V1, V2: SingleArray; const IsSortedAscending: Boolean): SingleArray;
-var I, J, L, LV : Integer;
-begin
-  SetLength(Result, 0);
-  if IsSortedAscending then
-    begin
-      I := 0;
-      J := 0;
-      L := Length(V1);
-      LV := Length(V2);
-      while (I < L) and (J < LV) do
-        begin
-          while (I < L) and (V1[I] < V2[J]) do
-            Inc(I);
-          if I < L then
-            begin
-              if V1[I] = V2[J] then
-                Append(Result, V1[I]);
-              while (J < LV) and (V2[J] <= V1[I]) do
-                Inc(J);
-            end;
-        end;
-    end
-  else
-    for I := 0 to Length(V1) - 1 do
-      if (PosNext(V1[I], V2) >= 0) and (PosNext(V1[I], Result) = -1) then
-        Append(Result, V1[I]);
-end;
-
-function Intersection(const V1, V2: DoubleArray; const IsSortedAscending: Boolean): DoubleArray;
-var I, J, L, LV : Integer;
-begin
-  SetLength(Result, 0);
-  if IsSortedAscending then
-    begin
-      I := 0;
-      J := 0;
-      L := Length(V1);
-      LV := Length(V2);
-      while (I < L) and (J < LV) do
-        begin
-          while (I < L) and (V1[I] < V2[J]) do
-            Inc(I);
-          if I < L then
-            begin
-              if V1[I] = V2[J] then
-                Append(Result, V1[I]);
-              while (J < LV) and (V2[J] <= V1[I]) do
-                Inc(J);
-            end;
-        end;
-    end
-  else
-    for I := 0 to Length(V1) - 1 do
-      if (PosNext(V1[I], V2) >= 0) and (PosNext(V1[I], Result) = -1) then
-        Append(Result, V1[I]);
-end;
-
-function Intersection(const V1, V2: ExtendedArray; const IsSortedAscending: Boolean): ExtendedArray;
-var I, J, L, LV : Integer;
-begin
-  SetLength(Result, 0);
-  if IsSortedAscending then
-    begin
-      I := 0;
-      J := 0;
-      L := Length(V1);
-      LV := Length(V2);
-      while (I < L) and (J < LV) do
-        begin
-          while (I < L) and (V1[I] < V2[J]) do
-            Inc(I);
-          if I < L then
-            begin
-              if V1[I] = V2[J] then
-                Append(Result, V1[I]);
-              while (J < LV) and (V2[J] <= V1[I]) do
-                Inc(J);
-            end;
-        end;
-    end
-  else
-    for I := 0 to Length(V1) - 1 do
-      if (PosNext(V1[I], V2) >= 0) and (PosNext(V1[I], Result) = -1) then
-        Append(Result, V1[I]);
-end;
-
-function Intersection(const V1, V2: ByteArray; const IsSortedAscending: Boolean): ByteArray;
-var I, J, L, LV : Integer;
-begin
-  SetLength(Result, 0);
-  if IsSortedAscending then
-    begin
-      I := 0;
-      J := 0;
-      L := Length(V1);
-      LV := Length(V2);
-      while (I < L) and (J < LV) do
-        begin
-          while (I < L) and (V1[I] < V2[J]) do
-            Inc(I);
-          if I < L then
-            begin
-              if V1[I] = V2[J] then
-                Append(Result, V1[I]);
-              while (J < LV) and (V2[J] <= V1[I]) do
-                Inc(J);
-            end;
-        end;
-    end
-  else
-    for I := 0 to Length(V1) - 1 do
-      if (PosNext(V1[I], V2) >= 0) and (PosNext(V1[I], Result) = -1) then
-        Append(Result, V1[I]);
-end;
-
-function Intersection(const V1, V2: WordArray; const IsSortedAscending: Boolean): WordArray;
-var I, J, L, LV : Integer;
-begin
-  SetLength(Result, 0);
-  if IsSortedAscending then
-    begin
-      I := 0;
-      J := 0;
-      L := Length(V1);
-      LV := Length(V2);
-      while (I < L) and (J < LV) do
-        begin
-          while (I < L) and (V1[I] < V2[J]) do
-            Inc(I);
-          if I < L then
-            begin
-              if V1[I] = V2[J] then
-                Append(Result, V1[I]);
-              while (J < LV) and (V2[J] <= V1[I]) do
-                Inc(J);
-            end;
-        end;
-    end
-  else
-    for I := 0 to Length(V1) - 1 do
-      if (PosNext(V1[I], V2) >= 0) and (PosNext(V1[I], Result) = -1) then
-        Append(Result, V1[I]);
-end;
-
-function Intersection(const V1, V2: LongWordArray; const IsSortedAscending: Boolean): LongWordArray;
-var I, J, L, LV : Integer;
-begin
-  SetLength(Result, 0);
-  if IsSortedAscending then
-    begin
-      I := 0;
-      J := 0;
-      L := Length(V1);
-      LV := Length(V2);
-      while (I < L) and (J < LV) do
-        begin
-          while (I < L) and (V1[I] < V2[J]) do
-            Inc(I);
-          if I < L then
-            begin
-              if V1[I] = V2[J] then
-                Append(Result, V1[I]);
-              while (J < LV) and (V2[J] <= V1[I]) do
-                Inc(J);
-            end;
-        end;
-    end
-  else
-    for I := 0 to Length(V1) - 1 do
-      if (PosNext(V1[I], V2) >= 0) and (PosNext(V1[I], Result) = -1) then
-        Append(Result, V1[I]);
-end;
-
-function Intersection(const V1, V2: ShortIntArray; const IsSortedAscending: Boolean): ShortIntArray;
-var I, J, L, LV : Integer;
-begin
-  SetLength(Result, 0);
-  if IsSortedAscending then
-    begin
-      I := 0;
-      J := 0;
-      L := Length(V1);
-      LV := Length(V2);
-      while (I < L) and (J < LV) do
-        begin
-          while (I < L) and (V1[I] < V2[J]) do
-            Inc(I);
-          if I < L then
-            begin
-              if V1[I] = V2[J] then
-                Append(Result, V1[I]);
-              while (J < LV) and (V2[J] <= V1[I]) do
-                Inc(J);
-            end;
-        end;
-    end
-  else
-    for I := 0 to Length(V1) - 1 do
-      if (PosNext(V1[I], V2) >= 0) and (PosNext(V1[I], Result) = -1) then
-        Append(Result, V1[I]);
-end;
-
-function Intersection(const V1, V2: SmallIntArray; const IsSortedAscending: Boolean): SmallIntArray;
-var I, J, L, LV : Integer;
-begin
-  SetLength(Result, 0);
-  if IsSortedAscending then
-    begin
-      I := 0;
-      J := 0;
-      L := Length(V1);
-      LV := Length(V2);
-      while (I < L) and (J < LV) do
-        begin
-          while (I < L) and (V1[I] < V2[J]) do
-            Inc(I);
-          if I < L then
-            begin
-              if V1[I] = V2[J] then
-                Append(Result, V1[I]);
-              while (J < LV) and (V2[J] <= V1[I]) do
-                Inc(J);
-            end;
-        end;
-    end
-  else
-    for I := 0 to Length(V1) - 1 do
-      if (PosNext(V1[I], V2) >= 0) and (PosNext(V1[I], Result) = -1) then
-        Append(Result, V1[I]);
-end;
-
-function Intersection(const V1, V2: LongIntArray; const IsSortedAscending: Boolean): LongIntArray;
-var I, J, L, LV : Integer;
-begin
-  SetLength(Result, 0);
-  if IsSortedAscending then
-    begin
-      I := 0;
-      J := 0;
-      L := Length(V1);
-      LV := Length(V2);
-      while (I < L) and (J < LV) do
-        begin
-          while (I < L) and (V1[I] < V2[J]) do
-            Inc(I);
-          if I < L then
-            begin
-              if V1[I] = V2[J] then
-                Append(Result, V1[I]);
-              while (J < LV) and (V2[J] <= V1[I]) do
-                Inc(J);
-            end;
-        end;
-    end
-  else
-    for I := 0 to Length(V1) - 1 do
-      if (PosNext(V1[I], V2) >= 0) and (PosNext(V1[I], Result) = -1) then
-        Append(Result, V1[I]);
-end;
-
-function Intersection(const V1, V2: Int64Array; const IsSortedAscending: Boolean): Int64Array;
-var I, J, L, LV : Integer;
-begin
-  SetLength(Result, 0);
-  if IsSortedAscending then
-    begin
-      I := 0;
-      J := 0;
-      L := Length(V1);
-      LV := Length(V2);
-      while (I < L) and (J < LV) do
-        begin
-          while (I < L) and (V1[I] < V2[J]) do
-            Inc(I);
-          if I < L then
-            begin
-              if V1[I] = V2[J] then
-                Append(Result, V1[I]);
-              while (J < LV) and (V2[J] <= V1[I]) do
-                Inc(J);
-            end;
-        end;
-    end
-  else
-    for I := 0 to Length(V1) - 1 do
-      if (PosNext(V1[I], V2) >= 0) and (PosNext(V1[I], Result) = -1) then
-        Append(Result, V1[I]);
-end;
-
-function Intersection(const V1, V2: AnsiStringArray; const IsSortedAscending: Boolean): AnsiStringArray;
-var I, J, L, LV : Integer;
-begin
-  SetLength(Result, 0);
-  if IsSortedAscending then
-    begin
-      I := 0;
-      J := 0;
-      L := Length(V1);
-      LV := Length(V2);
-      while (I < L) and (J < LV) do
-        begin
-          while (I < L) and (V1[I] < V2[J]) do
-            Inc(I);
-          if I < L then
-            begin
-              if V1[I] = V2[J] then
-                Append(Result, V1[I]);
-              while (J < LV) and (V2[J] <= V1[I]) do
-                Inc(J);
-            end;
-        end;
-    end
-  else
-    for I := 0 to Length(V1) - 1 do
-      if (PosNext(V1[I], V2) >= 0) and (PosNext(V1[I], Result) = -1) then
-        Append(Result, V1[I]);
-end;
-
-function Intersection(const V1, V2: WideStringArray; const IsSortedAscending: Boolean): WideStringArray;
-var I, J, L, LV : Integer;
-begin
-  SetLength(Result, 0);
-  if IsSortedAscending then
-    begin
-      I := 0;
-      J := 0;
-      L := Length(V1);
-      LV := Length(V2);
-      while (I < L) and (J < LV) do
-        begin
-          while (I < L) and (V1[I] < V2[J]) do
-            Inc(I);
-          if I < L then
-            begin
-              if V1[I] = V2[J] then
-                Append(Result, V1[I]);
-              while (J < LV) and (V2[J] <= V1[I]) do
-                Inc(J);
-            end;
-        end;
-    end
-  else
-    for I := 0 to Length(V1) - 1 do
-      if (PosNext(V1[I], V2) >= 0) and (PosNext(V1[I], Result) = -1) then
-        Append(Result, V1[I]);
-end;
-
-
-
-{                                                                              }
-{ Difference                                                                   }
-{   Returns elements in V1 but not in V2.                                      }
-{   If both arrays are sorted ascending then time is o(n) instead of o(n^2).   }
-{                                                                              }
-function Difference(const V1, V2: SingleArray; const IsSortedAscending: Boolean): SingleArray;
-var I, J, L, LV : Integer;
-begin
-  SetLength(Result, 0);
-  if IsSortedAscending then
-    begin
-      I := 0;
-      J := 0;
-      L := Length(V1);
-      LV := Length(V2);
-      while (I < L) and (J < LV) do
-        begin
-          while (I < L) and (V1[I] < V2[J]) do
-            Inc(I);
-          if I < L then
-            begin
-              if V1[I] <> V2[J] then
-                Append(Result, V1[I]);
-              while (J < LV) and (V2[J] <= V1[I]) do
-                Inc(J);
-            end;
-        end;
-    end
-  else
-    for I := 0 to Length(V1) - 1 do
-      if (PosNext(V1[I], V2) = -1) and (PosNext(V1[I], Result) = -1) then
-        Append(Result, V1[I]);
-end;
-
-function Difference(const V1, V2: DoubleArray; const IsSortedAscending: Boolean): DoubleArray;
-var I, J, L, LV : Integer;
-begin
-  SetLength(Result, 0);
-  if IsSortedAscending then
-    begin
-      I := 0;
-      J := 0;
-      L := Length(V1);
-      LV := Length(V2);
-      while (I < L) and (J < LV) do
-        begin
-          while (I < L) and (V1[I] < V2[J]) do
-            Inc(I);
-          if I < L then
-            begin
-              if V1[I] <> V2[J] then
-                Append(Result, V1[I]);
-              while (J < LV) and (V2[J] <= V1[I]) do
-                Inc(J);
-            end;
-        end;
-    end
-  else
-    for I := 0 to Length(V1) - 1 do
-      if (PosNext(V1[I], V2) = -1) and (PosNext(V1[I], Result) = -1) then
-        Append(Result, V1[I]);
-end;
-
-function Difference(const V1, V2: ExtendedArray; const IsSortedAscending: Boolean): ExtendedArray;
-var I, J, L, LV : Integer;
-begin
-  SetLength(Result, 0);
-  if IsSortedAscending then
-    begin
-      I := 0;
-      J := 0;
-      L := Length(V1);
-      LV := Length(V2);
-      while (I < L) and (J < LV) do
-        begin
-          while (I < L) and (V1[I] < V2[J]) do
-            Inc(I);
-          if I < L then
-            begin
-              if V1[I] <> V2[J] then
-                Append(Result, V1[I]);
-              while (J < LV) and (V2[J] <= V1[I]) do
-                Inc(J);
-            end;
-        end;
-    end
-  else
-    for I := 0 to Length(V1) - 1 do
-      if (PosNext(V1[I], V2) = -1) and (PosNext(V1[I], Result) = -1) then
-        Append(Result, V1[I]);
-end;
-
-function Difference(const V1, V2: ByteArray; const IsSortedAscending: Boolean): ByteArray;
-var I, J, L, LV : Integer;
-begin
-  SetLength(Result, 0);
-  if IsSortedAscending then
-    begin
-      I := 0;
-      J := 0;
-      L := Length(V1);
-      LV := Length(V2);
-      while (I < L) and (J < LV) do
-        begin
-          while (I < L) and (V1[I] < V2[J]) do
-            Inc(I);
-          if I < L then
-            begin
-              if V1[I] <> V2[J] then
-                Append(Result, V1[I]);
-              while (J < LV) and (V2[J] <= V1[I]) do
-                Inc(J);
-            end;
-        end;
-    end
-  else
-    for I := 0 to Length(V1) - 1 do
-      if (PosNext(V1[I], V2) = -1) and (PosNext(V1[I], Result) = -1) then
-        Append(Result, V1[I]);
-end;
-
-function Difference(const V1, V2: WordArray; const IsSortedAscending: Boolean): WordArray;
-var I, J, L, LV : Integer;
-begin
-  SetLength(Result, 0);
-  if IsSortedAscending then
-    begin
-      I := 0;
-      J := 0;
-      L := Length(V1);
-      LV := Length(V2);
-      while (I < L) and (J < LV) do
-        begin
-          while (I < L) and (V1[I] < V2[J]) do
-            Inc(I);
-          if I < L then
-            begin
-              if V1[I] <> V2[J] then
-                Append(Result, V1[I]);
-              while (J < LV) and (V2[J] <= V1[I]) do
-                Inc(J);
-            end;
-        end;
-    end
-  else
-    for I := 0 to Length(V1) - 1 do
-      if (PosNext(V1[I], V2) = -1) and (PosNext(V1[I], Result) = -1) then
-        Append(Result, V1[I]);
-end;
-
-function Difference(const V1, V2: LongWordArray; const IsSortedAscending: Boolean): LongWordArray;
-var I, J, L, LV : Integer;
-begin
-  SetLength(Result, 0);
-  if IsSortedAscending then
-    begin
-      I := 0;
-      J := 0;
-      L := Length(V1);
-      LV := Length(V2);
-      while (I < L) and (J < LV) do
-        begin
-          while (I < L) and (V1[I] < V2[J]) do
-            Inc(I);
-          if I < L then
-            begin
-              if V1[I] <> V2[J] then
-                Append(Result, V1[I]);
-              while (J < LV) and (V2[J] <= V1[I]) do
-                Inc(J);
-            end;
-        end;
-    end
-  else
-    for I := 0 to Length(V1) - 1 do
-      if (PosNext(V1[I], V2) = -1) and (PosNext(V1[I], Result) = -1) then
-        Append(Result, V1[I]);
-end;
-
-function Difference(const V1, V2: ShortIntArray; const IsSortedAscending: Boolean): ShortIntArray;
-var I, J, L, LV : Integer;
-begin
-  SetLength(Result, 0);
-  if IsSortedAscending then
-    begin
-      I := 0;
-      J := 0;
-      L := Length(V1);
-      LV := Length(V2);
-      while (I < L) and (J < LV) do
-        begin
-          while (I < L) and (V1[I] < V2[J]) do
-            Inc(I);
-          if I < L then
-            begin
-              if V1[I] <> V2[J] then
-                Append(Result, V1[I]);
-              while (J < LV) and (V2[J] <= V1[I]) do
-                Inc(J);
-            end;
-        end;
-    end
-  else
-    for I := 0 to Length(V1) - 1 do
-      if (PosNext(V1[I], V2) = -1) and (PosNext(V1[I], Result) = -1) then
-        Append(Result, V1[I]);
-end;
-
-function Difference(const V1, V2: SmallIntArray; const IsSortedAscending: Boolean): SmallIntArray;
-var I, J, L, LV : Integer;
-begin
-  SetLength(Result, 0);
-  if IsSortedAscending then
-    begin
-      I := 0;
-      J := 0;
-      L := Length(V1);
-      LV := Length(V2);
-      while (I < L) and (J < LV) do
-        begin
-          while (I < L) and (V1[I] < V2[J]) do
-            Inc(I);
-          if I < L then
-            begin
-              if V1[I] <> V2[J] then
-                Append(Result, V1[I]);
-              while (J < LV) and (V2[J] <= V1[I]) do
-                Inc(J);
-            end;
-        end;
-    end
-  else
-    for I := 0 to Length(V1) - 1 do
-      if (PosNext(V1[I], V2) = -1) and (PosNext(V1[I], Result) = -1) then
-        Append(Result, V1[I]);
-end;
-
-function Difference(const V1, V2: LongIntArray; const IsSortedAscending: Boolean): LongIntArray;
-var I, J, L, LV : Integer;
-begin
-  SetLength(Result, 0);
-  if IsSortedAscending then
-    begin
-      I := 0;
-      J := 0;
-      L := Length(V1);
-      LV := Length(V2);
-      while (I < L) and (J < LV) do
-        begin
-          while (I < L) and (V1[I] < V2[J]) do
-            Inc(I);
-          if I < L then
-            begin
-              if V1[I] <> V2[J] then
-                Append(Result, V1[I]);
-              while (J < LV) and (V2[J] <= V1[I]) do
-                Inc(J);
-            end;
-        end;
-    end
-  else
-    for I := 0 to Length(V1) - 1 do
-      if (PosNext(V1[I], V2) = -1) and (PosNext(V1[I], Result) = -1) then
-        Append(Result, V1[I]);
-end;
-
-function Difference(const V1, V2: Int64Array; const IsSortedAscending: Boolean): Int64Array;
-var I, J, L, LV : Integer;
-begin
-  SetLength(Result, 0);
-  if IsSortedAscending then
-    begin
-      I := 0;
-      J := 0;
-      L := Length(V1);
-      LV := Length(V2);
-      while (I < L) and (J < LV) do
-        begin
-          while (I < L) and (V1[I] < V2[J]) do
-            Inc(I);
-          if I < L then
-            begin
-              if V1[I] <> V2[J] then
-                Append(Result, V1[I]);
-              while (J < LV) and (V2[J] <= V1[I]) do
-                Inc(J);
-            end;
-        end;
-    end
-  else
-    for I := 0 to Length(V1) - 1 do
-      if (PosNext(V1[I], V2) = -1) and (PosNext(V1[I], Result) = -1) then
-        Append(Result, V1[I]);
-end;
-
-function Difference(const V1, V2: AnsiStringArray; const IsSortedAscending: Boolean): AnsiStringArray;
-var I, J, L, LV : Integer;
-begin
-  SetLength(Result, 0);
-  if IsSortedAscending then
-    begin
-      I := 0;
-      J := 0;
-      L := Length(V1);
-      LV := Length(V2);
-      while (I < L) and (J < LV) do
-        begin
-          while (I < L) and (V1[I] < V2[J]) do
-            Inc(I);
-          if I < L then
-            begin
-              if V1[I] <> V2[J] then
-                Append(Result, V1[I]);
-              while (J < LV) and (V2[J] <= V1[I]) do
-                Inc(J);
-            end;
-        end;
-    end
-  else
-    for I := 0 to Length(V1) - 1 do
-      if (PosNext(V1[I], V2) = -1) and (PosNext(V1[I], Result) = -1) then
-        Append(Result, V1[I]);
-end;
-
-function Difference(const V1, V2: WideStringArray; const IsSortedAscending: Boolean): WideStringArray;
-var I, J, L, LV : Integer;
-begin
-  SetLength(Result, 0);
-  if IsSortedAscending then
-    begin
-      I := 0;
-      J := 0;
-      L := Length(V1);
-      LV := Length(V2);
-      while (I < L) and (J < LV) do
-        begin
-          while (I < L) and (V1[I] < V2[J]) do
-            Inc(I);
-          if I < L then
-            begin
-              if V1[I] <> V2[J] then
-                Append(Result, V1[I]);
-              while (J < LV) and (V2[J] <= V1[I]) do
-                Inc(J);
-            end;
-        end;
-    end
-  else
-    for I := 0 to Length(V1) - 1 do
-      if (PosNext(V1[I], V2) = -1) and (PosNext(V1[I], Result) = -1) then
-        Append(Result, V1[I]);
-end;
-
-
-
-{                                                                              }
-{ Reverse                                                                      }
-{                                                                              }
-procedure Reverse(var V: ByteArray);
-var I, L : Integer;
-begin
-  L := Length(V);
-  for I := 1 to L div 2 do
-    Swap(V[I - 1], V[L - I]);
-end;
-
-procedure Reverse(var V: WordArray);
-var I, L : Integer;
-begin
-  L := Length(V);
-  for I := 1 to L div 2 do
-    Swap(V[I - 1], V[L - I]);
-end;
-
-procedure Reverse(var V: LongWordArray);
-var I, L : Integer;
-begin
-  L := Length(V);
-  for I := 1 to L div 2 do
-    Swap(V[I - 1], V[L - I]);
-end;
-
-procedure Reverse(var V: ShortIntArray);
-var I, L : Integer;
-begin
-  L := Length(V);
-  for I := 1 to L div 2 do
-    Swap(V[I - 1], V[L - I]);
-end;
-
-procedure Reverse(var V: SmallIntArray);
-var I, L : Integer;
-begin
-  L := Length(V);
-  for I := 1 to L div 2 do
-    Swap(V[I - 1], V[L - I]);
-end;
-
-procedure Reverse(var V: LongIntArray);
-var I, L : Integer;
-begin
-  L := Length(V);
-  for I := 1 to L div 2 do
-    Swap(V[I - 1], V[L - I]);
-end;
-
-procedure Reverse(var V: Int64Array);
-var I, L : Integer;
-begin
-  L := Length(V);
-  for I := 1 to L div 2 do
-    Swap(V[I - 1], V[L - I]);
-end;
-
-procedure Reverse(var V: AnsiStringArray);
-var I, L : Integer;
-begin
-  L := Length(V);
-  for I := 1 to L div 2 do
-    Swap(V[I - 1], V[L - I]);
-end;
-
-procedure Reverse(var V: WideStringArray);
-var I, L : Integer;
-begin
-  L := Length(V);
-  for I := 1 to L div 2 do
-    Swap(V[I - 1], V[L - I]);
-end;
-
-{$IFNDEF ManagedCode}
-procedure Reverse(var V: PointerArray);
-var I, L : Integer;
-begin
-  L := Length(V);
-  for I := 1 to L div 2 do
-    Swap(V[I - 1], V[L - I]);
-end;
-
-{$ENDIF}
-procedure Reverse(var V: ObjectArray);
-var I, L : Integer;
-begin
-  L := Length(V);
-  for I := 1 to L div 2 do
-    Swap(V[I - 1], V[L - I]);
-end;
-
-procedure Reverse(var V: SingleArray);
-var I, L : Integer;
-begin
-  L := Length(V);
-  for I := 1 to L div 2 do
-    Swap(V[I - 1], V[L - I]);
-end;
-
-procedure Reverse(var V: DoubleArray);
-var I, L : Integer;
-begin
-  L := Length(V);
-  for I := 1 to L div 2 do
-    Swap(V[I - 1], V[L - I]);
-end;
-
-procedure Reverse(var V: ExtendedArray);
-var I, L : Integer;
-begin
-  L := Length(V);
-  for I := 1 to L div 2 do
-    Swap(V[I - 1], V[L - I]);
-end;
-
-
-
-{                                                                              }
-{ Returns an open array (V) as a dynamic array.                                }
-{                                                                              }
-function AsBooleanArray(const V: array of Boolean): BooleanArray;
-var I : Integer;
-begin
-  SetLength(Result, High(V) + 1);
-  for I := 0 to High(V) do
-    Result[I] := V[I];
-end;
-
-function AsByteArray(const V: array of Byte): ByteArray;
-var I : Integer;
-begin
-  SetLength(Result, High(V) + 1);
-  for I := 0 to High(V) do
-    Result[I] := V[I];
-end;
-
-function AsWordArray(const V: array of Word): WordArray;
-var I : Integer;
-begin
-  SetLength(Result, High(V) + 1);
-  for I := 0 to High(V) do
-    Result[I] := V[I];
-end;
-
-function AsLongWordArray(const V: array of LongWord): LongWordArray;
-var I : Integer;
-begin
-  SetLength(Result, High(V) + 1);
-  for I := 0 to High(V) do
-    Result[I] := V[I];
-end;
-
-function AsCardinalArray(const V: array of Cardinal): CardinalArray;
-var I : Integer;
-begin
-  SetLength(Result, High(V) + 1);
-  for I := 0 to High(V) do
-    Result[I] := V[I];
-end;
-
-function AsShortIntArray(const V: array of ShortInt): ShortIntArray;
-var I : Integer;
-begin
-  SetLength(Result, High(V) + 1);
-  for I := 0 to High(V) do
-    Result[I] := V[I];
-end;
-
-function AsSmallIntArray(const V: array of SmallInt): SmallIntArray;
-var I : Integer;
-begin
-  SetLength(Result, High(V) + 1);
-  for I := 0 to High(V) do
-    Result[I] := V[I];
-end;
-
-function AsLongIntArray(const V: array of LongInt): LongIntArray;
-var I : Integer;
-begin
-  SetLength(Result, High(V) + 1);
-  for I := 0 to High(V) do
-    Result[I] := V[I];
-end;
-
-function AsIntegerArray(const V: array of Integer): IntegerArray;
-var I : Integer;
-begin
-  SetLength(Result, High(V) + 1);
-  for I := 0 to High(V) do
-    Result[I] := V[I];
-end;
-
-function AsInt64Array(const V: array of Int64): Int64Array;
-var I : Integer;
-begin
-  SetLength(Result, High(V) + 1);
-  for I := 0 to High(V) do
-    Result[I] := V[I];
-end;
-
-function AsSingleArray(const V: array of Single): SingleArray;
-var I : Integer;
-begin
-  SetLength(Result, High(V) + 1);
-  for I := 0 to High(V) do
-    Result[I] := V[I];
-end;
-
-function AsDoubleArray(const V: array of Double): DoubleArray;
-var I : Integer;
-begin
-  SetLength(Result, High(V) + 1);
-  for I := 0 to High(V) do
-    Result[I] := V[I];
-end;
-
-function AsExtendedArray(const V: array of Extended): ExtendedArray;
-var I : Integer;
-begin
-  SetLength(Result, High(V) + 1);
-  for I := 0 to High(V) do
-    Result[I] := V[I];
-end;
-
-function AsCurrencyArray(const V: array of Currency): CurrencyArray;
-var I : Integer;
-begin
-  SetLength(Result, High(V) + 1);
-  for I := 0 to High(V) do
-    Result[I] := V[I];
-end;
-
-function AsAnsiStringArray(const V: array of AnsiString): AnsiStringArray;
-var I : Integer;
-begin
-  SetLength(Result, High(V) + 1);
-  for I := 0 to High(V) do
-    Result[I] := V[I];
-end;
-
-function AsWideStringArray(const V: array of WideString): WideStringArray;
-var I : Integer;
-begin
-  SetLength(Result, High(V) + 1);
-  for I := 0 to High(V) do
-    Result[I] := V[I];
-end;
-
-function AsStringArray(const V: array of String): StringArray;
-var I : Integer;
-begin
-  SetLength(Result, High(V) + 1);
-  for I := 0 to High(V) do
-    Result[I] := V[I];
-end;
-
-{$IFNDEF ManagedCode}
-function AsPointerArray(const V: array of Pointer): PointerArray;
-var I : Integer;
-begin
-  SetLength(Result, High(V) + 1);
-  for I := 0 to High(V) do
-    Result[I] := V[I];
-end;
-
-{$ENDIF}
-function AsCharSetArray(const V: array of CharSet): CharSetArray;
-var I : Integer;
-begin
-  SetLength(Result, High(V) + 1);
-  for I := 0 to High(V) do
-    Result[I] := V[I];
-end;
-
-function AsObjectArray(const V: array of TObject): ObjectArray;
-var I : Integer;
-begin
-  SetLength(Result, High(V) + 1);
-  for I := 0 to High(V) do
-    Result[I] := V[I];
-end;
-
-function AsInterfaceArray(const V: array of IInterface): InterfaceArray;
-var I : Integer;
-begin
-  SetLength(Result, High(V) + 1);
-  for I := 0 to High(V) do
-    Result[I] := V[I];
-end;
-
-
-
-function RangeByte(const First: Byte; const Count: Integer; const Increment: Byte): ByteArray;
-var I : Integer;
-    J : Byte;
-begin
-  SetLength(Result, Count);
-  J := First;
-  for I := 0 to Count - 1 do
-    begin
-      Result[I] := J;
-      J := J + Increment;
-    end;
-end;
-
-function RangeWord(const First: Word; const Count: Integer; const Increment: Word): WordArray;
-var I : Integer;
-    J : Word;
-begin
-  SetLength(Result, Count);
-  J := First;
-  for I := 0 to Count - 1 do
-    begin
-      Result[I] := J;
-      J := J + Increment;
-    end;
-end;
-
-function RangeLongWord(const First: LongWord; const Count: Integer; const Increment: LongWord): LongWordArray;
-var I : Integer;
-    J : LongWord;
-begin
-  SetLength(Result, Count);
-  J := First;
-  for I := 0 to Count - 1 do
-    begin
-      Result[I] := J;
-      J := J + Increment;
-    end;
-end;
-
-function RangeCardinal(const First: Cardinal; const Count: Integer; const Increment: Cardinal): CardinalArray;
-var I : Integer;
-    J : Cardinal;
-begin
-  SetLength(Result, Count);
-  J := First;
-  for I := 0 to Count - 1 do
-    begin
-      Result[I] := J;
-      J := J + Increment;
-    end;
-end;
-
-function RangeShortInt(const First: ShortInt; const Count: Integer; const Increment: ShortInt): ShortIntArray;
-var I : Integer;
-    J : ShortInt;
-begin
-  SetLength(Result, Count);
-  J := First;
-  for I := 0 to Count - 1 do
-    begin
-      Result[I] := J;
-      J := J + Increment;
-    end;
-end;
-
-function RangeSmallInt(const First: SmallInt; const Count: Integer; const Increment: SmallInt): SmallIntArray;
-var I : Integer;
-    J : SmallInt;
-begin
-  SetLength(Result, Count);
-  J := First;
-  for I := 0 to Count - 1 do
-    begin
-      Result[I] := J;
-      J := J + Increment;
-    end;
-end;
-
-function RangeLongInt(const First: LongInt; const Count: Integer; const Increment: LongInt): LongIntArray;
-var I : Integer;
-    J : LongInt;
-begin
-  SetLength(Result, Count);
-  J := First;
-  for I := 0 to Count - 1 do
-    begin
-      Result[I] := J;
-      J := J + Increment;
-    end;
-end;
-
-function RangeInteger(const First: Integer; const Count: Integer; const Increment: Integer): IntegerArray;
-var I : Integer;
-    J : Integer;
-begin
-  SetLength(Result, Count);
-  J := First;
-  for I := 0 to Count - 1 do
-    begin
-      Result[I] := J;
-      J := J + Increment;
-    end;
-end;
-
-function RangeInt64(const First: Int64; const Count: Integer; const Increment: Int64): Int64Array;
-var I : Integer;
-    J : Int64;
-begin
-  SetLength(Result, Count);
-  J := First;
-  for I := 0 to Count - 1 do
-    begin
-      Result[I] := J;
-      J := J + Increment;
-    end;
-end;
-
-function RangeSingle(const First: Single; const Count: Integer; const Increment: Single): SingleArray;
-var I : Integer;
-    J : Single;
-begin
-  SetLength(Result, Count);
-  J := First;
-  for I := 0 to Count - 1 do
-    begin
-      Result[I] := J;
-      J := J + Increment;
-    end;
-end;
-
-function RangeDouble(const First: Double; const Count: Integer; const Increment: Double): DoubleArray;
-var I : Integer;
-    J : Double;
-begin
-  SetLength(Result, Count);
-  J := First;
-  for I := 0 to Count - 1 do
-    begin
-      Result[I] := J;
-      J := J + Increment;
-    end;
-end;
-
-function RangeExtended(const First: Extended; const Count: Integer; const Increment: Extended): ExtendedArray;
-var I : Integer;
-    J : Extended;
-begin
-  SetLength(Result, Count);
-  J := First;
-  for I := 0 to Count - 1 do
-    begin
-      Result[I] := J;
-      J := J + Increment;
-    end;
-end;
-
-
-
-{                                                                              }
-{ Dup                                                                          }
-{                                                                              }
-{$IFDEF ManagedCode}
-function DupByte(const V: Byte; const Count: Integer): ByteArray;
-var I : Integer;
-begin
-  if Count <= 0 then
-    begin
-      SetLength(Result, 0);
-      exit;
-    end;
-  SetLength(Result, Count);
-  for I := 0 to Count - 1 do
-    Result[I] := 0;
-end;
-{$ELSE}
-function DupByte(const V: Byte; const Count: Integer): ByteArray;
-begin
-  if Count <= 0 then
-    begin
-      SetLength(Result, 0);
-      exit;
-    end;
-  SetLength(Result, Count);
-  FillChar(Result[0], Count, V);
-end;
-{$ENDIF}
-
-function DupWord(const V: Word; const Count: Integer): WordArray;
-var I : Integer;
-begin
-  if Count <= 0 then
-    begin
-      SetLength(Result, 0);
-      exit;
-    end;
-  SetLength(Result, Count);
-  for I := 0 to Count - 1 do
-    Result[I] := V;
-end;
-
-function DupLongWord(const V: LongWord; const Count: Integer): LongWordArray;
-var I : Integer;
-begin
-  if Count <= 0 then
-    begin
-      SetLength(Result, 0);
-      exit;
-    end;
-  SetLength(Result, Count);
-  for I := 0 to Count - 1 do
-    Result[I] := V;
-end;
-
-function DupCardinal(const V: Cardinal; const Count: Integer): CardinalArray;
-var I : Integer;
-begin
-  if Count <= 0 then
-    begin
-      SetLength(Result, 0);
-      exit;
-    end;
-  SetLength(Result, Count);
-  for I := 0 to Count - 1 do
-    Result[I] := V;
-end;
-
-function DupShortInt(const V: ShortInt; const Count: Integer): ShortIntArray;
-var I : Integer;
-begin
-  if Count <= 0 then
-    begin
-      SetLength(Result, 0);
-      exit;
-    end;
-  SetLength(Result, Count);
-  for I := 0 to Count - 1 do
-    Result[I] := V;
-end;
-
-function DupSmallInt(const V: SmallInt; const Count: Integer): SmallIntArray;
-var I : Integer;
-begin
-  if Count <= 0 then
-    begin
-      SetLength(Result, 0);
-      exit;
-    end;
-  SetLength(Result, Count);
-  for I := 0 to Count - 1 do
-    Result[I] := V;
-end;
-
-function DupLongInt(const V: LongInt; const Count: Integer): LongIntArray;
-var I : Integer;
-begin
-  if Count <= 0 then
-    begin
-      SetLength(Result, 0);
-      exit;
-    end;
-  SetLength(Result, Count);
-  for I := 0 to Count - 1 do
-    Result[I] := V;
-end;
-
-function DupInteger(const V: Integer; const Count: Integer): IntegerArray;
-var I : Integer;
-begin
-  if Count <= 0 then
-    begin
-      SetLength(Result, 0);
-      exit;
-    end;
-  SetLength(Result, Count);
-  for I := 0 to Count - 1 do
-    Result[I] := V;
-end;
-
-function DupInt64(const V: Int64; const Count: Integer): Int64Array;
-var I : Integer;
-begin
-  if Count <= 0 then
-    begin
-      SetLength(Result, 0);
-      exit;
-    end;
-  SetLength(Result, Count);
-  for I := 0 to Count - 1 do
-    Result[I] := V;
-end;
-
-function DupSingle(const V: Single; const Count: Integer): SingleArray;
-var I : Integer;
-begin
-  if Count <= 0 then
-    begin
-      SetLength(Result, 0);
-      exit;
-    end;
-  SetLength(Result, Count);
-  for I := 0 to Count - 1 do
-    Result[I] := V;
-end;
-
-function DupDouble(const V: Double; const Count: Integer): DoubleArray;
-var I : Integer;
-begin
-  if Count <= 0 then
-    begin
-      SetLength(Result, 0);
-      exit;
-    end;
-  SetLength(Result, Count);
-  for I := 0 to Count - 1 do
-    Result[I] := V;
-end;
-
-function DupExtended(const V: Extended; const Count: Integer): ExtendedArray;
-var I : Integer;
-begin
-  if Count <= 0 then
-    begin
-      SetLength(Result, 0);
-      exit;
-    end;
-  SetLength(Result, Count);
-  for I := 0 to Count - 1 do
-    Result[I] := V;
-end;
-
-function DupCurrency(const V: Currency; const Count: Integer): CurrencyArray;
-var I : Integer;
-begin
-  if Count <= 0 then
-    begin
-      SetLength(Result, 0);
-      exit;
-    end;
-  SetLength(Result, Count);
-  for I := 0 to Count - 1 do
-    Result[I] := V;
-end;
-
-function DupAnsiString(const V: AnsiString; const Count: Integer): AnsiStringArray;
-var I : Integer;
-begin
-  if Count <= 0 then
-    begin
-      SetLength(Result, 0);
-      exit;
-    end;
-  SetLength(Result, Count);
-  for I := 0 to Count - 1 do
-    Result[I] := V;
-end;
-
-function DupWideString(const V: WideString; const Count: Integer): WideStringArray;
-var I : Integer;
-begin
-  if Count <= 0 then
-    begin
-      SetLength(Result, 0);
-      exit;
-    end;
-  SetLength(Result, Count);
-  for I := 0 to Count - 1 do
-    Result[I] := V;
-end;
-
-function DupString(const V: String; const Count: Integer): StringArray;
-var I : Integer;
-begin
-  if Count <= 0 then
-    begin
-      SetLength(Result, 0);
-      exit;
-    end;
-  SetLength(Result, Count);
-  for I := 0 to Count - 1 do
-    Result[I] := V;
-end;
-
-function DupCharSet(const V: CharSet; const Count: Integer): CharSetArray;
-var I : Integer;
-begin
-  if Count <= 0 then
-    begin
-      SetLength(Result, 0);
-      exit;
-    end;
-  SetLength(Result, Count);
-  for I := 0 to Count - 1 do
-    Result[I] := V;
-end;
-
-function DupObject(const V: TObject; const Count: Integer): ObjectArray;
-var I : Integer;
-begin
-  if Count <= 0 then
-    begin
-      SetLength(Result, 0);
-      exit;
-    end;
-  SetLength(Result, Count);
-  for I := 0 to Count - 1 do
-    Result[I] := V;
-end;
-
-
-
-{                                                                              }
-{ SetLengthAndZero                                                             }
-{                                                                              }
-{$IFDEF ManagedCode}
-procedure SetLengthAndZero(var V: ByteArray; const NewLength: Integer);
-var OldLen, NewLen, I : Integer;
-begin
-  NewLen := NewLength;
-  if NewLen < 0 then
-    NewLen := 0;
-  OldLen := Length(V);
-  if OldLen = NewLen then
-    exit;
-  SetLength(V, NewLen);
-  if OldLen > NewLen then
-    exit;
-  for I := 0 to NewLen - OldLen - 1 do
-    V[OldLen + I] := 0;
-end;
-{$ELSE}
-procedure SetLengthAndZero(var V: ByteArray; const NewLength: Integer);
-var OldLen, NewLen : Integer;
-begin
-  NewLen := NewLength;
-  if NewLen < 0 then
-    NewLen := 0;
-  OldLen := Length(V);
-  if OldLen = NewLen then
-    exit;
-  SetLength(V, NewLen);
-  if OldLen > NewLen then
-    exit;
-  FillChar(Pointer(@V[OldLen])^, Sizeof(Byte) * (NewLen - OldLen), #0);
-end;
-{$ENDIF}
-
-{$IFDEF ManagedCode}
-procedure SetLengthAndZero(var V: WordArray; const NewLength: Integer);
-var OldLen, NewLen, I : Integer;
-begin
-  NewLen := NewLength;
-  if NewLen < 0 then
-    NewLen := 0;
-  OldLen := Length(V);
-  if OldLen = NewLen then
-    exit;
-  SetLength(V, NewLen);
-  if OldLen > NewLen then
-    exit;
-  for I := 0 to NewLen - OldLen - 1 do
-    V[OldLen + I] := 0;
-end;
-{$ELSE}
-procedure SetLengthAndZero(var V: WordArray; const NewLength: Integer);
-var OldLen, NewLen : Integer;
-begin
-  NewLen := NewLength;
-  if NewLen < 0 then
-    NewLen := 0;
-  OldLen := Length(V);
-  if OldLen = NewLen then
-    exit;
-  SetLength(V, NewLen);
-  if OldLen > NewLen then
-    exit;
-  FillChar(Pointer(@V[OldLen])^, Sizeof(Word) * (NewLen - OldLen), #0);
-end;
-{$ENDIF}
-
-{$IFDEF ManagedCode}
-procedure SetLengthAndZero(var V: LongWordArray; const NewLength: Integer);
-var OldLen, NewLen, I : Integer;
-begin
-  NewLen := NewLength;
-  if NewLen < 0 then
-    NewLen := 0;
-  OldLen := Length(V);
-  if OldLen = NewLen then
-    exit;
-  SetLength(V, NewLen);
-  if OldLen > NewLen then
-    exit;
-  for I := 0 to NewLen - OldLen - 1 do
-    V[OldLen + I] := 0;
-end;
-{$ELSE}
-procedure SetLengthAndZero(var V: LongWordArray; const NewLength: Integer);
-var OldLen, NewLen : Integer;
-begin
-  NewLen := NewLength;
-  if NewLen < 0 then
-    NewLen := 0;
-  OldLen := Length(V);
-  if OldLen = NewLen then
-    exit;
-  SetLength(V, NewLen);
-  if OldLen > NewLen then
-    exit;
-  FillChar(Pointer(@V[OldLen])^, Sizeof(LongWord) * (NewLen - OldLen), #0);
-end;
-{$ENDIF}
-
-{$IFDEF ManagedCode}
-procedure SetLengthAndZero(var V: ShortIntArray; const NewLength: Integer);
-var OldLen, NewLen, I : Integer;
-begin
-  NewLen := NewLength;
-  if NewLen < 0 then
-    NewLen := 0;
-  OldLen := Length(V);
-  if OldLen = NewLen then
-    exit;
-  SetLength(V, NewLen);
-  if OldLen > NewLen then
-    exit;
-  for I := 0 to NewLen - OldLen - 1 do
-    V[OldLen + I] := 0;
-end;
-{$ELSE}
-procedure SetLengthAndZero(var V: ShortIntArray; const NewLength: Integer);
-var OldLen, NewLen : Integer;
-begin
-  NewLen := NewLength;
-  if NewLen < 0 then
-    NewLen := 0;
-  OldLen := Length(V);
-  if OldLen = NewLen then
-    exit;
-  SetLength(V, NewLen);
-  if OldLen > NewLen then
-    exit;
-  FillChar(Pointer(@V[OldLen])^, Sizeof(ShortInt) * (NewLen - OldLen), #0);
-end;
-{$ENDIF}
-
-{$IFDEF ManagedCode}
-procedure SetLengthAndZero(var V: SmallIntArray; const NewLength: Integer);
-var OldLen, NewLen, I : Integer;
-begin
-  NewLen := NewLength;
-  if NewLen < 0 then
-    NewLen := 0;
-  OldLen := Length(V);
-  if OldLen = NewLen then
-    exit;
-  SetLength(V, NewLen);
-  if OldLen > NewLen then
-    exit;
-  for I := 0 to NewLen - OldLen - 1 do
-    V[OldLen + I] := 0;
-end;
-{$ELSE}
-procedure SetLengthAndZero(var V: SmallIntArray; const NewLength: Integer);
-var OldLen, NewLen : Integer;
-begin
-  NewLen := NewLength;
-  if NewLen < 0 then
-    NewLen := 0;
-  OldLen := Length(V);
-  if OldLen = NewLen then
-    exit;
-  SetLength(V, NewLen);
-  if OldLen > NewLen then
-    exit;
-  FillChar(Pointer(@V[OldLen])^, Sizeof(SmallInt) * (NewLen - OldLen), #0);
-end;
-{$ENDIF}
-
-{$IFDEF ManagedCode}
-procedure SetLengthAndZero(var V: LongIntArray; const NewLength: Integer);
-var OldLen, NewLen, I : Integer;
-begin
-  NewLen := NewLength;
-  if NewLen < 0 then
-    NewLen := 0;
-  OldLen := Length(V);
-  if OldLen = NewLen then
-    exit;
-  SetLength(V, NewLen);
-  if OldLen > NewLen then
-    exit;
-  for I := 0 to NewLen - OldLen - 1 do
-    V[OldLen + I] := 0;
-end;
-{$ELSE}
-procedure SetLengthAndZero(var V: LongIntArray; const NewLength: Integer);
-var OldLen, NewLen : Integer;
-begin
-  NewLen := NewLength;
-  if NewLen < 0 then
-    NewLen := 0;
-  OldLen := Length(V);
-  if OldLen = NewLen then
-    exit;
-  SetLength(V, NewLen);
-  if OldLen > NewLen then
-    exit;
-  FillChar(Pointer(@V[OldLen])^, Sizeof(LongInt) * (NewLen - OldLen), #0);
-end;
-{$ENDIF}
-
-{$IFDEF ManagedCode}
-procedure SetLengthAndZero(var V: Int64Array; const NewLength: Integer);
-var OldLen, NewLen, I : Integer;
-begin
-  NewLen := NewLength;
-  if NewLen < 0 then
-    NewLen := 0;
-  OldLen := Length(V);
-  if OldLen = NewLen then
-    exit;
-  SetLength(V, NewLen);
-  if OldLen > NewLen then
-    exit;
-  for I := 0 to NewLen - OldLen - 1 do
-    V[OldLen + I] := 0;
-end;
-{$ELSE}
-procedure SetLengthAndZero(var V: Int64Array; const NewLength: Integer);
-var OldLen, NewLen : Integer;
-begin
-  NewLen := NewLength;
-  if NewLen < 0 then
-    NewLen := 0;
-  OldLen := Length(V);
-  if OldLen = NewLen then
-    exit;
-  SetLength(V, NewLen);
-  if OldLen > NewLen then
-    exit;
-  FillChar(Pointer(@V[OldLen])^, Sizeof(Int64) * (NewLen - OldLen), #0);
-end;
-{$ENDIF}
-
-{$IFDEF ManagedCode}
-procedure SetLengthAndZero(var V: SingleArray; const NewLength: Integer);
-var OldLen, NewLen, I : Integer;
-begin
-  NewLen := NewLength;
-  if NewLen < 0 then
-    NewLen := 0;
-  OldLen := Length(V);
-  if OldLen = NewLen then
-    exit;
-  SetLength(V, NewLen);
-  if OldLen > NewLen then
-    exit;
-  for I := 0 to NewLen - OldLen - 1 do
-    V[OldLen + I] := 0.0;
-end;
-{$ELSE}
-procedure SetLengthAndZero(var V: SingleArray; const NewLength: Integer);
-var OldLen, NewLen : Integer;
-begin
-  NewLen := NewLength;
-  if NewLen < 0 then
-    NewLen := 0;
-  OldLen := Length(V);
-  if OldLen = NewLen then
-    exit;
-  SetLength(V, NewLen);
-  if OldLen > NewLen then
-    exit;
-  FillChar(Pointer(@V[OldLen])^, Sizeof(Single) * (NewLen - OldLen), #0);
-end;
-{$ENDIF}
-
-{$IFDEF ManagedCode}
-procedure SetLengthAndZero(var V: DoubleArray; const NewLength: Integer);
-var OldLen, NewLen, I : Integer;
-begin
-  NewLen := NewLength;
-  if NewLen < 0 then
-    NewLen := 0;
-  OldLen := Length(V);
-  if OldLen = NewLen then
-    exit;
-  SetLength(V, NewLen);
-  if OldLen > NewLen then
-    exit;
-  for I := 0 to NewLen - OldLen - 1 do
-    V[OldLen + I] := 0.0;
-end;
-{$ELSE}
-procedure SetLengthAndZero(var V: DoubleArray; const NewLength: Integer);
-var OldLen, NewLen : Integer;
-begin
-  NewLen := NewLength;
-  if NewLen < 0 then
-    NewLen := 0;
-  OldLen := Length(V);
-  if OldLen = NewLen then
-    exit;
-  SetLength(V, NewLen);
-  if OldLen > NewLen then
-    exit;
-  FillChar(Pointer(@V[OldLen])^, Sizeof(Double) * (NewLen - OldLen), #0);
-end;
-{$ENDIF}
-
-{$IFDEF ManagedCode}
-procedure SetLengthAndZero(var V: ExtendedArray; const NewLength: Integer);
-var OldLen, NewLen, I : Integer;
-begin
-  NewLen := NewLength;
-  if NewLen < 0 then
-    NewLen := 0;
-  OldLen := Length(V);
-  if OldLen = NewLen then
-    exit;
-  SetLength(V, NewLen);
-  if OldLen > NewLen then
-    exit;
-  for I := 0 to NewLen - OldLen - 1 do
-    V[OldLen + I] := 0.0;
-end;
-{$ELSE}
-procedure SetLengthAndZero(var V: ExtendedArray; const NewLength: Integer);
-var OldLen, NewLen : Integer;
-begin
-  NewLen := NewLength;
-  if NewLen < 0 then
-    NewLen := 0;
-  OldLen := Length(V);
-  if OldLen = NewLen then
-    exit;
-  SetLength(V, NewLen);
-  if OldLen > NewLen then
-    exit;
-  FillChar(Pointer(@V[OldLen])^, Sizeof(Extended) * (NewLen - OldLen), #0);
-end;
-{$ENDIF}
-
-{$IFDEF ManagedCode}
-procedure SetLengthAndZero(var V: CurrencyArray; const NewLength: Integer);
-var OldLen, NewLen, I : Integer;
-begin
-  NewLen := NewLength;
-  if NewLen < 0 then
-    NewLen := 0;
-  OldLen := Length(V);
-  if OldLen = NewLen then
-    exit;
-  SetLength(V, NewLen);
-  if OldLen > NewLen then
-    exit;
-  for I := 0 to NewLen - OldLen - 1 do
-    V[OldLen + I] := 0.0;
-end;
-{$ELSE}
-procedure SetLengthAndZero(var V: CurrencyArray; const NewLength: Integer);
-var OldLen, NewLen : Integer;
-begin
-  NewLen := NewLength;
-  if NewLen < 0 then
-    NewLen := 0;
-  OldLen := Length(V);
-  if OldLen = NewLen then
-    exit;
-  SetLength(V, NewLen);
-  if OldLen > NewLen then
-    exit;
-  FillChar(Pointer(@V[OldLen])^, Sizeof(Currency) * (NewLen - OldLen), #0);
-end;
-{$ENDIF}
-
-{$IFDEF ManagedCode}
-procedure SetLengthAndZero(var V: CharSetArray; const NewLength: Integer);
-var OldLen, NewLen, I : Integer;
-begin
-  NewLen := NewLength;
-  if NewLen < 0 then
-    NewLen := 0;
-  OldLen := Length(V);
-  if OldLen = NewLen then
-    exit;
-  SetLength(V, NewLen);
-  if OldLen > NewLen then
-    exit;
-  for I := 0 to NewLen - OldLen - 1 do
-    V[OldLen + I] := [];
-end;
-{$ELSE}
-procedure SetLengthAndZero(var V: CharSetArray; const NewLength: Integer);
-var OldLen, NewLen : Integer;
-begin
-  NewLen := NewLength;
-  if NewLen < 0 then
-    NewLen := 0;
-  OldLen := Length(V);
-  if OldLen = NewLen then
-    exit;
-  SetLength(V, NewLen);
-  if OldLen > NewLen then
-    exit;
-  FillChar(Pointer(@V[OldLen])^, Sizeof(CharSet) * (NewLen - OldLen), #0);
-end;
-{$ENDIF}
-
-{$IFDEF ManagedCode}
-procedure SetLengthAndZero(var V: BooleanArray; const NewLength: Integer);
-var OldLen, NewLen, I : Integer;
-begin
-  NewLen := NewLength;
-  if NewLen < 0 then
-    NewLen := 0;
-  OldLen := Length(V);
-  if OldLen = NewLen then
-    exit;
-  SetLength(V, NewLen);
-  if OldLen > NewLen then
-    exit;
-  for I := 0 to NewLen - OldLen - 1 do
-    V[OldLen + I] := False;
-end;
-{$ELSE}
-procedure SetLengthAndZero(var V: BooleanArray; const NewLength: Integer);
-var OldLen, NewLen : Integer;
-begin
-  NewLen := NewLength;
-  if NewLen < 0 then
-    NewLen := 0;
-  OldLen := Length(V);
-  if OldLen = NewLen then
-    exit;
-  SetLength(V, NewLen);
-  if OldLen > NewLen then
-    exit;
-  FillChar(Pointer(@V[OldLen])^, Sizeof(Boolean) * (NewLen - OldLen), #0);
-end;
-{$ENDIF}
-
-{$IFNDEF Managedcode}
-{$IFDEF ManagedCode}
-procedure SetLengthAndZero(var V: PointerArray; const NewLength: Integer);
-var OldLen, NewLen, I : Integer;
-begin
-  NewLen := NewLength;
-  if NewLen < 0 then
-    NewLen := 0;
-  OldLen := Length(V);
-  if OldLen = NewLen then
-    exit;
-  SetLength(V, NewLen);
-  if OldLen > NewLen then
-    exit;
-  for I := 0 to NewLen - OldLen - 1 do
-    V[OldLen + I] := nil;
-end;
-{$ELSE}
-procedure SetLengthAndZero(var V: PointerArray; const NewLength: Integer);
-var OldLen, NewLen : Integer;
-begin
-  NewLen := NewLength;
-  if NewLen < 0 then
-    NewLen := 0;
-  OldLen := Length(V);
-  if OldLen = NewLen then
-    exit;
-  SetLength(V, NewLen);
-  if OldLen > NewLen then
-    exit;
-  FillChar(Pointer(@V[OldLen])^, Sizeof(Pointer) * (NewLen - OldLen), #0);
-end;
-{$ENDIF}
-
-{$ENDIF}
-procedure SetLengthAndZero(var V: ObjectArray; const NewLength: Integer;
-    const FreeObjects: Boolean);
-var I, L : Integer;
-begin
-  L := Length(V);
-  if L = NewLength then
-    exit;
-  if (L > NewLength) and FreeObjects then
-    for I := NewLength to L - 1 do
-      FreeAndNil(V[I]);
-  SetLength(V, NewLength);
-  if L > NewLength then
-    exit;
-  {$IFDEF ManagedCode}
-  for I := 0 to NewLength - L - 1 do
-    V[L + I] := nil;
-  {$ELSE}
-  FillChar(V[L], Sizeof(Pointer) * (NewLength - L), #0);
-  {$ENDIF}
-end;
-
-
-
-{                                                                              }
-{ IsEqual                                                                      }
-{                                                                              }
-{$IFDEF ManagedCode}
-function IsEqual(const V1, V2: ByteArray): Boolean;
-var I, L : Integer;
-begin
-  L := Length(V1);
-  if L <> Length(V2) then
-    begin
-      Result := False;
-      exit;
-    end;
-  for I := 0 to L - 1 do
-    if V1[I] <> V2[I] then
-      begin
-        Result := False;
-        exit;
-      end;
-  Result := True;
-end;
-{$ELSE}
-function IsEqual(const V1, V2: ByteArray): Boolean;
-var L : Integer;
-begin
-  L := Length(V1);
-  if L <> Length(V2) then
-    begin
-      Result := False;
-      exit;
-    end;
-  Result := CompareMem(Pointer(V1)^, Pointer(V2)^, Sizeof(Byte) * L);
-end;
-{$ENDIF}
-
-{$IFDEF ManagedCode}
-function IsEqual(const V1, V2: WordArray): Boolean;
-var I, L : Integer;
-begin
-  L := Length(V1);
-  if L <> Length(V2) then
-    begin
-      Result := False;
-      exit;
-    end;
-  for I := 0 to L - 1 do
-    if V1[I] <> V2[I] then
-      begin
-        Result := False;
-        exit;
-      end;
-  Result := True;
-end;
-{$ELSE}
-function IsEqual(const V1, V2: WordArray): Boolean;
-var L : Integer;
-begin
-  L := Length(V1);
-  if L <> Length(V2) then
-    begin
-      Result := False;
-      exit;
-    end;
-  Result := CompareMem(Pointer(V1)^, Pointer(V2)^, Sizeof(Word) * L);
-end;
-{$ENDIF}
-
-{$IFDEF ManagedCode}
-function IsEqual(const V1, V2: LongWordArray): Boolean;
-var I, L : Integer;
-begin
-  L := Length(V1);
-  if L <> Length(V2) then
-    begin
-      Result := False;
-      exit;
-    end;
-  for I := 0 to L - 1 do
-    if V1[I] <> V2[I] then
-      begin
-        Result := False;
-        exit;
-      end;
-  Result := True;
-end;
-{$ELSE}
-function IsEqual(const V1, V2: LongWordArray): Boolean;
-var L : Integer;
-begin
-  L := Length(V1);
-  if L <> Length(V2) then
-    begin
-      Result := False;
-      exit;
-    end;
-  Result := CompareMem(Pointer(V1)^, Pointer(V2)^, Sizeof(LongWord) * L);
-end;
-{$ENDIF}
-
-{$IFDEF ManagedCode}
-function IsEqual(const V1, V2: ShortIntArray): Boolean;
-var I, L : Integer;
-begin
-  L := Length(V1);
-  if L <> Length(V2) then
-    begin
-      Result := False;
-      exit;
-    end;
-  for I := 0 to L - 1 do
-    if V1[I] <> V2[I] then
-      begin
-        Result := False;
-        exit;
-      end;
-  Result := True;
-end;
-{$ELSE}
-function IsEqual(const V1, V2: ShortIntArray): Boolean;
-var L : Integer;
-begin
-  L := Length(V1);
-  if L <> Length(V2) then
-    begin
-      Result := False;
-      exit;
-    end;
-  Result := CompareMem(Pointer(V1)^, Pointer(V2)^, Sizeof(ShortInt) * L);
-end;
-{$ENDIF}
-
-{$IFDEF ManagedCode}
-function IsEqual(const V1, V2: SmallIntArray): Boolean;
-var I, L : Integer;
-begin
-  L := Length(V1);
-  if L <> Length(V2) then
-    begin
-      Result := False;
-      exit;
-    end;
-  for I := 0 to L - 1 do
-    if V1[I] <> V2[I] then
-      begin
-        Result := False;
-        exit;
-      end;
-  Result := True;
-end;
-{$ELSE}
-function IsEqual(const V1, V2: SmallIntArray): Boolean;
-var L : Integer;
-begin
-  L := Length(V1);
-  if L <> Length(V2) then
-    begin
-      Result := False;
-      exit;
-    end;
-  Result := CompareMem(Pointer(V1)^, Pointer(V2)^, Sizeof(SmallInt) * L);
-end;
-{$ENDIF}
-
-{$IFDEF ManagedCode}
-function IsEqual(const V1, V2: LongIntArray): Boolean;
-var I, L : Integer;
-begin
-  L := Length(V1);
-  if L <> Length(V2) then
-    begin
-      Result := False;
-      exit;
-    end;
-  for I := 0 to L - 1 do
-    if V1[I] <> V2[I] then
-      begin
-        Result := False;
-        exit;
-      end;
-  Result := True;
-end;
-{$ELSE}
-function IsEqual(const V1, V2: LongIntArray): Boolean;
-var L : Integer;
-begin
-  L := Length(V1);
-  if L <> Length(V2) then
-    begin
-      Result := False;
-      exit;
-    end;
-  Result := CompareMem(Pointer(V1)^, Pointer(V2)^, Sizeof(LongInt) * L);
-end;
-{$ENDIF}
-
-{$IFDEF ManagedCode}
-function IsEqual(const V1, V2: Int64Array): Boolean;
-var I, L : Integer;
-begin
-  L := Length(V1);
-  if L <> Length(V2) then
-    begin
-      Result := False;
-      exit;
-    end;
-  for I := 0 to L - 1 do
-    if V1[I] <> V2[I] then
-      begin
-        Result := False;
-        exit;
-      end;
-  Result := True;
-end;
-{$ELSE}
-function IsEqual(const V1, V2: Int64Array): Boolean;
-var L : Integer;
-begin
-  L := Length(V1);
-  if L <> Length(V2) then
-    begin
-      Result := False;
-      exit;
-    end;
-  Result := CompareMem(Pointer(V1)^, Pointer(V2)^, Sizeof(Int64) * L);
-end;
-{$ENDIF}
-
-{$IFDEF ManagedCode}
-function IsEqual(const V1, V2: SingleArray): Boolean;
-var I, L : Integer;
-begin
-  L := Length(V1);
-  if L <> Length(V2) then
-    begin
-      Result := False;
-      exit;
-    end;
-  for I := 0 to L - 1 do
-    if V1[I] <> V2[I] then
-      begin
-        Result := False;
-        exit;
-      end;
-  Result := True;
-end;
-{$ELSE}
-function IsEqual(const V1, V2: SingleArray): Boolean;
-var L : Integer;
-begin
-  L := Length(V1);
-  if L <> Length(V2) then
-    begin
-      Result := False;
-      exit;
-    end;
-  Result := CompareMem(Pointer(V1)^, Pointer(V2)^, Sizeof(Single) * L);
-end;
-{$ENDIF}
-
-{$IFDEF ManagedCode}
-function IsEqual(const V1, V2: DoubleArray): Boolean;
-var I, L : Integer;
-begin
-  L := Length(V1);
-  if L <> Length(V2) then
-    begin
-      Result := False;
-      exit;
-    end;
-  for I := 0 to L - 1 do
-    if V1[I] <> V2[I] then
-      begin
-        Result := False;
-        exit;
-      end;
-  Result := True;
-end;
-{$ELSE}
-function IsEqual(const V1, V2: DoubleArray): Boolean;
-var L : Integer;
-begin
-  L := Length(V1);
-  if L <> Length(V2) then
-    begin
-      Result := False;
-      exit;
-    end;
-  Result := CompareMem(Pointer(V1)^, Pointer(V2)^, Sizeof(Double) * L);
-end;
-{$ENDIF}
-
-{$IFDEF ManagedCode}
-function IsEqual(const V1, V2: ExtendedArray): Boolean;
-var I, L : Integer;
-begin
-  L := Length(V1);
-  if L <> Length(V2) then
-    begin
-      Result := False;
-      exit;
-    end;
-  for I := 0 to L - 1 do
-    if V1[I] <> V2[I] then
-      begin
-        Result := False;
-        exit;
-      end;
-  Result := True;
-end;
-{$ELSE}
-function IsEqual(const V1, V2: ExtendedArray): Boolean;
-var L : Integer;
-begin
-  L := Length(V1);
-  if L <> Length(V2) then
-    begin
-      Result := False;
-      exit;
-    end;
-  Result := CompareMem(Pointer(V1)^, Pointer(V2)^, Sizeof(Extended) * L);
-end;
-{$ENDIF}
-
-{$IFDEF ManagedCode}
-function IsEqual(const V1, V2: CurrencyArray): Boolean;
-var I, L : Integer;
-begin
-  L := Length(V1);
-  if L <> Length(V2) then
-    begin
-      Result := False;
-      exit;
-    end;
-  for I := 0 to L - 1 do
-    if V1[I] <> V2[I] then
-      begin
-        Result := False;
-        exit;
-      end;
-  Result := True;
-end;
-{$ELSE}
-function IsEqual(const V1, V2: CurrencyArray): Boolean;
-var L : Integer;
-begin
-  L := Length(V1);
-  if L <> Length(V2) then
-    begin
-      Result := False;
-      exit;
-    end;
-  Result := CompareMem(Pointer(V1)^, Pointer(V2)^, Sizeof(Currency) * L);
-end;
-{$ENDIF}
-
-function IsEqual(const V1, V2: AnsiStringArray): Boolean;
-var I, L : Integer;
-begin
-  L := Length(V1);
-  if L <> Length(V2) then
-    begin
-      Result := False;
-      exit;
-    end;
-  for I := 0 to L - 1 do
-    if V1[I] <> V2[I] then
-      begin
-        Result := False;
-        exit;
-      end;
-  Result := True;
-end;
-
-function IsEqual(const V1, V2: WideStringArray): Boolean;
-var I, L : Integer;
-begin
-  L := Length(V1);
-  if L <> Length(V2) then
-    begin
-      Result := False;
-      exit;
-    end;
-  for I := 0 to L - 1 do
-    if V1[I] <> V2[I] then
-      begin
-        Result := False;
-        exit;
-      end;
-  Result := True;
-end;
-
-function IsEqual(const V1, V2: CharSetArray): Boolean;
-var I, L : Integer;
-begin
-  L := Length(V1);
-  if L <> Length(V2) then
-    begin
-      Result := False;
-      exit;
-    end;
-  for I := 0 to L - 1 do
-    if V1[I] <> V2[I] then
-      begin
-        Result := False;
-        exit;
-      end;
-  Result := True;
-end;
-
-
-
-{                                                                              }
-{ Dynamic array to Dynamic array                                               }
-{                                                                              }
-function ByteArrayToLongIntArray(const V: ByteArray): LongIntArray;
-var I, L : Integer;
-begin
-  L := Length(V);
-  SetLength(Result, L);
-  for I := 0 to L - 1 do
-    Result[I] := V[I];
-end;
-
-function WordArrayToLongIntArray(const V: WordArray): LongIntArray;
-var I, L : Integer;
-begin
-  L := Length(V);
-  SetLength(Result, L);
-  for I := 0 to L - 1 do
-    Result[I] := V[I];
-end;
-
-function ShortIntArrayToLongIntArray(const V: ShortIntArray): LongIntArray;
-var I, L : Integer;
-begin
-  L := Length(V);
-  SetLength(Result, L);
-  for I := 0 to L - 1 do
-    Result[I] := V[I];
-end;
-
-function SmallIntArrayToLongIntArray(const V: SmallIntArray): LongIntArray;
-var I, L : Integer;
-begin
-  L := Length(V);
-  SetLength(Result, L);
-  for I := 0 to L - 1 do
-    Result[I] := V[I];
-end;
-
-function LongIntArrayToInt64Array(const V: LongIntArray): Int64Array;
-var I, L : Integer;
-begin
-  L := Length(V);
-  SetLength(Result, L);
-  for I := 0 to L - 1 do
-    Result[I] := V[I];
-end;
-
-function LongIntArrayToSingleArray(const V: LongIntArray): SingleArray;
-var I, L : Integer;
-begin
-  L := Length(V);
-  SetLength(Result, L);
-  for I := 0 to L - 1 do
-    Result[I] := V[I];
-end;
-
-function LongIntArrayToDoubleArray(const V: LongIntArray): DoubleArray;
-var I, L : Integer;
-begin
-  L := Length(V);
-  SetLength(Result, L);
-  for I := 0 to L - 1 do
-    Result[I] := V[I];
-end;
-
-function LongIntArrayToExtendedArray(const V: LongIntArray): ExtendedArray;
-var I, L : Integer;
-begin
-  L := Length(V);
-  SetLength(Result, L);
-  for I := 0 to L - 1 do
-    Result[I] := V[I];
-end;
-
-function SingleArrayToDoubleArray(const V: SingleArray): DoubleArray;
-var I, L : Integer;
-begin
-  L := Length(V);
-  SetLength(Result, L);
-  for I := 0 to L - 1 do
-    Result[I] := V[I];
-end;
-
-function SingleArrayToExtendedArray(const V: SingleArray): ExtendedArray;
-var I, L : Integer;
-begin
-  L := Length(V);
-  SetLength(Result, L);
-  for I := 0 to L - 1 do
-    Result[I] := V[I];
-end;
-
-function SingleArrayToCurrencyArray(const V: SingleArray): CurrencyArray;
-var I, L : Integer;
-begin
-  L := Length(V);
-  SetLength(Result, L);
-  for I := 0 to L - 1 do
-    Result[I] := V[I];
-end;
-
-function SingleArrayToLongIntArray(const V: SingleArray): LongIntArray;
-var I, L : Integer;
-begin
-  L := Length(V);
-  SetLength(Result, L);
-  for I := 0 to L - 1 do
-    Result[I] := LongInt(Trunc(V[I]));
-end;
-
-function SingleArrayToInt64Array(const V: SingleArray): Int64Array;
-var I, L : Integer;
-begin
-  L := Length(V);
-  SetLength(Result, L);
-  for I := 0 to L - 1 do
-    Result[I] := Trunc(V[I]);
-end;
-
-function DoubleArrayToExtendedArray(const V: DoubleArray): ExtendedArray;
-var I, L : Integer;
-begin
-  L := Length(V);
-  SetLength(Result, L);
-  for I := 0 to L - 1 do
-    Result[I] := V[I];
-end;
-
-function DoubleArrayToCurrencyArray(const V: DoubleArray): CurrencyArray;
-var I, L : Integer;
-begin
-  L := Length(V);
-  SetLength(Result, L);
-  for I := 0 to L - 1 do
-    Result[I] := V[I];
-end;
-
-function DoubleArrayToLongIntArray(const V: DoubleArray): LongIntArray;
-var I, L : Integer;
-begin
-  L := Length(V);
-  SetLength(Result, L);
-  for I := 0 to L - 1 do
-    Result[I] := LongInt(Trunc(V[I]));
-end;
-
-function DoubleArrayToInt64Array(const V: DoubleArray): Int64Array;
-var I, L : Integer;
-begin
-  L := Length(V);
-  SetLength(Result, L);
-  for I := 0 to L - 1 do
-    Result[I] := Trunc(V[I]);
-end;
-
-function ExtendedArrayToCurrencyArray(const V: ExtendedArray): CurrencyArray;
-var I, L : Integer;
-begin
-  L := Length(V);
-  SetLength(Result, L);
-  for I := 0 to L - 1 do
-    Result[I] := V[I];
-end;
-
-function ExtendedArrayToLongIntArray(const V: ExtendedArray): LongIntArray;
-var I, L : Integer;
-begin
-  L := Length(V);
-  SetLength(Result, L);
-  for I := 0 to L - 1 do
-    Result[I] := LongInt(Trunc(V[I]));
-end;
-
-function ExtendedArrayToInt64Array(const V: ExtendedArray): Int64Array;
-var I, L : Integer;
-begin
-  L := Length(V);
-  SetLength(Result, L);
-  for I := 0 to L - 1 do
-    Result[I] := Trunc(V[I]);
-end;
-
-
-
-{                                                                              }
-{ Array from indexes                                                           }
-{                                                                              }
-function ByteArrayFromIndexes(const V: ByteArray; const Indexes: IntegerArray): ByteArray;
-var I, L : Integer;
-begin
-  L := Length(Indexes);
-  SetLength(Result, L);
-  for I := 0 to L - 1 do
-    Result[I] := V[Indexes[I]];
-end;
-
-function WordArrayFromIndexes(const V: WordArray; const Indexes: IntegerArray): WordArray;
-var I, L : Integer;
-begin
-  L := Length(Indexes);
-  SetLength(Result, L);
-  for I := 0 to L - 1 do
-    Result[I] := V[Indexes[I]];
-end;
-
-function LongWordArrayFromIndexes(const V: LongWordArray; const Indexes: IntegerArray): LongWordArray;
-var I, L : Integer;
-begin
-  L := Length(Indexes);
-  SetLength(Result, L);
-  for I := 0 to L - 1 do
-    Result[I] := V[Indexes[I]];
-end;
-
-function CardinalArrayFromIndexes(const V: CardinalArray; const Indexes: IntegerArray): CardinalArray;
-var I, L : Integer;
-begin
-  L := Length(Indexes);
-  SetLength(Result, L);
-  for I := 0 to L - 1 do
-    Result[I] := V[Indexes[I]];
-end;
-
-function ShortIntArrayFromIndexes(const V: ShortIntArray; const Indexes: IntegerArray): ShortIntArray;
-var I, L : Integer;
-begin
-  L := Length(Indexes);
-  SetLength(Result, L);
-  for I := 0 to L - 1 do
-    Result[I] := V[Indexes[I]];
-end;
-
-function SmallIntArrayFromIndexes(const V: SmallIntArray; const Indexes: IntegerArray): SmallIntArray;
-var I, L : Integer;
-begin
-  L := Length(Indexes);
-  SetLength(Result, L);
-  for I := 0 to L - 1 do
-    Result[I] := V[Indexes[I]];
-end;
-
-function LongIntArrayFromIndexes(const V: LongIntArray; const Indexes: IntegerArray): LongIntArray;
-var I, L : Integer;
-begin
-  L := Length(Indexes);
-  SetLength(Result, L);
-  for I := 0 to L - 1 do
-    Result[I] := V[Indexes[I]];
-end;
-
-function IntegerArrayFromIndexes(const V: IntegerArray; const Indexes: IntegerArray): IntegerArray;
-var I, L : Integer;
-begin
-  L := Length(Indexes);
-  SetLength(Result, L);
-  for I := 0 to L - 1 do
-    Result[I] := V[Indexes[I]];
-end;
-
-function Int64ArrayFromIndexes(const V: Int64Array; const Indexes: IntegerArray): Int64Array;
-var I, L : Integer;
-begin
-  L := Length(Indexes);
-  SetLength(Result, L);
-  for I := 0 to L - 1 do
-    Result[I] := V[Indexes[I]];
-end;
-
-function SingleArrayFromIndexes(const V: SingleArray; const Indexes: IntegerArray): SingleArray;
-var I, L : Integer;
-begin
-  L := Length(Indexes);
-  SetLength(Result, L);
-  for I := 0 to L - 1 do
-    Result[I] := V[Indexes[I]];
-end;
-
-function DoubleArrayFromIndexes(const V: DoubleArray; const Indexes: IntegerArray): DoubleArray;
-var I, L : Integer;
-begin
-  L := Length(Indexes);
-  SetLength(Result, L);
-  for I := 0 to L - 1 do
-    Result[I] := V[Indexes[I]];
-end;
-
-function ExtendedArrayFromIndexes(const V: ExtendedArray; const Indexes: IntegerArray): ExtendedArray;
-var I, L : Integer;
-begin
-  L := Length(Indexes);
-  SetLength(Result, L);
-  for I := 0 to L - 1 do
-    Result[I] := V[Indexes[I]];
-end;
-
-function StringArrayFromIndexes(const V: StringArray; const Indexes: IntegerArray): StringArray;
-var I, L : Integer;
-begin
-  L := Length(Indexes);
-  SetLength(Result, L);
-  for I := 0 to L - 1 do
-    Result[I] := V[Indexes[I]];
-end;
-
-
-
-{                                                                              }
-{ Dynamic array sort                                                           }
-{                                                                              }
-{$IFDEF ManagedCode}
-procedure Sort(const V: ByteArray);
-
-  procedure QuickSort(L, R: Integer);
-  var I, J, M : Integer;
-      W, T    : Byte;
-  begin
-    repeat
-      I := L;
-      J := R;
-      M := (L + R) shr 1;
-      W := V[M];
-      repeat
-        while V[I] < W do
-          Inc(I);
-        while V[J] > W do
-          Dec(J);
-        if I <= J then
-          begin
-            T := V[I];
-            V[I] := V[J];
-            V[J] := T;
-            if M = I then
-              begin
-                M := J;
-                W := V[J];
-              end else
-              if M = J then
-                begin
-                  M := I;
-                  W := V[I];
-                end;
-            Inc(I);
-            Dec(J);
-          end;
-      until I > J;
-      if L < J then
-        QuickSort(L, J);
-      L := I;
-    until I >= R;
-  end;
-
-var I : Integer;
-begin
-  I := Length(V);
-  if I > 0 then
-    QuickSort(0, I - 1);
-end;
-{$ELSE}
-procedure Sort(const V: ByteArray);
-
-  procedure QuickSort(L, R: Integer);
-  var I, J, M : Integer;
-      W, T    : Byte;
-      P, Q    : PByte;
-  begin
-    repeat
-      I := L;
-      P := @V[I];
-      J := R;
-      Q := @V[J];
-      M := (L + R) shr 1;
-      W := V[M];
-      repeat
-        while P^ < W do
-          begin
-            Inc(P);
-            Inc(I);
-          end;
-        while Q^ > W do
-          begin
-            Dec(Q);
-            Dec(J);
-          end;
-        if I <= J then
-          begin
-            T := P^;
-            P^ := Q^;
-            Q^ := T;
-            if M = I then
-              begin
-                M := J;
-                W := Q^;
-              end else
-              if M = J then
-                begin
-                  M := I;
-                  W := P^;
-                end;
-            Inc(P);
-            Inc(I);
-            Dec(Q);
-            Dec(J);
-          end;
-      until I > J;
-      if L < J then
-        QuickSort(L, J);
-      L := I;
-    until I >= R;
-  end;
-
-var I : Integer;
-begin
-  I := Length(V);
-  if I > 0 then
-    QuickSort(0, I - 1);
-end;
-{$ENDIF}
-
-{$IFDEF ManagedCode}
-procedure Sort(const V: WordArray);
-
-  procedure QuickSort(L, R: Integer);
-  var I, J, M : Integer;
-      W, T    : Word;
-  begin
-    repeat
-      I := L;
-      J := R;
-      M := (L + R) shr 1;
-      W := V[M];
-      repeat
-        while V[I] < W do
-          Inc(I);
-        while V[J] > W do
-          Dec(J);
-        if I <= J then
-          begin
-            T := V[I];
-            V[I] := V[J];
-            V[J] := T;
-            if M = I then
-              begin
-                M := J;
-                W := V[J];
-              end else
-              if M = J then
-                begin
-                  M := I;
-                  W := V[I];
-                end;
-            Inc(I);
-            Dec(J);
-          end;
-      until I > J;
-      if L < J then
-        QuickSort(L, J);
-      L := I;
-    until I >= R;
-  end;
-
-var I : Integer;
-begin
-  I := Length(V);
-  if I > 0 then
-    QuickSort(0, I - 1);
-end;
-{$ELSE}
-procedure Sort(const V: WordArray);
-
-  procedure QuickSort(L, R: Integer);
-  var I, J, M : Integer;
-      W, T    : Word;
-      P, Q    : PWord;
-  begin
-    repeat
-      I := L;
-      P := @V[I];
-      J := R;
-      Q := @V[J];
-      M := (L + R) shr 1;
-      W := V[M];
-      repeat
-        while P^ < W do
-          begin
-            Inc(P);
-            Inc(I);
-          end;
-        while Q^ > W do
-          begin
-            Dec(Q);
-            Dec(J);
-          end;
-        if I <= J then
-          begin
-            T := P^;
-            P^ := Q^;
-            Q^ := T;
-            if M = I then
-              begin
-                M := J;
-                W := Q^;
-              end else
-              if M = J then
-                begin
-                  M := I;
-                  W := P^;
-                end;
-            Inc(P);
-            Inc(I);
-            Dec(Q);
-            Dec(J);
-          end;
-      until I > J;
-      if L < J then
-        QuickSort(L, J);
-      L := I;
-    until I >= R;
-  end;
-
-var I : Integer;
-begin
-  I := Length(V);
-  if I > 0 then
-    QuickSort(0, I - 1);
-end;
-{$ENDIF}
-
-{$IFDEF ManagedCode}
-procedure Sort(const V: LongWordArray);
-
-  procedure QuickSort(L, R: Integer);
-  var I, J, M : Integer;
-      W, T    : LongWord;
-  begin
-    repeat
-      I := L;
-      J := R;
-      M := (L + R) shr 1;
-      W := V[M];
-      repeat
-        while V[I] < W do
-          Inc(I);
-        while V[J] > W do
-          Dec(J);
-        if I <= J then
-          begin
-            T := V[I];
-            V[I] := V[J];
-            V[J] := T;
-            if M = I then
-              begin
-                M := J;
-                W := V[J];
-              end else
-              if M = J then
-                begin
-                  M := I;
-                  W := V[I];
-                end;
-            Inc(I);
-            Dec(J);
-          end;
-      until I > J;
-      if L < J then
-        QuickSort(L, J);
-      L := I;
-    until I >= R;
-  end;
-
-var I : Integer;
-begin
-  I := Length(V);
-  if I > 0 then
-    QuickSort(0, I - 1);
-end;
-{$ELSE}
-procedure Sort(const V: LongWordArray);
-
-  procedure QuickSort(L, R: Integer);
-  var I, J, M : Integer;
-      W, T    : LongWord;
-      P, Q    : PLongWord;
-  begin
-    repeat
-      I := L;
-      P := @V[I];
-      J := R;
-      Q := @V[J];
-      M := (L + R) shr 1;
-      W := V[M];
-      repeat
-        while P^ < W do
-          begin
-            Inc(P);
-            Inc(I);
-          end;
-        while Q^ > W do
-          begin
-            Dec(Q);
-            Dec(J);
-          end;
-        if I <= J then
-          begin
-            T := P^;
-            P^ := Q^;
-            Q^ := T;
-            if M = I then
-              begin
-                M := J;
-                W := Q^;
-              end else
-              if M = J then
-                begin
-                  M := I;
-                  W := P^;
-                end;
-            Inc(P);
-            Inc(I);
-            Dec(Q);
-            Dec(J);
-          end;
-      until I > J;
-      if L < J then
-        QuickSort(L, J);
-      L := I;
-    until I >= R;
-  end;
-
-var I : Integer;
-begin
-  I := Length(V);
-  if I > 0 then
-    QuickSort(0, I - 1);
-end;
-{$ENDIF}
-
-{$IFDEF ManagedCode}
-procedure Sort(const V: ShortIntArray);
-
-  procedure QuickSort(L, R: Integer);
-  var I, J, M : Integer;
-      W, T    : ShortInt;
-  begin
-    repeat
-      I := L;
-      J := R;
-      M := (L + R) shr 1;
-      W := V[M];
-      repeat
-        while V[I] < W do
-          Inc(I);
-        while V[J] > W do
-          Dec(J);
-        if I <= J then
-          begin
-            T := V[I];
-            V[I] := V[J];
-            V[J] := T;
-            if M = I then
-              begin
-                M := J;
-                W := V[J];
-              end else
-              if M = J then
-                begin
-                  M := I;
-                  W := V[I];
-                end;
-            Inc(I);
-            Dec(J);
-          end;
-      until I > J;
-      if L < J then
-        QuickSort(L, J);
-      L := I;
-    until I >= R;
-  end;
-
-var I : Integer;
-begin
-  I := Length(V);
-  if I > 0 then
-    QuickSort(0, I - 1);
-end;
-{$ELSE}
-procedure Sort(const V: ShortIntArray);
-
-  procedure QuickSort(L, R: Integer);
-  var I, J, M : Integer;
-      W, T    : ShortInt;
-      P, Q    : PShortInt;
-  begin
-    repeat
-      I := L;
-      P := @V[I];
-      J := R;
-      Q := @V[J];
-      M := (L + R) shr 1;
-      W := V[M];
-      repeat
-        while P^ < W do
-          begin
-            Inc(P);
-            Inc(I);
-          end;
-        while Q^ > W do
-          begin
-            Dec(Q);
-            Dec(J);
-          end;
-        if I <= J then
-          begin
-            T := P^;
-            P^ := Q^;
-            Q^ := T;
-            if M = I then
-              begin
-                M := J;
-                W := Q^;
-              end else
-              if M = J then
-                begin
-                  M := I;
-                  W := P^;
-                end;
-            Inc(P);
-            Inc(I);
-            Dec(Q);
-            Dec(J);
-          end;
-      until I > J;
-      if L < J then
-        QuickSort(L, J);
-      L := I;
-    until I >= R;
-  end;
-
-var I : Integer;
-begin
-  I := Length(V);
-  if I > 0 then
-    QuickSort(0, I - 1);
-end;
-{$ENDIF}
-
-{$IFDEF ManagedCode}
-procedure Sort(const V: SmallIntArray);
-
-  procedure QuickSort(L, R: Integer);
-  var I, J, M : Integer;
-      W, T    : SmallInt;
-  begin
-    repeat
-      I := L;
-      J := R;
-      M := (L + R) shr 1;
-      W := V[M];
-      repeat
-        while V[I] < W do
-          Inc(I);
-        while V[J] > W do
-          Dec(J);
-        if I <= J then
-          begin
-            T := V[I];
-            V[I] := V[J];
-            V[J] := T;
-            if M = I then
-              begin
-                M := J;
-                W := V[J];
-              end else
-              if M = J then
-                begin
-                  M := I;
-                  W := V[I];
-                end;
-            Inc(I);
-            Dec(J);
-          end;
-      until I > J;
-      if L < J then
-        QuickSort(L, J);
-      L := I;
-    until I >= R;
-  end;
-
-var I : Integer;
-begin
-  I := Length(V);
-  if I > 0 then
-    QuickSort(0, I - 1);
-end;
-{$ELSE}
-procedure Sort(const V: SmallIntArray);
-
-  procedure QuickSort(L, R: Integer);
-  var I, J, M : Integer;
-      W, T    : SmallInt;
-      P, Q    : PSmallInt;
-  begin
-    repeat
-      I := L;
-      P := @V[I];
-      J := R;
-      Q := @V[J];
-      M := (L + R) shr 1;
-      W := V[M];
-      repeat
-        while P^ < W do
-          begin
-            Inc(P);
-            Inc(I);
-          end;
-        while Q^ > W do
-          begin
-            Dec(Q);
-            Dec(J);
-          end;
-        if I <= J then
-          begin
-            T := P^;
-            P^ := Q^;
-            Q^ := T;
-            if M = I then
-              begin
-                M := J;
-                W := Q^;
-              end else
-              if M = J then
-                begin
-                  M := I;
-                  W := P^;
-                end;
-            Inc(P);
-            Inc(I);
-            Dec(Q);
-            Dec(J);
-          end;
-      until I > J;
-      if L < J then
-        QuickSort(L, J);
-      L := I;
-    until I >= R;
-  end;
-
-var I : Integer;
-begin
-  I := Length(V);
-  if I > 0 then
-    QuickSort(0, I - 1);
-end;
-{$ENDIF}
-
-{$IFDEF ManagedCode}
-procedure Sort(const V: LongIntArray);
-
-  procedure QuickSort(L, R: Integer);
-  var I, J, M : Integer;
-      W, T    : LongInt;
-  begin
-    repeat
-      I := L;
-      J := R;
-      M := (L + R) shr 1;
-      W := V[M];
-      repeat
-        while V[I] < W do
-          Inc(I);
-        while V[J] > W do
-          Dec(J);
-        if I <= J then
-          begin
-            T := V[I];
-            V[I] := V[J];
-            V[J] := T;
-            if M = I then
-              begin
-                M := J;
-                W := V[J];
-              end else
-              if M = J then
-                begin
-                  M := I;
-                  W := V[I];
-                end;
-            Inc(I);
-            Dec(J);
-          end;
-      until I > J;
-      if L < J then
-        QuickSort(L, J);
-      L := I;
-    until I >= R;
-  end;
-
-var I : Integer;
-begin
-  I := Length(V);
-  if I > 0 then
-    QuickSort(0, I - 1);
-end;
-{$ELSE}
-procedure Sort(const V: LongIntArray);
-
-  procedure QuickSort(L, R: Integer);
-  var I, J, M : Integer;
-      W, T    : LongInt;
-      P, Q    : PLongInt;
-  begin
-    repeat
-      I := L;
-      P := @V[I];
-      J := R;
-      Q := @V[J];
-      M := (L + R) shr 1;
-      W := V[M];
-      repeat
-        while P^ < W do
-          begin
-            Inc(P);
-            Inc(I);
-          end;
-        while Q^ > W do
-          begin
-            Dec(Q);
-            Dec(J);
-          end;
-        if I <= J then
-          begin
-            T := P^;
-            P^ := Q^;
-            Q^ := T;
-            if M = I then
-              begin
-                M := J;
-                W := Q^;
-              end else
-              if M = J then
-                begin
-                  M := I;
-                  W := P^;
-                end;
-            Inc(P);
-            Inc(I);
-            Dec(Q);
-            Dec(J);
-          end;
-      until I > J;
-      if L < J then
-        QuickSort(L, J);
-      L := I;
-    until I >= R;
-  end;
-
-var I : Integer;
-begin
-  I := Length(V);
-  if I > 0 then
-    QuickSort(0, I - 1);
-end;
-{$ENDIF}
-
-{$IFDEF ManagedCode}
-procedure Sort(const V: Int64Array);
-
-  procedure QuickSort(L, R: Integer);
-  var I, J, M : Integer;
-      W, T    : Int64;
-  begin
-    repeat
-      I := L;
-      J := R;
-      M := (L + R) shr 1;
-      W := V[M];
-      repeat
-        while V[I] < W do
-          Inc(I);
-        while V[J] > W do
-          Dec(J);
-        if I <= J then
-          begin
-            T := V[I];
-            V[I] := V[J];
-            V[J] := T;
-            if M = I then
-              begin
-                M := J;
-                W := V[J];
-              end else
-              if M = J then
-                begin
-                  M := I;
-                  W := V[I];
-                end;
-            Inc(I);
-            Dec(J);
-          end;
-      until I > J;
-      if L < J then
-        QuickSort(L, J);
-      L := I;
-    until I >= R;
-  end;
-
-var I : Integer;
-begin
-  I := Length(V);
-  if I > 0 then
-    QuickSort(0, I - 1);
-end;
-{$ELSE}
-procedure Sort(const V: Int64Array);
-
-  procedure QuickSort(L, R: Integer);
-  var I, J, M : Integer;
-      W, T    : Int64;
-      P, Q    : PInt64;
-  begin
-    repeat
-      I := L;
-      P := @V[I];
-      J := R;
-      Q := @V[J];
-      M := (L + R) shr 1;
-      W := V[M];
-      repeat
-        while P^ < W do
-          begin
-            Inc(P);
-            Inc(I);
-          end;
-        while Q^ > W do
-          begin
-            Dec(Q);
-            Dec(J);
-          end;
-        if I <= J then
-          begin
-            T := P^;
-            P^ := Q^;
-            Q^ := T;
-            if M = I then
-              begin
-                M := J;
-                W := Q^;
-              end else
-              if M = J then
-                begin
-                  M := I;
-                  W := P^;
-                end;
-            Inc(P);
-            Inc(I);
-            Dec(Q);
-            Dec(J);
-          end;
-      until I > J;
-      if L < J then
-        QuickSort(L, J);
-      L := I;
-    until I >= R;
-  end;
-
-var I : Integer;
-begin
-  I := Length(V);
-  if I > 0 then
-    QuickSort(0, I - 1);
-end;
-{$ENDIF}
-
-{$IFDEF ManagedCode}
-procedure Sort(const V: SingleArray);
-
-  procedure QuickSort(L, R: Integer);
-  var I, J, M : Integer;
-      W, T    : Single;
-  begin
-    repeat
-      I := L;
-      J := R;
-      M := (L + R) shr 1;
-      W := V[M];
-      repeat
-        while V[I] < W do
-          Inc(I);
-        while V[J] > W do
-          Dec(J);
-        if I <= J then
-          begin
-            T := V[I];
-            V[I] := V[J];
-            V[J] := T;
-            if M = I then
-              begin
-                M := J;
-                W := V[J];
-              end else
-              if M = J then
-                begin
-                  M := I;
-                  W := V[I];
-                end;
-            Inc(I);
-            Dec(J);
-          end;
-      until I > J;
-      if L < J then
-        QuickSort(L, J);
-      L := I;
-    until I >= R;
-  end;
-
-var I : Integer;
-begin
-  I := Length(V);
-  if I > 0 then
-    QuickSort(0, I - 1);
-end;
-{$ELSE}
-procedure Sort(const V: SingleArray);
-
-  procedure QuickSort(L, R: Integer);
-  var I, J, M : Integer;
-      W, T    : Single;
-      P, Q    : PSingle;
-  begin
-    repeat
-      I := L;
-      P := @V[I];
-      J := R;
-      Q := @V[J];
-      M := (L + R) shr 1;
-      W := V[M];
-      repeat
-        while P^ < W do
-          begin
-            Inc(P);
-            Inc(I);
-          end;
-        while Q^ > W do
-          begin
-            Dec(Q);
-            Dec(J);
-          end;
-        if I <= J then
-          begin
-            T := P^;
-            P^ := Q^;
-            Q^ := T;
-            if M = I then
-              begin
-                M := J;
-                W := Q^;
-              end else
-              if M = J then
-                begin
-                  M := I;
-                  W := P^;
-                end;
-            Inc(P);
-            Inc(I);
-            Dec(Q);
-            Dec(J);
-          end;
-      until I > J;
-      if L < J then
-        QuickSort(L, J);
-      L := I;
-    until I >= R;
-  end;
-
-var I : Integer;
-begin
-  I := Length(V);
-  if I > 0 then
-    QuickSort(0, I - 1);
-end;
-{$ENDIF}
-
-{$IFDEF ManagedCode}
-procedure Sort(const V: DoubleArray);
-
-  procedure QuickSort(L, R: Integer);
-  var I, J, M : Integer;
-      W, T    : Double;
-  begin
-    repeat
-      I := L;
-      J := R;
-      M := (L + R) shr 1;
-      W := V[M];
-      repeat
-        while V[I] < W do
-          Inc(I);
-        while V[J] > W do
-          Dec(J);
-        if I <= J then
-          begin
-            T := V[I];
-            V[I] := V[J];
-            V[J] := T;
-            if M = I then
-              begin
-                M := J;
-                W := V[J];
-              end else
-              if M = J then
-                begin
-                  M := I;
-                  W := V[I];
-                end;
-            Inc(I);
-            Dec(J);
-          end;
-      until I > J;
-      if L < J then
-        QuickSort(L, J);
-      L := I;
-    until I >= R;
-  end;
-
-var I : Integer;
-begin
-  I := Length(V);
-  if I > 0 then
-    QuickSort(0, I - 1);
-end;
-{$ELSE}
-procedure Sort(const V: DoubleArray);
-
-  procedure QuickSort(L, R: Integer);
-  var I, J, M : Integer;
-      W, T    : Double;
-      P, Q    : PDouble;
-  begin
-    repeat
-      I := L;
-      P := @V[I];
-      J := R;
-      Q := @V[J];
-      M := (L + R) shr 1;
-      W := V[M];
-      repeat
-        while P^ < W do
-          begin
-            Inc(P);
-            Inc(I);
-          end;
-        while Q^ > W do
-          begin
-            Dec(Q);
-            Dec(J);
-          end;
-        if I <= J then
-          begin
-            T := P^;
-            P^ := Q^;
-            Q^ := T;
-            if M = I then
-              begin
-                M := J;
-                W := Q^;
-              end else
-              if M = J then
-                begin
-                  M := I;
-                  W := P^;
-                end;
-            Inc(P);
-            Inc(I);
-            Dec(Q);
-            Dec(J);
-          end;
-      until I > J;
-      if L < J then
-        QuickSort(L, J);
-      L := I;
-    until I >= R;
-  end;
-
-var I : Integer;
-begin
-  I := Length(V);
-  if I > 0 then
-    QuickSort(0, I - 1);
-end;
-{$ENDIF}
-
-{$IFDEF ManagedCode}
-procedure Sort(const V: ExtendedArray);
-
-  procedure QuickSort(L, R: Integer);
-  var I, J, M : Integer;
-      W, T    : Extended;
-  begin
-    repeat
-      I := L;
-      J := R;
-      M := (L + R) shr 1;
-      W := V[M];
-      repeat
-        while V[I] < W do
-          Inc(I);
-        while V[J] > W do
-          Dec(J);
-        if I <= J then
-          begin
-            T := V[I];
-            V[I] := V[J];
-            V[J] := T;
-            if M = I then
-              begin
-                M := J;
-                W := V[J];
-              end else
-              if M = J then
-                begin
-                  M := I;
-                  W := V[I];
-                end;
-            Inc(I);
-            Dec(J);
-          end;
-      until I > J;
-      if L < J then
-        QuickSort(L, J);
-      L := I;
-    until I >= R;
-  end;
-
-var I : Integer;
-begin
-  I := Length(V);
-  if I > 0 then
-    QuickSort(0, I - 1);
-end;
-{$ELSE}
-procedure Sort(const V: ExtendedArray);
-
-  procedure QuickSort(L, R: Integer);
-  var I, J, M : Integer;
-      W, T    : Extended;
-      P, Q    : PExtended;
-  begin
-    repeat
-      I := L;
-      P := @V[I];
-      J := R;
-      Q := @V[J];
-      M := (L + R) shr 1;
-      W := V[M];
-      repeat
-        while P^ < W do
-          begin
-            Inc(P);
-            Inc(I);
-          end;
-        while Q^ > W do
-          begin
-            Dec(Q);
-            Dec(J);
-          end;
-        if I <= J then
-          begin
-            T := P^;
-            P^ := Q^;
-            Q^ := T;
-            if M = I then
-              begin
-                M := J;
-                W := Q^;
-              end else
-              if M = J then
-                begin
-                  M := I;
-                  W := P^;
-                end;
-            Inc(P);
-            Inc(I);
-            Dec(Q);
-            Dec(J);
-          end;
-      until I > J;
-      if L < J then
-        QuickSort(L, J);
-      L := I;
-    until I >= R;
-  end;
-
-var I : Integer;
-begin
-  I := Length(V);
-  if I > 0 then
-    QuickSort(0, I - 1);
-end;
-{$ENDIF}
-
-{$IFDEF ManagedCode}
-procedure Sort(const V: AnsiStringArray);
-
-  procedure QuickSort(L, R: Integer);
-  var I, J, M : Integer;
-      W, T    : AnsiString;
-  begin
-    repeat
-      I := L;
-      J := R;
-      M := (L + R) shr 1;
-      W := V[M];
-      repeat
-        while V[I] < W do
-          Inc(I);
-        while V[J] > W do
-          Dec(J);
-        if I <= J then
-          begin
-            T := V[I];
-            V[I] := V[J];
-            V[J] := T;
-            if M = I then
-              begin
-                M := J;
-                W := V[J];
-              end else
-              if M = J then
-                begin
-                  M := I;
-                  W := V[I];
-                end;
-            Inc(I);
-            Dec(J);
-          end;
-      until I > J;
-      if L < J then
-        QuickSort(L, J);
-      L := I;
-    until I >= R;
-  end;
-
-var I : Integer;
-begin
-  I := Length(V);
-  if I > 0 then
-    QuickSort(0, I - 1);
-end;
-{$ELSE}
-procedure Sort(const V: AnsiStringArray);
-
-  procedure QuickSort(L, R: Integer);
-  var I, J, M : Integer;
-      W, T    : AnsiString;
-      P, Q    : PAnsiString;
-  begin
-    repeat
-      I := L;
-      P := @V[I];
-      J := R;
-      Q := @V[J];
-      M := (L + R) shr 1;
-      W := V[M];
-      repeat
-        while P^ < W do
-          begin
-            Inc(P);
-            Inc(I);
-          end;
-        while Q^ > W do
-          begin
-            Dec(Q);
-            Dec(J);
-          end;
-        if I <= J then
-          begin
-            T := P^;
-            P^ := Q^;
-            Q^ := T;
-            if M = I then
-              begin
-                M := J;
-                W := Q^;
-              end else
-              if M = J then
-                begin
-                  M := I;
-                  W := P^;
-                end;
-            Inc(P);
-            Inc(I);
-            Dec(Q);
-            Dec(J);
-          end;
-      until I > J;
-      if L < J then
-        QuickSort(L, J);
-      L := I;
-    until I >= R;
-  end;
-
-var I : Integer;
-begin
-  I := Length(V);
-  if I > 0 then
-    QuickSort(0, I - 1);
-end;
-{$ENDIF}
-
-{$IFDEF ManagedCode}
-procedure Sort(const V: WideStringArray);
-
-  procedure QuickSort(L, R: Integer);
-  var I, J, M : Integer;
-      W, T    : WideString;
-  begin
-    repeat
-      I := L;
-      J := R;
-      M := (L + R) shr 1;
-      W := V[M];
-      repeat
-        while V[I] < W do
-          Inc(I);
-        while V[J] > W do
-          Dec(J);
-        if I <= J then
-          begin
-            T := V[I];
-            V[I] := V[J];
-            V[J] := T;
-            if M = I then
-              begin
-                M := J;
-                W := V[J];
-              end else
-              if M = J then
-                begin
-                  M := I;
-                  W := V[I];
-                end;
-            Inc(I);
-            Dec(J);
-          end;
-      until I > J;
-      if L < J then
-        QuickSort(L, J);
-      L := I;
-    until I >= R;
-  end;
-
-var I : Integer;
-begin
-  I := Length(V);
-  if I > 0 then
-    QuickSort(0, I - 1);
-end;
-{$ELSE}
-procedure Sort(const V: WideStringArray);
-
-  procedure QuickSort(L, R: Integer);
-  var I, J, M : Integer;
-      W, T    : WideString;
-      P, Q    : PWideString;
-  begin
-    repeat
-      I := L;
-      P := @V[I];
-      J := R;
-      Q := @V[J];
-      M := (L + R) shr 1;
-      W := V[M];
-      repeat
-        while P^ < W do
-          begin
-            Inc(P);
-            Inc(I);
-          end;
-        while Q^ > W do
-          begin
-            Dec(Q);
-            Dec(J);
-          end;
-        if I <= J then
-          begin
-            T := P^;
-            P^ := Q^;
-            Q^ := T;
-            if M = I then
-              begin
-                M := J;
-                W := Q^;
-              end else
-              if M = J then
-                begin
-                  M := I;
-                  W := P^;
-                end;
-            Inc(P);
-            Inc(I);
-            Dec(Q);
-            Dec(J);
-          end;
-      until I > J;
-      if L < J then
-        QuickSort(L, J);
-      L := I;
-    until I >= R;
-  end;
-
-var I : Integer;
-begin
-  I := Length(V);
-  if I > 0 then
-    QuickSort(0, I - 1);
-end;
-{$ENDIF}
-
-
-
-{$IFDEF ManagedCode}
-procedure Sort(const Key: IntegerArray; const Data: IntegerArray);
-
-  procedure QuickSort(L, R: Integer);
-  var I, J, M : Integer;
-      W, T    : Integer;
-      A       : Integer;
-  begin
-    repeat
-      I := L;
-      J := R;
-      M := (L + R) shr 1;
-      W := Key[M];
-      repeat
-        while Key[I] < W do
-          Inc(I);
-        while Key[J] > W do
-          Dec(J);
-        if I <= J then
-          begin
-            T := Key[I];
-            Key[I] := Key[J];
-            Key[J] := T;
-            A := Data[I];
-            Data[I] := Data[J];
-            Data[J] := A;
-            if M = I then
-              begin
-                M := J;
-                W := Key[J];
-              end else
-              if M = J then
-                begin
-                  M := I;
-                  W := Key[I];
-                end;
-            Inc(I);
-            Dec(J);
-          end;
-      until I > J;
-      if L < J then
-        QuickSort(L, J);
-      L := I;
-    until I >= R;
-  end;
-
-var I : Integer;
-begin
-  Assert(Length(Key) = Length(Data));
-  I := Length(Key);
-  if I > 0 then
-    QuickSort(0, I - 1);
-end;
-{$ELSE}
-procedure Sort(const Key: IntegerArray; const Data: IntegerArray);
-
-  procedure QuickSort(L, R: Integer);
-  var I, J, M : Integer;
-      W, T    : Integer;
-      P, Q    : PInteger;
-      A       : Integer;
-  begin
-    repeat
-      I := L;
-      P := @Key[I];
-      J := R;
-      Q := @Key[J];
-      M := (L + R) shr 1;
-      W := Key[M];
-      repeat
-        while P^ < W do
-          begin
-            Inc(P);
-            Inc(I);
-          end;
-        while Q^ > W do
-          begin
-            Dec(Q);
-            Dec(J);
-          end;
-        if I <= J then
-          begin
-            T := P^;
-            P^ := Q^;
-            Q^ := T;
-            A := Data[I];
-            Data[I] := Data[J];
-            Data[J] := A;
-            if M = I then
-              begin
-                M := J;
-                W := Q^;
-              end else
-              if M = J then
-                begin
-                  M := I;
-                  W := P^;
-                end;
-            Inc(P);
-            Inc(I);
-            Dec(Q);
-            Dec(J);
-          end;
-      until I > J;
-      if L < J then
-        QuickSort(L, J);
-      L := I;
-    until I >= R;
-  end;
-
-var I : Integer;
-begin
-  Assert(Length(Key) = Length(Data));
-  I := Length(Key);
-  if I > 0 then
-    QuickSort(0, I - 1);
-end;
-{$ENDIF}
-
-{$IFDEF ManagedCode}
-procedure Sort(const Key: IntegerArray; const Data: Int64Array);
-
-  procedure QuickSort(L, R: Integer);
-  var I, J, M : Integer;
-      W, T    : Integer;
-      A       : Int64;
-  begin
-    repeat
-      I := L;
-      J := R;
-      M := (L + R) shr 1;
-      W := Key[M];
-      repeat
-        while Key[I] < W do
-          Inc(I);
-        while Key[J] > W do
-          Dec(J);
-        if I <= J then
-          begin
-            T := Key[I];
-            Key[I] := Key[J];
-            Key[J] := T;
-            A := Data[I];
-            Data[I] := Data[J];
-            Data[J] := A;
-            if M = I then
-              begin
-                M := J;
-                W := Key[J];
-              end else
-              if M = J then
-                begin
-                  M := I;
-                  W := Key[I];
-                end;
-            Inc(I);
-            Dec(J);
-          end;
-      until I > J;
-      if L < J then
-        QuickSort(L, J);
-      L := I;
-    until I >= R;
-  end;
-
-var I : Integer;
-begin
-  Assert(Length(Key) = Length(Data));
-  I := Length(Key);
-  if I > 0 then
-    QuickSort(0, I - 1);
-end;
-{$ELSE}
-procedure Sort(const Key: IntegerArray; const Data: Int64Array);
-
-  procedure QuickSort(L, R: Integer);
-  var I, J, M : Integer;
-      W, T    : Integer;
-      P, Q    : PInteger;
-      A       : Int64;
-  begin
-    repeat
-      I := L;
-      P := @Key[I];
-      J := R;
-      Q := @Key[J];
-      M := (L + R) shr 1;
-      W := Key[M];
-      repeat
-        while P^ < W do
-          begin
-            Inc(P);
-            Inc(I);
-          end;
-        while Q^ > W do
-          begin
-            Dec(Q);
-            Dec(J);
-          end;
-        if I <= J then
-          begin
-            T := P^;
-            P^ := Q^;
-            Q^ := T;
-            A := Data[I];
-            Data[I] := Data[J];
-            Data[J] := A;
-            if M = I then
-              begin
-                M := J;
-                W := Q^;
-              end else
-              if M = J then
-                begin
-                  M := I;
-                  W := P^;
-                end;
-            Inc(P);
-            Inc(I);
-            Dec(Q);
-            Dec(J);
-          end;
-      until I > J;
-      if L < J then
-        QuickSort(L, J);
-      L := I;
-    until I >= R;
-  end;
-
-var I : Integer;
-begin
-  Assert(Length(Key) = Length(Data));
-  I := Length(Key);
-  if I > 0 then
-    QuickSort(0, I - 1);
-end;
-{$ENDIF}
-
-{$IFDEF ManagedCode}
-procedure Sort(const Key: IntegerArray; const Data: AnsiStringArray);
-
-  procedure QuickSort(L, R: Integer);
-  var I, J, M : Integer;
-      W, T    : Integer;
-      A       : AnsiString;
-  begin
-    repeat
-      I := L;
-      J := R;
-      M := (L + R) shr 1;
-      W := Key[M];
-      repeat
-        while Key[I] < W do
-          Inc(I);
-        while Key[J] > W do
-          Dec(J);
-        if I <= J then
-          begin
-            T := Key[I];
-            Key[I] := Key[J];
-            Key[J] := T;
-            A := Data[I];
-            Data[I] := Data[J];
-            Data[J] := A;
-            if M = I then
-              begin
-                M := J;
-                W := Key[J];
-              end else
-              if M = J then
-                begin
-                  M := I;
-                  W := Key[I];
-                end;
-            Inc(I);
-            Dec(J);
-          end;
-      until I > J;
-      if L < J then
-        QuickSort(L, J);
-      L := I;
-    until I >= R;
-  end;
-
-var I : Integer;
-begin
-  Assert(Length(Key) = Length(Data));
-  I := Length(Key);
-  if I > 0 then
-    QuickSort(0, I - 1);
-end;
-{$ELSE}
-procedure Sort(const Key: IntegerArray; const Data: AnsiStringArray);
-
-  procedure QuickSort(L, R: Integer);
-  var I, J, M : Integer;
-      W, T    : Integer;
-      P, Q    : PInteger;
-      A       : AnsiString;
-  begin
-    repeat
-      I := L;
-      P := @Key[I];
-      J := R;
-      Q := @Key[J];
-      M := (L + R) shr 1;
-      W := Key[M];
-      repeat
-        while P^ < W do
-          begin
-            Inc(P);
-            Inc(I);
-          end;
-        while Q^ > W do
-          begin
-            Dec(Q);
-            Dec(J);
-          end;
-        if I <= J then
-          begin
-            T := P^;
-            P^ := Q^;
-            Q^ := T;
-            A := Data[I];
-            Data[I] := Data[J];
-            Data[J] := A;
-            if M = I then
-              begin
-                M := J;
-                W := Q^;
-              end else
-              if M = J then
-                begin
-                  M := I;
-                  W := P^;
-                end;
-            Inc(P);
-            Inc(I);
-            Dec(Q);
-            Dec(J);
-          end;
-      until I > J;
-      if L < J then
-        QuickSort(L, J);
-      L := I;
-    until I >= R;
-  end;
-
-var I : Integer;
-begin
-  Assert(Length(Key) = Length(Data));
-  I := Length(Key);
-  if I > 0 then
-    QuickSort(0, I - 1);
-end;
-{$ENDIF}
-
-{$IFDEF ManagedCode}
-procedure Sort(const Key: IntegerArray; const Data: ExtendedArray);
-
-  procedure QuickSort(L, R: Integer);
-  var I, J, M : Integer;
-      W, T    : Integer;
-      A       : Extended;
-  begin
-    repeat
-      I := L;
-      J := R;
-      M := (L + R) shr 1;
-      W := Key[M];
-      repeat
-        while Key[I] < W do
-          Inc(I);
-        while Key[J] > W do
-          Dec(J);
-        if I <= J then
-          begin
-            T := Key[I];
-            Key[I] := Key[J];
-            Key[J] := T;
-            A := Data[I];
-            Data[I] := Data[J];
-            Data[J] := A;
-            if M = I then
-              begin
-                M := J;
-                W := Key[J];
-              end else
-              if M = J then
-                begin
-                  M := I;
-                  W := Key[I];
-                end;
-            Inc(I);
-            Dec(J);
-          end;
-      until I > J;
-      if L < J then
-        QuickSort(L, J);
-      L := I;
-    until I >= R;
-  end;
-
-var I : Integer;
-begin
-  Assert(Length(Key) = Length(Data));
-  I := Length(Key);
-  if I > 0 then
-    QuickSort(0, I - 1);
-end;
-{$ELSE}
-procedure Sort(const Key: IntegerArray; const Data: ExtendedArray);
-
-  procedure QuickSort(L, R: Integer);
-  var I, J, M : Integer;
-      W, T    : Integer;
-      P, Q    : PInteger;
-      A       : Extended;
-  begin
-    repeat
-      I := L;
-      P := @Key[I];
-      J := R;
-      Q := @Key[J];
-      M := (L + R) shr 1;
-      W := Key[M];
-      repeat
-        while P^ < W do
-          begin
-            Inc(P);
-            Inc(I);
-          end;
-        while Q^ > W do
-          begin
-            Dec(Q);
-            Dec(J);
-          end;
-        if I <= J then
-          begin
-            T := P^;
-            P^ := Q^;
-            Q^ := T;
-            A := Data[I];
-            Data[I] := Data[J];
-            Data[J] := A;
-            if M = I then
-              begin
-                M := J;
-                W := Q^;
-              end else
-              if M = J then
-                begin
-                  M := I;
-                  W := P^;
-                end;
-            Inc(P);
-            Inc(I);
-            Dec(Q);
-            Dec(J);
-          end;
-      until I > J;
-      if L < J then
-        QuickSort(L, J);
-      L := I;
-    until I >= R;
-  end;
-
-var I : Integer;
-begin
-  Assert(Length(Key) = Length(Data));
-  I := Length(Key);
-  if I > 0 then
-    QuickSort(0, I - 1);
-end;
-{$ENDIF}
-
-{$IFNDEF ManagedCode}
-{$IFDEF ManagedCode}
-procedure Sort(const Key: IntegerArray; const Data: PointerArray);
-
-  procedure QuickSort(L, R: Integer);
-  var I, J, M : Integer;
-      W, T    : Integer;
-      A       : Pointer;
-  begin
-    repeat
-      I := L;
-      J := R;
-      M := (L + R) shr 1;
-      W := Key[M];
-      repeat
-        while Key[I] < W do
-          Inc(I);
-        while Key[J] > W do
-          Dec(J);
-        if I <= J then
-          begin
-            T := Key[I];
-            Key[I] := Key[J];
-            Key[J] := T;
-            A := Data[I];
-            Data[I] := Data[J];
-            Data[J] := A;
-            if M = I then
-              begin
-                M := J;
-                W := Key[J];
-              end else
-              if M = J then
-                begin
-                  M := I;
-                  W := Key[I];
-                end;
-            Inc(I);
-            Dec(J);
-          end;
-      until I > J;
-      if L < J then
-        QuickSort(L, J);
-      L := I;
-    until I >= R;
-  end;
-
-var I : Integer;
-begin
-  Assert(Length(Key) = Length(Data));
-  I := Length(Key);
-  if I > 0 then
-    QuickSort(0, I - 1);
-end;
-{$ELSE}
-procedure Sort(const Key: IntegerArray; const Data: PointerArray);
-
-  procedure QuickSort(L, R: Integer);
-  var I, J, M : Integer;
-      W, T    : Integer;
-      P, Q    : PInteger;
-      A       : Pointer;
-  begin
-    repeat
-      I := L;
-      P := @Key[I];
-      J := R;
-      Q := @Key[J];
-      M := (L + R) shr 1;
-      W := Key[M];
-      repeat
-        while P^ < W do
-          begin
-            Inc(P);
-            Inc(I);
-          end;
-        while Q^ > W do
-          begin
-            Dec(Q);
-            Dec(J);
-          end;
-        if I <= J then
-          begin
-            T := P^;
-            P^ := Q^;
-            Q^ := T;
-            A := Data[I];
-            Data[I] := Data[J];
-            Data[J] := A;
-            if M = I then
-              begin
-                M := J;
-                W := Q^;
-              end else
-              if M = J then
-                begin
-                  M := I;
-                  W := P^;
-                end;
-            Inc(P);
-            Inc(I);
-            Dec(Q);
-            Dec(J);
-          end;
-      until I > J;
-      if L < J then
-        QuickSort(L, J);
-      L := I;
-    until I >= R;
-  end;
-
-var I : Integer;
-begin
-  Assert(Length(Key) = Length(Data));
-  I := Length(Key);
-  if I > 0 then
-    QuickSort(0, I - 1);
-end;
-{$ENDIF}
-
-{$ENDIF}
-{$IFDEF ManagedCode}
-procedure Sort(const Key: AnsiStringArray; const Data: IntegerArray);
-
-  procedure QuickSort(L, R: Integer);
-  var I, J, M : Integer;
-      W, T    : AnsiString;
-      A       : Integer;
-  begin
-    repeat
-      I := L;
-      J := R;
-      M := (L + R) shr 1;
-      W := Key[M];
-      repeat
-        while Key[I] < W do
-          Inc(I);
-        while Key[J] > W do
-          Dec(J);
-        if I <= J then
-          begin
-            T := Key[I];
-            Key[I] := Key[J];
-            Key[J] := T;
-            A := Data[I];
-            Data[I] := Data[J];
-            Data[J] := A;
-            if M = I then
-              begin
-                M := J;
-                W := Key[J];
-              end else
-              if M = J then
-                begin
-                  M := I;
-                  W := Key[I];
-                end;
-            Inc(I);
-            Dec(J);
-          end;
-      until I > J;
-      if L < J then
-        QuickSort(L, J);
-      L := I;
-    until I >= R;
-  end;
-
-var I : Integer;
-begin
-  Assert(Length(Key) = Length(Data));
-  I := Length(Key);
-  if I > 0 then
-    QuickSort(0, I - 1);
-end;
-{$ELSE}
-procedure Sort(const Key: AnsiStringArray; const Data: IntegerArray);
-
-  procedure QuickSort(L, R: Integer);
-  var I, J, M : Integer;
-      W, T    : AnsiString;
-      P, Q    : PAnsiString;
-      A       : Integer;
-  begin
-    repeat
-      I := L;
-      P := @Key[I];
-      J := R;
-      Q := @Key[J];
-      M := (L + R) shr 1;
-      W := Key[M];
-      repeat
-        while P^ < W do
-          begin
-            Inc(P);
-            Inc(I);
-          end;
-        while Q^ > W do
-          begin
-            Dec(Q);
-            Dec(J);
-          end;
-        if I <= J then
-          begin
-            T := P^;
-            P^ := Q^;
-            Q^ := T;
-            A := Data[I];
-            Data[I] := Data[J];
-            Data[J] := A;
-            if M = I then
-              begin
-                M := J;
-                W := Q^;
-              end else
-              if M = J then
-                begin
-                  M := I;
-                  W := P^;
-                end;
-            Inc(P);
-            Inc(I);
-            Dec(Q);
-            Dec(J);
-          end;
-      until I > J;
-      if L < J then
-        QuickSort(L, J);
-      L := I;
-    until I >= R;
-  end;
-
-var I : Integer;
-begin
-  Assert(Length(Key) = Length(Data));
-  I := Length(Key);
-  if I > 0 then
-    QuickSort(0, I - 1);
-end;
-{$ENDIF}
-
-{$IFDEF ManagedCode}
-procedure Sort(const Key: AnsiStringArray; const Data: Int64Array);
-
-  procedure QuickSort(L, R: Integer);
-  var I, J, M : Integer;
-      W, T    : AnsiString;
-      A       : Int64;
-  begin
-    repeat
-      I := L;
-      J := R;
-      M := (L + R) shr 1;
-      W := Key[M];
-      repeat
-        while Key[I] < W do
-          Inc(I);
-        while Key[J] > W do
-          Dec(J);
-        if I <= J then
-          begin
-            T := Key[I];
-            Key[I] := Key[J];
-            Key[J] := T;
-            A := Data[I];
-            Data[I] := Data[J];
-            Data[J] := A;
-            if M = I then
-              begin
-                M := J;
-                W := Key[J];
-              end else
-              if M = J then
-                begin
-                  M := I;
-                  W := Key[I];
-                end;
-            Inc(I);
-            Dec(J);
-          end;
-      until I > J;
-      if L < J then
-        QuickSort(L, J);
-      L := I;
-    until I >= R;
-  end;
-
-var I : Integer;
-begin
-  Assert(Length(Key) = Length(Data));
-  I := Length(Key);
-  if I > 0 then
-    QuickSort(0, I - 1);
-end;
-{$ELSE}
-procedure Sort(const Key: AnsiStringArray; const Data: Int64Array);
-
-  procedure QuickSort(L, R: Integer);
-  var I, J, M : Integer;
-      W, T    : AnsiString;
-      P, Q    : PAnsiString;
-      A       : Int64;
-  begin
-    repeat
-      I := L;
-      P := @Key[I];
-      J := R;
-      Q := @Key[J];
-      M := (L + R) shr 1;
-      W := Key[M];
-      repeat
-        while P^ < W do
-          begin
-            Inc(P);
-            Inc(I);
-          end;
-        while Q^ > W do
-          begin
-            Dec(Q);
-            Dec(J);
-          end;
-        if I <= J then
-          begin
-            T := P^;
-            P^ := Q^;
-            Q^ := T;
-            A := Data[I];
-            Data[I] := Data[J];
-            Data[J] := A;
-            if M = I then
-              begin
-                M := J;
-                W := Q^;
-              end else
-              if M = J then
-                begin
-                  M := I;
-                  W := P^;
-                end;
-            Inc(P);
-            Inc(I);
-            Dec(Q);
-            Dec(J);
-          end;
-      until I > J;
-      if L < J then
-        QuickSort(L, J);
-      L := I;
-    until I >= R;
-  end;
-
-var I : Integer;
-begin
-  Assert(Length(Key) = Length(Data));
-  I := Length(Key);
-  if I > 0 then
-    QuickSort(0, I - 1);
-end;
-{$ENDIF}
-
-{$IFDEF ManagedCode}
-procedure Sort(const Key: AnsiStringArray; const Data: AnsiStringArray);
-
-  procedure QuickSort(L, R: Integer);
-  var I, J, M : Integer;
-      W, T    : AnsiString;
-      A       : AnsiString;
-  begin
-    repeat
-      I := L;
-      J := R;
-      M := (L + R) shr 1;
-      W := Key[M];
-      repeat
-        while Key[I] < W do
-          Inc(I);
-        while Key[J] > W do
-          Dec(J);
-        if I <= J then
-          begin
-            T := Key[I];
-            Key[I] := Key[J];
-            Key[J] := T;
-            A := Data[I];
-            Data[I] := Data[J];
-            Data[J] := A;
-            if M = I then
-              begin
-                M := J;
-                W := Key[J];
-              end else
-              if M = J then
-                begin
-                  M := I;
-                  W := Key[I];
-                end;
-            Inc(I);
-            Dec(J);
-          end;
-      until I > J;
-      if L < J then
-        QuickSort(L, J);
-      L := I;
-    until I >= R;
-  end;
-
-var I : Integer;
-begin
-  Assert(Length(Key) = Length(Data));
-  I := Length(Key);
-  if I > 0 then
-    QuickSort(0, I - 1);
-end;
-{$ELSE}
-procedure Sort(const Key: AnsiStringArray; const Data: AnsiStringArray);
-
-  procedure QuickSort(L, R: Integer);
-  var I, J, M : Integer;
-      W, T    : AnsiString;
-      P, Q    : PAnsiString;
-      A       : AnsiString;
-  begin
-    repeat
-      I := L;
-      P := @Key[I];
-      J := R;
-      Q := @Key[J];
-      M := (L + R) shr 1;
-      W := Key[M];
-      repeat
-        while P^ < W do
-          begin
-            Inc(P);
-            Inc(I);
-          end;
-        while Q^ > W do
-          begin
-            Dec(Q);
-            Dec(J);
-          end;
-        if I <= J then
-          begin
-            T := P^;
-            P^ := Q^;
-            Q^ := T;
-            A := Data[I];
-            Data[I] := Data[J];
-            Data[J] := A;
-            if M = I then
-              begin
-                M := J;
-                W := Q^;
-              end else
-              if M = J then
-                begin
-                  M := I;
-                  W := P^;
-                end;
-            Inc(P);
-            Inc(I);
-            Dec(Q);
-            Dec(J);
-          end;
-      until I > J;
-      if L < J then
-        QuickSort(L, J);
-      L := I;
-    until I >= R;
-  end;
-
-var I : Integer;
-begin
-  Assert(Length(Key) = Length(Data));
-  I := Length(Key);
-  if I > 0 then
-    QuickSort(0, I - 1);
-end;
-{$ENDIF}
-
-{$IFDEF ManagedCode}
-procedure Sort(const Key: AnsiStringArray; const Data: ExtendedArray);
-
-  procedure QuickSort(L, R: Integer);
-  var I, J, M : Integer;
-      W, T    : AnsiString;
-      A       : Extended;
-  begin
-    repeat
-      I := L;
-      J := R;
-      M := (L + R) shr 1;
-      W := Key[M];
-      repeat
-        while Key[I] < W do
-          Inc(I);
-        while Key[J] > W do
-          Dec(J);
-        if I <= J then
-          begin
-            T := Key[I];
-            Key[I] := Key[J];
-            Key[J] := T;
-            A := Data[I];
-            Data[I] := Data[J];
-            Data[J] := A;
-            if M = I then
-              begin
-                M := J;
-                W := Key[J];
-              end else
-              if M = J then
-                begin
-                  M := I;
-                  W := Key[I];
-                end;
-            Inc(I);
-            Dec(J);
-          end;
-      until I > J;
-      if L < J then
-        QuickSort(L, J);
-      L := I;
-    until I >= R;
-  end;
-
-var I : Integer;
-begin
-  Assert(Length(Key) = Length(Data));
-  I := Length(Key);
-  if I > 0 then
-    QuickSort(0, I - 1);
-end;
-{$ELSE}
-procedure Sort(const Key: AnsiStringArray; const Data: ExtendedArray);
-
-  procedure QuickSort(L, R: Integer);
-  var I, J, M : Integer;
-      W, T    : AnsiString;
-      P, Q    : PAnsiString;
-      A       : Extended;
-  begin
-    repeat
-      I := L;
-      P := @Key[I];
-      J := R;
-      Q := @Key[J];
-      M := (L + R) shr 1;
-      W := Key[M];
-      repeat
-        while P^ < W do
-          begin
-            Inc(P);
-            Inc(I);
-          end;
-        while Q^ > W do
-          begin
-            Dec(Q);
-            Dec(J);
-          end;
-        if I <= J then
-          begin
-            T := P^;
-            P^ := Q^;
-            Q^ := T;
-            A := Data[I];
-            Data[I] := Data[J];
-            Data[J] := A;
-            if M = I then
-              begin
-                M := J;
-                W := Q^;
-              end else
-              if M = J then
-                begin
-                  M := I;
-                  W := P^;
-                end;
-            Inc(P);
-            Inc(I);
-            Dec(Q);
-            Dec(J);
-          end;
-      until I > J;
-      if L < J then
-        QuickSort(L, J);
-      L := I;
-    until I >= R;
-  end;
-
-var I : Integer;
-begin
-  Assert(Length(Key) = Length(Data));
-  I := Length(Key);
-  if I > 0 then
-    QuickSort(0, I - 1);
-end;
-{$ENDIF}
-
-{$IFNDEF Managedcode}
-{$IFDEF ManagedCode}
-procedure Sort(const Key: AnsiStringArray; const Data: PointerArray);
-
-  procedure QuickSort(L, R: Integer);
-  var I, J, M : Integer;
-      W, T    : AnsiString;
-      A       : Pointer;
-  begin
-    repeat
-      I := L;
-      J := R;
-      M := (L + R) shr 1;
-      W := Key[M];
-      repeat
-        while Key[I] < W do
-          Inc(I);
-        while Key[J] > W do
-          Dec(J);
-        if I <= J then
-          begin
-            T := Key[I];
-            Key[I] := Key[J];
-            Key[J] := T;
-            A := Data[I];
-            Data[I] := Data[J];
-            Data[J] := A;
-            if M = I then
-              begin
-                M := J;
-                W := Key[J];
-              end else
-              if M = J then
-                begin
-                  M := I;
-                  W := Key[I];
-                end;
-            Inc(I);
-            Dec(J);
-          end;
-      until I > J;
-      if L < J then
-        QuickSort(L, J);
-      L := I;
-    until I >= R;
-  end;
-
-var I : Integer;
-begin
-  Assert(Length(Key) = Length(Data));
-  I := Length(Key);
-  if I > 0 then
-    QuickSort(0, I - 1);
-end;
-{$ELSE}
-procedure Sort(const Key: AnsiStringArray; const Data: PointerArray);
-
-  procedure QuickSort(L, R: Integer);
-  var I, J, M : Integer;
-      W, T    : AnsiString;
-      P, Q    : PAnsiString;
-      A       : Pointer;
-  begin
-    repeat
-      I := L;
-      P := @Key[I];
-      J := R;
-      Q := @Key[J];
-      M := (L + R) shr 1;
-      W := Key[M];
-      repeat
-        while P^ < W do
-          begin
-            Inc(P);
-            Inc(I);
-          end;
-        while Q^ > W do
-          begin
-            Dec(Q);
-            Dec(J);
-          end;
-        if I <= J then
-          begin
-            T := P^;
-            P^ := Q^;
-            Q^ := T;
-            A := Data[I];
-            Data[I] := Data[J];
-            Data[J] := A;
-            if M = I then
-              begin
-                M := J;
-                W := Q^;
-              end else
-              if M = J then
-                begin
-                  M := I;
-                  W := P^;
-                end;
-            Inc(P);
-            Inc(I);
-            Dec(Q);
-            Dec(J);
-          end;
-      until I > J;
-      if L < J then
-        QuickSort(L, J);
-      L := I;
-    until I >= R;
-  end;
-
-var I : Integer;
-begin
-  Assert(Length(Key) = Length(Data));
-  I := Length(Key);
-  if I > 0 then
-    QuickSort(0, I - 1);
-end;
-{$ENDIF}
-
-{$ENDIF}
-{$IFDEF ManagedCode}
-procedure Sort(const Key: ExtendedArray; const Data: IntegerArray);
-
-  procedure QuickSort(L, R: Integer);
-  var I, J, M : Integer;
-      W, T    : Extended;
-      A       : Integer;
-  begin
-    repeat
-      I := L;
-      J := R;
-      M := (L + R) shr 1;
-      W := Key[M];
-      repeat
-        while Key[I] < W do
-          Inc(I);
-        while Key[J] > W do
-          Dec(J);
-        if I <= J then
-          begin
-            T := Key[I];
-            Key[I] := Key[J];
-            Key[J] := T;
-            A := Data[I];
-            Data[I] := Data[J];
-            Data[J] := A;
-            if M = I then
-              begin
-                M := J;
-                W := Key[J];
-              end else
-              if M = J then
-                begin
-                  M := I;
-                  W := Key[I];
-                end;
-            Inc(I);
-            Dec(J);
-          end;
-      until I > J;
-      if L < J then
-        QuickSort(L, J);
-      L := I;
-    until I >= R;
-  end;
-
-var I : Integer;
-begin
-  Assert(Length(Key) = Length(Data));
-  I := Length(Key);
-  if I > 0 then
-    QuickSort(0, I - 1);
-end;
-{$ELSE}
-procedure Sort(const Key: ExtendedArray; const Data: IntegerArray);
-
-  procedure QuickSort(L, R: Integer);
-  var I, J, M : Integer;
-      W, T    : Extended;
-      P, Q    : PExtended;
-      A       : Integer;
-  begin
-    repeat
-      I := L;
-      P := @Key[I];
-      J := R;
-      Q := @Key[J];
-      M := (L + R) shr 1;
-      W := Key[M];
-      repeat
-        while P^ < W do
-          begin
-            Inc(P);
-            Inc(I);
-          end;
-        while Q^ > W do
-          begin
-            Dec(Q);
-            Dec(J);
-          end;
-        if I <= J then
-          begin
-            T := P^;
-            P^ := Q^;
-            Q^ := T;
-            A := Data[I];
-            Data[I] := Data[J];
-            Data[J] := A;
-            if M = I then
-              begin
-                M := J;
-                W := Q^;
-              end else
-              if M = J then
-                begin
-                  M := I;
-                  W := P^;
-                end;
-            Inc(P);
-            Inc(I);
-            Dec(Q);
-            Dec(J);
-          end;
-      until I > J;
-      if L < J then
-        QuickSort(L, J);
-      L := I;
-    until I >= R;
-  end;
-
-var I : Integer;
-begin
-  Assert(Length(Key) = Length(Data));
-  I := Length(Key);
-  if I > 0 then
-    QuickSort(0, I - 1);
-end;
-{$ENDIF}
-
-{$IFDEF ManagedCode}
-procedure Sort(const Key: ExtendedArray; const Data: Int64Array);
-
-  procedure QuickSort(L, R: Integer);
-  var I, J, M : Integer;
-      W, T    : Extended;
-      A       : Int64;
-  begin
-    repeat
-      I := L;
-      J := R;
-      M := (L + R) shr 1;
-      W := Key[M];
-      repeat
-        while Key[I] < W do
-          Inc(I);
-        while Key[J] > W do
-          Dec(J);
-        if I <= J then
-          begin
-            T := Key[I];
-            Key[I] := Key[J];
-            Key[J] := T;
-            A := Data[I];
-            Data[I] := Data[J];
-            Data[J] := A;
-            if M = I then
-              begin
-                M := J;
-                W := Key[J];
-              end else
-              if M = J then
-                begin
-                  M := I;
-                  W := Key[I];
-                end;
-            Inc(I);
-            Dec(J);
-          end;
-      until I > J;
-      if L < J then
-        QuickSort(L, J);
-      L := I;
-    until I >= R;
-  end;
-
-var I : Integer;
-begin
-  Assert(Length(Key) = Length(Data));
-  I := Length(Key);
-  if I > 0 then
-    QuickSort(0, I - 1);
-end;
-{$ELSE}
-procedure Sort(const Key: ExtendedArray; const Data: Int64Array);
-
-  procedure QuickSort(L, R: Integer);
-  var I, J, M : Integer;
-      W, T    : Extended;
-      P, Q    : PExtended;
-      A       : Int64;
-  begin
-    repeat
-      I := L;
-      P := @Key[I];
-      J := R;
-      Q := @Key[J];
-      M := (L + R) shr 1;
-      W := Key[M];
-      repeat
-        while P^ < W do
-          begin
-            Inc(P);
-            Inc(I);
-          end;
-        while Q^ > W do
-          begin
-            Dec(Q);
-            Dec(J);
-          end;
-        if I <= J then
-          begin
-            T := P^;
-            P^ := Q^;
-            Q^ := T;
-            A := Data[I];
-            Data[I] := Data[J];
-            Data[J] := A;
-            if M = I then
-              begin
-                M := J;
-                W := Q^;
-              end else
-              if M = J then
-                begin
-                  M := I;
-                  W := P^;
-                end;
-            Inc(P);
-            Inc(I);
-            Dec(Q);
-            Dec(J);
-          end;
-      until I > J;
-      if L < J then
-        QuickSort(L, J);
-      L := I;
-    until I >= R;
-  end;
-
-var I : Integer;
-begin
-  Assert(Length(Key) = Length(Data));
-  I := Length(Key);
-  if I > 0 then
-    QuickSort(0, I - 1);
-end;
-{$ENDIF}
-
-{$IFDEF ManagedCode}
-procedure Sort(const Key: ExtendedArray; const Data: AnsiStringArray);
-
-  procedure QuickSort(L, R: Integer);
-  var I, J, M : Integer;
-      W, T    : Extended;
-      A       : AnsiString;
-  begin
-    repeat
-      I := L;
-      J := R;
-      M := (L + R) shr 1;
-      W := Key[M];
-      repeat
-        while Key[I] < W do
-          Inc(I);
-        while Key[J] > W do
-          Dec(J);
-        if I <= J then
-          begin
-            T := Key[I];
-            Key[I] := Key[J];
-            Key[J] := T;
-            A := Data[I];
-            Data[I] := Data[J];
-            Data[J] := A;
-            if M = I then
-              begin
-                M := J;
-                W := Key[J];
-              end else
-              if M = J then
-                begin
-                  M := I;
-                  W := Key[I];
-                end;
-            Inc(I);
-            Dec(J);
-          end;
-      until I > J;
-      if L < J then
-        QuickSort(L, J);
-      L := I;
-    until I >= R;
-  end;
-
-var I : Integer;
-begin
-  Assert(Length(Key) = Length(Data));
-  I := Length(Key);
-  if I > 0 then
-    QuickSort(0, I - 1);
-end;
-{$ELSE}
-procedure Sort(const Key: ExtendedArray; const Data: AnsiStringArray);
-
-  procedure QuickSort(L, R: Integer);
-  var I, J, M : Integer;
-      W, T    : Extended;
-      P, Q    : PExtended;
-      A       : AnsiString;
-  begin
-    repeat
-      I := L;
-      P := @Key[I];
-      J := R;
-      Q := @Key[J];
-      M := (L + R) shr 1;
-      W := Key[M];
-      repeat
-        while P^ < W do
-          begin
-            Inc(P);
-            Inc(I);
-          end;
-        while Q^ > W do
-          begin
-            Dec(Q);
-            Dec(J);
-          end;
-        if I <= J then
-          begin
-            T := P^;
-            P^ := Q^;
-            Q^ := T;
-            A := Data[I];
-            Data[I] := Data[J];
-            Data[J] := A;
-            if M = I then
-              begin
-                M := J;
-                W := Q^;
-              end else
-              if M = J then
-                begin
-                  M := I;
-                  W := P^;
-                end;
-            Inc(P);
-            Inc(I);
-            Dec(Q);
-            Dec(J);
-          end;
-      until I > J;
-      if L < J then
-        QuickSort(L, J);
-      L := I;
-    until I >= R;
-  end;
-
-var I : Integer;
-begin
-  Assert(Length(Key) = Length(Data));
-  I := Length(Key);
-  if I > 0 then
-    QuickSort(0, I - 1);
-end;
-{$ENDIF}
-
-{$IFDEF ManagedCode}
-procedure Sort(const Key: ExtendedArray; const Data: ExtendedArray);
-
-  procedure QuickSort(L, R: Integer);
-  var I, J, M : Integer;
-      W, T    : Extended;
-      A       : Extended;
-  begin
-    repeat
-      I := L;
-      J := R;
-      M := (L + R) shr 1;
-      W := Key[M];
-      repeat
-        while Key[I] < W do
-          Inc(I);
-        while Key[J] > W do
-          Dec(J);
-        if I <= J then
-          begin
-            T := Key[I];
-            Key[I] := Key[J];
-            Key[J] := T;
-            A := Data[I];
-            Data[I] := Data[J];
-            Data[J] := A;
-            if M = I then
-              begin
-                M := J;
-                W := Key[J];
-              end else
-              if M = J then
-                begin
-                  M := I;
-                  W := Key[I];
-                end;
-            Inc(I);
-            Dec(J);
-          end;
-      until I > J;
-      if L < J then
-        QuickSort(L, J);
-      L := I;
-    until I >= R;
-  end;
-
-var I : Integer;
-begin
-  Assert(Length(Key) = Length(Data));
-  I := Length(Key);
-  if I > 0 then
-    QuickSort(0, I - 1);
-end;
-{$ELSE}
-procedure Sort(const Key: ExtendedArray; const Data: ExtendedArray);
-
-  procedure QuickSort(L, R: Integer);
-  var I, J, M : Integer;
-      W, T    : Extended;
-      P, Q    : PExtended;
-      A       : Extended;
-  begin
-    repeat
-      I := L;
-      P := @Key[I];
-      J := R;
-      Q := @Key[J];
-      M := (L + R) shr 1;
-      W := Key[M];
-      repeat
-        while P^ < W do
-          begin
-            Inc(P);
-            Inc(I);
-          end;
-        while Q^ > W do
-          begin
-            Dec(Q);
-            Dec(J);
-          end;
-        if I <= J then
-          begin
-            T := P^;
-            P^ := Q^;
-            Q^ := T;
-            A := Data[I];
-            Data[I] := Data[J];
-            Data[J] := A;
-            if M = I then
-              begin
-                M := J;
-                W := Q^;
-              end else
-              if M = J then
-                begin
-                  M := I;
-                  W := P^;
-                end;
-            Inc(P);
-            Inc(I);
-            Dec(Q);
-            Dec(J);
-          end;
-      until I > J;
-      if L < J then
-        QuickSort(L, J);
-      L := I;
-    until I >= R;
-  end;
-
-var I : Integer;
-begin
-  Assert(Length(Key) = Length(Data));
-  I := Length(Key);
-  if I > 0 then
-    QuickSort(0, I - 1);
-end;
-{$ENDIF}
-
-{$IFNDEF ManagedCode}
-{$IFDEF ManagedCode}
-procedure Sort(const Key: ExtendedArray; const Data: PointerArray);
-
-  procedure QuickSort(L, R: Integer);
-  var I, J, M : Integer;
-      W, T    : Extended;
-      A       : Pointer;
-  begin
-    repeat
-      I := L;
-      J := R;
-      M := (L + R) shr 1;
-      W := Key[M];
-      repeat
-        while Key[I] < W do
-          Inc(I);
-        while Key[J] > W do
-          Dec(J);
-        if I <= J then
-          begin
-            T := Key[I];
-            Key[I] := Key[J];
-            Key[J] := T;
-            A := Data[I];
-            Data[I] := Data[J];
-            Data[J] := A;
-            if M = I then
-              begin
-                M := J;
-                W := Key[J];
-              end else
-              if M = J then
-                begin
-                  M := I;
-                  W := Key[I];
-                end;
-            Inc(I);
-            Dec(J);
-          end;
-      until I > J;
-      if L < J then
-        QuickSort(L, J);
-      L := I;
-    until I >= R;
-  end;
-
-var I : Integer;
-begin
-  Assert(Length(Key) = Length(Data));
-  I := Length(Key);
-  if I > 0 then
-    QuickSort(0, I - 1);
-end;
-{$ELSE}
-procedure Sort(const Key: ExtendedArray; const Data: PointerArray);
-
-  procedure QuickSort(L, R: Integer);
-  var I, J, M : Integer;
-      W, T    : Extended;
-      P, Q    : PExtended;
-      A       : Pointer;
-  begin
-    repeat
-      I := L;
-      P := @Key[I];
-      J := R;
-      Q := @Key[J];
-      M := (L + R) shr 1;
-      W := Key[M];
-      repeat
-        while P^ < W do
-          begin
-            Inc(P);
-            Inc(I);
-          end;
-        while Q^ > W do
-          begin
-            Dec(Q);
-            Dec(J);
-          end;
-        if I <= J then
-          begin
-            T := P^;
-            P^ := Q^;
-            Q^ := T;
-            A := Data[I];
-            Data[I] := Data[J];
-            Data[J] := A;
-            if M = I then
-              begin
-                M := J;
-                W := Q^;
-              end else
-              if M = J then
-                begin
-                  M := I;
-                  W := P^;
-                end;
-            Inc(P);
-            Inc(I);
-            Dec(Q);
-            Dec(J);
-          end;
-      until I > J;
-      if L < J then
-        QuickSort(L, J);
-      L := I;
-    until I >= R;
-  end;
-
-var I : Integer;
-begin
-  Assert(Length(Key) = Length(Data));
-  I := Length(Key);
-  if I > 0 then
-    QuickSort(0, I - 1);
-end;
-{$ENDIF}
-
-{$ENDIF}
 
 
 
@@ -15876,9 +7139,6 @@ var L, H : Cardinal;
     A, B : Byte;
     C, D : LongWord;
     P, Q : TObject;
-    {$IFNDEF CLR}
-    S    : AnsiString;
-    {$ENDIF}
 begin
   // Integer types
   {$IFNDEF ManagedCode}
@@ -15968,6 +7228,8 @@ begin
   Assert(iif(False, '1', '2') = '2',  'iif');
   Assert(iifW(True, '1', '2') = '1',  'iif');
   Assert(iifW(False, '1', '2') = '2', 'iif');
+  Assert(iifU(True, '1', '2') = '1',  'iif');
+  Assert(iifU(False, '1', '2') = '2', 'iif');
   Assert(iif(True, 1.1, 2.2) = 1.1,   'iif');
   Assert(iif(False, 1.1, 2.2) = 2.2,  'iif');
 
@@ -15980,30 +7242,108 @@ begin
   Assert(Compare(1, 1) = crEqual,          'Compare');
   Assert(Compare(1, 2) = crLess,           'Compare');
   Assert(Compare(1, 0) = crGreater,        'Compare');
+
   Assert(Compare(1.0, 1.0) = crEqual,      'Compare');
   Assert(Compare(1.0, 1.1) = crLess,       'Compare');
   Assert(Compare(1.0, 0.9) = crGreater,    'Compare');
+
   Assert(Compare(False, False) = crEqual,  'Compare');
   Assert(Compare(True, True) = crEqual,    'Compare');
   Assert(Compare(False, True) = crLess,    'Compare');
   Assert(Compare(True, False) = crGreater, 'Compare');
-  Assert(Compare('', '') = crEqual,        'Compare');
-  Assert(Compare('a', 'a') = crEqual,      'Compare');
-  Assert(Compare('a', 'b') = crLess,       'Compare');
-  Assert(Compare('b', 'a') = crGreater,    'Compare');
-  Assert(Compare('', 'a') = crLess,        'Compare');
-  Assert(Compare('a', '') = crGreater,     'Compare');
-  Assert(Compare('aa', 'a') = crGreater,   'Compare');
 
-  Assert(Sign(1) = 1,     'Sign');
-  Assert(Sign(0) = 0,     'Sign');
-  Assert(Sign(-1) = -1,   'Sign');
-  Assert(Sign(2) = 1,     'Sign');
-  Assert(Sign(-2) = -1,   'Sign');
-  Assert(Sign(-1.5) = -1, 'Sign');
-  Assert(Sign(1.5) = 1,   'Sign');
-  Assert(Sign(0.0) = 0,   'Sign');
+  Assert(CompareA('', '') = crEqual,        'Compare');
+  Assert(CompareA('a', 'a') = crEqual,      'Compare');
+  Assert(CompareA('a', 'b') = crLess,       'Compare');
+  Assert(CompareA('b', 'a') = crGreater,    'Compare');
+  Assert(CompareA('', 'a') = crLess,        'Compare');
+  Assert(CompareA('a', '') = crGreater,     'Compare');
+  Assert(CompareA('aa', 'a') = crGreater,   'Compare');
 
+  Assert(CompareW('', '') = crEqual,        'Compare');
+  Assert(CompareW('a', 'a') = crEqual,      'Compare');
+  Assert(CompareW('a', 'b') = crLess,       'Compare');
+  Assert(CompareW('b', 'a') = crGreater,    'Compare');
+  Assert(CompareW('', 'a') = crLess,        'Compare');
+  Assert(CompareW('a', '') = crGreater,     'Compare');
+  Assert(CompareW('aa', 'a') = crGreater,   'Compare');
+
+  Assert(Sgn(1) = 1,     'Sign');
+  Assert(Sgn(0) = 0,     'Sign');
+  Assert(Sgn(-1) = -1,   'Sign');
+  Assert(Sgn(2) = 1,     'Sign');
+  Assert(Sgn(-2) = -1,   'Sign');
+  Assert(Sgn(-1.5) = -1, 'Sign');
+  Assert(Sgn(1.5) = 1,   'Sign');
+  Assert(Sgn(0.0) = 0,   'Sign');
+
+  Assert(ReverseCompareResult(crLess) = crGreater, 'ReverseCompareResult');
+  Assert(ReverseCompareResult(crGreater) = crLess, 'ReverseCompareResult');
+end;
+
+procedure Test_BitFunctions;
+begin
+  Assert(SetBit($100F, 5) = $102F,            'SetBit');
+  Assert(ClearBit($102F, 5) = $100F,          'ClearBit');
+  Assert(ToggleBit($102F, 5) = $100F,         'ToggleBit');
+  Assert(ToggleBit($100F, 5) = $102F,         'ToggleBit');
+  Assert(IsBitSet($102F, 5),                  'IsBitSet');
+  Assert(not IsBitSet($100F, 5),              'IsBitSet');
+  Assert(IsHighBitSet($80000000),             'IsHighBitSet');
+  Assert(not IsHighBitSet($00000001),         'IsHighBitSet');
+  Assert(not IsHighBitSet($7FFFFFFF),         'IsHighBitSet');
+
+  Assert(SetBitScanForward(0) = -1,           'SetBitScanForward');
+  Assert(SetBitScanForward($1020) = 5,        'SetBitScanForward');
+  Assert(SetBitScanReverse($1020) = 12,       'SetBitScanForward');
+  Assert(SetBitScanForward($1020, 6) = 12,    'SetBitScanForward');
+  Assert(SetBitScanReverse($1020, 11) = 5,    'SetBitScanForward');
+  Assert(ClearBitScanForward($FFFFFFFF) = -1, 'ClearBitScanForward');
+  Assert(ClearBitScanForward($1020) = 0,      'ClearBitScanForward');
+  Assert(ClearBitScanReverse($1020) = 31,     'ClearBitScanForward');
+  Assert(ClearBitScanForward($1020, 5) = 6,   'ClearBitScanForward');
+  Assert(ClearBitScanReverse($1020, 12) = 11, 'ClearBitScanForward');
+
+  Assert(ReverseBits($12345678) = $1E6A2C48,  'ReverseBits');
+  Assert(ReverseBits($1) = $80000000,         'ReverseBits');
+  Assert(ReverseBits($80000000) = $1,         'ReverseBits');
+  Assert(SwapEndian($12345678) = $78563412,   'SwapEndian');
+
+  Assert(BitCount($12341234) = 10,            'BitCount');
+  Assert(IsPowerOfTwo(1),                     'IsPowerOfTwo');
+  Assert(IsPowerOfTwo(2),                     'IsPowerOfTwo');
+  Assert(not IsPowerOfTwo(3),                 'IsPowerOfTwo');
+
+  Assert(RotateLeftBits32(0, 1) = 0,          'RotateLeftBits32');
+  Assert(RotateLeftBits32(1, 0) = 1,          'RotateLeftBits32');
+  Assert(RotateLeftBits32(1, 1) = 2,          'RotateLeftBits32');
+  Assert(RotateLeftBits32($80000000, 1) = 1,  'RotateLeftBits32');
+  Assert(RotateLeftBits32($80000001, 1) = 3,  'RotateLeftBits32');
+  Assert(RotateLeftBits32(1, 2) = 4,          'RotateLeftBits32');
+  Assert(RotateLeftBits32(1, 31) = $80000000, 'RotateLeftBits32');
+  Assert(RotateLeftBits32(5, 2) = 20,         'RotateLeftBits32');
+  Assert(RotateRightBits32(0, 1) = 0,         'RotateRightBits32');
+  Assert(RotateRightBits32(1, 0) = 1,         'RotateRightBits32');
+  Assert(RotateRightBits32(1, 1) = $80000000, 'RotateRightBits32');
+  Assert(RotateRightBits32(2, 1) = 1,         'RotateRightBits32');
+  Assert(RotateRightBits32(4, 2) = 1,         'RotateRightBits32');
+
+  Assert(LowBitMask(10) = $3FF,               'LowBitMask');
+  Assert(HighBitMask(28) = $F0000000,         'HighBitMask');
+  Assert(RangeBitMask(2, 6) = $7C,            'RangeBitMask');
+
+  Assert(SetBitRange($101, 2, 6) = $17D,      'SetBitRange');
+  Assert(ClearBitRange($17D, 2, 6) = $101,    'ClearBitRange');
+  Assert(ToggleBitRange($17D, 2, 6) = $101,   'ToggleBitRange');
+  Assert(IsBitRangeSet($17D, 2, 6),           'IsBitRangeSet');
+  Assert(not IsBitRangeSet($101, 2, 6),       'IsBitRangeSet');
+  Assert(not IsBitRangeClear($17D, 2, 6),     'IsBitRangeClear');
+  Assert(IsBitRangeClear($101, 2, 6),         'IsBitRangeClear');
+end;
+
+procedure Test_Float;
+var E : Integer;
+begin
   Assert(not FloatZero(1e-1, 1e-2),   'FloatZero');
   Assert(FloatZero(1e-2, 1e-2),       'FloatZero');
   Assert(not FloatZero(1e-1, 1e-9),   'FloatZero');
@@ -16084,39 +7424,436 @@ begin
   Assert(ApproxCompare(-1.2345e-10, -1.2349e-10, 1e-4) = crGreater, 'ApproxCompare');
   {$ENDIF}
 
-  Assert(ReverseCompareResult(crLess) = crGreater, 'ReverseCompareResult');
-  Assert(ReverseCompareResult(crGreater) = crLess, 'ReverseCompareResult');
+  Assert(FloatExponentBase10(1.0, E),    'FloatExponent');
+  Assert(E = 0,                          'FloatExponent');
+  Assert(FloatExponentBase10(10.0, E),   'FloatExponent');
+  Assert(E = 1,                          'FloatExponent');
+  Assert(FloatExponentBase10(0.1, E),    'FloatExponent');
+  Assert(E = -1,                         'FloatExponent');
+  Assert(FloatExponentBase10(1e100, E),  'FloatExponent');
+  Assert(E = 100,                        'FloatExponent');
+  Assert(FloatExponentBase10(1e-100, E), 'FloatExponent');
+  Assert(E = -100,                       'FloatExponent');
+  Assert(FloatExponentBase10(0.999, E),  'FloatExponent');
+  Assert(E = 0,                          'FloatExponent');
+  Assert(FloatExponentBase10(-0.999, E), 'FloatExponent');
+  Assert(E = 0,                          'FloatExponent');
+end;
 
-  Assert(AnsiStringToInt('0') = 0,       'AnsiStringToInt');
-  Assert(AnsiStringToInt('1') = 1,       'AnsiStringToInt');
-  Assert(AnsiStringToInt('-1') = -1,     'AnsiStringToInt');
-  Assert(AnsiStringToInt('10') = 10,     'AnsiStringToInt');
-  Assert(AnsiStringToInt('01') = 1,      'AnsiStringToInt');
-  Assert(AnsiStringToInt('-10') = -10,   'AnsiStringToInt');
-  Assert(AnsiStringToInt('-01') = -1,    'AnsiStringToInt');
-  Assert(AnsiStringToInt('123') = 123,   'AnsiStringToInt');
-  Assert(AnsiStringToInt('-123') = -123, 'AnsiStringToInt');
+procedure Test_IntStr;
+var I : Int64;
+    W : LongWord;
+    L : Integer;
+    A : AnsiString;
+begin
+  Assert(HexCharToInt('A') = 10,   'HexCharToInt');
+  Assert(HexCharToInt('a') = 10,   'HexCharToInt');
+  Assert(HexCharToInt('1') = 1,    'HexCharToInt');
+  Assert(HexCharToInt('0') = 0,    'HexCharToInt');
+  Assert(HexCharToInt('F') = 15,   'HexCharToInt');
+  Assert(HexCharToInt('G') = -1,   'HexCharToInt');
 
-  Assert(WideStringToInt('321') = 321,   'WideStringToInt');
-  Assert(WideStringToInt('-321') = -321, 'WideStringToInt');
+  Assert(IntToStringA(0) = '0',       'IntToAnsiString');
+  Assert(IntToStringA(1) = '1',       'IntToAnsiString');
+  Assert(IntToStringA(-1) = '-1',     'IntToAnsiString');
+  Assert(IntToStringA(10) = '10',     'IntToAnsiString');
+  Assert(IntToStringA(-10) = '-10',   'IntToAnsiString');
+  Assert(IntToStringA(123) = '123',   'IntToAnsiString');
+  Assert(IntToStringA(-123) = '-123', 'IntToAnsiString');
 
-  Assert(IntToAnsiString(0) = '0',       'IntToAnsiString');
-  Assert(IntToAnsiString(1) = '1',       'IntToAnsiString');
-  Assert(IntToAnsiString(-1) = '-1',     'IntToAnsiString');
-  Assert(IntToAnsiString(10) = '10',     'IntToAnsiString');
-  Assert(IntToAnsiString(-10) = '-10',   'IntToAnsiString');
-  Assert(IntToAnsiString(123) = '123',   'IntToAnsiString');
-  Assert(IntToAnsiString(-123) = '-123', 'IntToAnsiString');
+  Assert(IntToStringW(0) = '0',                     'IntToWideString');
+  Assert(IntToStringW(1) = '1',                     'IntToWideString');
+  Assert(IntToStringW(-1) = '-1',                   'IntToWideString');
+  Assert(IntToStringW(1234567890) = '1234567890',   'IntToWideString');
+  Assert(IntToStringW(-1234567890) = '-1234567890', 'IntToWideString');
 
-  // Hash
-  Assert(HashStr('Fundamentals') = $3FB7796E, 'HashStr');
-  Assert(HashStr('0') = $B2420DE, 'HashStr');
-  Assert(HashStr('Fundamentals', 0, False) = HashStr('FUNdamentals', 0, False), 'HashStr');
-  Assert(HashStr('Fundamentals', 0, True) <> HashStr('FUNdamentals', 0, True), 'HashStr');
-  {$IFNDEF CLR}
-  S := 'Fundamentals';
-  Assert(HashStrBuf(Pointer(S), Length(S), 0) = $3FB7796E, 'HashStrBuf');
+  Assert(IntToStringU(0) = '0',                     'IntToString');
+  Assert(IntToStringU(1) = '1',                     'IntToString');
+  Assert(IntToStringU(-1) = '-1',                   'IntToString');
+  Assert(IntToStringU(1234567890) = '1234567890',   'IntToString');
+  Assert(IntToStringU(-1234567890) = '-1234567890', 'IntToString');
+
+  Assert(IntToString(0) = '0',                     'IntToString');
+  Assert(IntToString(1) = '1',                     'IntToString');
+  Assert(IntToString(-1) = '-1',                   'IntToString');
+  Assert(IntToString(1234567890) = '1234567890',   'IntToString');
+  Assert(IntToString(-1234567890) = '-1234567890', 'IntToString');
+
+  Assert(UIntToStringA(0) = '0',                  'UIntToString');
+  Assert(UIntToStringA($FFFFFFFF) = '4294967295', 'UIntToString');
+  Assert(UIntToStringW(0) = '0',                  'UIntToString');
+  Assert(UIntToStringW($FFFFFFFF) = '4294967295', 'UIntToString');
+  Assert(UIntToStringU(0) = '0',                  'UIntToString');
+  Assert(UIntToStringU($FFFFFFFF) = '4294967295', 'UIntToString');
+  Assert(UIntToString(0) = '0',                   'UIntToString');
+  Assert(UIntToString($FFFFFFFF) = '4294967295',  'UIntToString');
+
+  Assert(LongWordToStrA(0, 8) = '00000000',           'LongWordToStr');
+  Assert(LongWordToStrA($FFFFFFFF, 0) = '4294967295', 'LongWordToStr');
+  Assert(LongWordToStrW(0, 8) = '00000000',           'LongWordToStr');
+  Assert(LongWordToStrW($FFFFFFFF, 0) = '4294967295', 'LongWordToStr');
+  Assert(LongWordToStrU(0, 8) = '00000000',           'LongWordToStr');
+  Assert(LongWordToStrU($FFFFFFFF, 0) = '4294967295', 'LongWordToStr');
+  Assert(LongWordToStr(0, 8) = '00000000',            'LongWordToStr');
+  Assert(LongWordToStr($FFFFFFFF, 0) = '4294967295',  'LongWordToStr');
+  Assert(LongWordToStr(123) = '123',                  'LongWordToStr');
+  Assert(LongWordToStr(10000) = '10000',              'LongWordToStr');
+  Assert(LongWordToStr(99999) = '99999',              'LongWordToStr');
+  Assert(LongWordToStr(1, 1) = '1',                   'LongWordToStr');
+  Assert(LongWordToStr(1, 3) = '001',                 'LongWordToStr');
+  Assert(LongWordToStr(1234, 3) = '1234',             'LongWordToStr');
+
+  Assert(LongWordToHexA(0, 8) = '00000000',         'LongWordToHex');
+  Assert(LongWordToHexA($FFFFFFFF, 0) = 'FFFFFFFF', 'LongWordToHex');
+  Assert(LongWordToHexA($10000) = '10000',          'LongWordToHex');
+  Assert(LongWordToHexA($12345678) = '12345678',    'LongWordToHex');
+  Assert(LongWordToHexA($AB, 4) = '00AB',           'LongWordToHex');
+  Assert(LongWordToHexA($ABCD, 8) = '0000ABCD',     'LongWordToHex');
+  Assert(LongWordToHexA($CDEF, 2) = 'CDEF',         'LongWordToHex');
+  Assert(LongWordToHexA($ABC3, 0, False) = 'abc3',  'LongWordToHex');
+
+  Assert(LongWordToHexW(0, 8) = '00000000',         'LongWordToHex');
+  Assert(LongWordToHexW(0) = '0',                   'LongWordToHex');
+  Assert(LongWordToHexW($FFFFFFFF, 0) = 'FFFFFFFF', 'LongWordToHex');
+  Assert(LongWordToHexW($AB, 4) = '00AB',           'LongWordToHex');
+  Assert(LongWordToHexW($ABC3, 0, False) = 'abc3',  'LongWordToHex');
+
+  Assert(LongWordToHexU(0, 8) = '00000000',         'LongWordToHex');
+  Assert(LongWordToHexU(0) = '0',                   'LongWordToHex');
+  Assert(LongWordToHexU($FFFFFFFF, 0) = 'FFFFFFFF', 'LongWordToHex');
+  Assert(LongWordToHexU($AB, 4) = '00AB',           'LongWordToHex');
+  Assert(LongWordToHexU($ABC3, 0, False) = 'abc3',  'LongWordToHex');
+
+  Assert(LongWordToHex(0, 8) = '00000000',          'LongWordToHex');
+  Assert(LongWordToHex($FFFFFFFF, 0) = 'FFFFFFFF',  'LongWordToHex');
+  Assert(LongWordToHex(0) = '0',                    'LongWordToHex');
+  Assert(LongWordToHex($ABCD, 8) = '0000ABCD',      'LongWordToHex');
+  Assert(LongWordToHex($ABC3, 0, False) = 'abc3',   'LongWordToHex');
+
+  Assert(StringToIntA('0') = 0,       'StringToInt');
+  Assert(StringToIntA('1') = 1,       'StringToInt');
+  Assert(StringToIntA('-1') = -1,     'StringToInt');
+  Assert(StringToIntA('10') = 10,     'StringToInt');
+  Assert(StringToIntA('01') = 1,      'StringToInt');
+  Assert(StringToIntA('-10') = -10,   'StringToInt');
+  Assert(StringToIntA('-01') = -1,    'StringToInt');
+  Assert(StringToIntA('123') = 123,   'StringToInt');
+  Assert(StringToIntA('-123') = -123, 'StringToInt');
+
+  Assert(StringToIntW('321') = 321,   'StringToInt');
+  Assert(StringToIntW('-321') = -321, 'StringToInt');
+
+  Assert(StringToIntU('321') = 321,   'StringToInt');
+  Assert(StringToIntU('-321') = -321, 'StringToInt');
+
+  A := '-012A';
+  Assert(TryStringToInt64PA(PAnsiChar(A), Length(A), I, L) = convertOK,          'StringToInt');
+  Assert((I = -12) and (L = 4),                                                  'StringToInt');
+  A := '-A012';
+  Assert(TryStringToInt64PA(PAnsiChar(A), Length(A), I, L) = convertFormatError, 'StringToInt');
+  Assert((I = 0) and (L = 1),                                                    'StringToInt');
+
+  Assert(TryStringToInt64A('0', I),                        'StringToInt');
+  Assert(I = 0,                                            'StringToInt');
+  Assert(TryStringToInt64A('-0', I),                       'StringToInt');
+  Assert(I = 0,                                            'StringToInt');
+  Assert(TryStringToInt64A('+0', I),                       'StringToInt');
+  Assert(I = 0,                                            'StringToInt');
+  Assert(TryStringToInt64A('1234', I),                     'StringToInt');
+  Assert(I = 1234,                                         'StringToInt');
+  Assert(TryStringToInt64A('-1234', I),                    'StringToInt');
+  Assert(I = -1234,                                        'StringToInt');
+  Assert(TryStringToInt64A('000099999', I),                'StringToInt');
+  Assert(I = 99999,                                        'StringToInt');
+  Assert(TryStringToInt64A('999999999999999999', I),       'StringToInt');
+  Assert(I = 999999999999999999,                           'StringToInt');
+  Assert(TryStringToInt64A('-999999999999999999', I),      'StringToInt');
+  Assert(I = -999999999999999999,                          'StringToInt');
+  Assert(TryStringToInt64A('4294967295', I),               'StringToInt');
+  Assert(I = $FFFFFFFF,                                    'StringToInt');
+  Assert(TryStringToInt64A('4294967296', I),               'StringToInt');
+  Assert(I = $100000000,                                   'StringToInt');
+  Assert(TryStringToInt64A('9223372036854775807', I),      'StringToInt');
+  Assert(I = 9223372036854775807,                          'StringToInt');
+  {$IFNDEF DELPHI7_DOWN}
+  Assert(TryStringToInt64A('-9223372036854775808', I),     'StringToInt');
+  Assert(I = -9223372036854775808,                         'StringToInt');
   {$ENDIF}
+  Assert(not TryStringToInt64A('', I),                     'StringToInt');
+  Assert(not TryStringToInt64A('-', I),                    'StringToInt');
+  Assert(not TryStringToInt64A('+', I),                    'StringToInt');
+  Assert(not TryStringToInt64A('+-0', I),                  'StringToInt');
+  Assert(not TryStringToInt64A('0A', I),                   'StringToInt');
+  Assert(not TryStringToInt64A('1A', I),                   'StringToInt');
+  Assert(not TryStringToInt64A(' 0', I),                   'StringToInt');
+  Assert(not TryStringToInt64A('0 ', I),                   'StringToInt');
+  Assert(not TryStringToInt64A('9223372036854775808', I),  'StringToInt');
+  {$IFNDEF DELPHI7_DOWN}
+  Assert(not TryStringToInt64A('-9223372036854775809', I), 'StringToInt');
+  {$ENDIF}
+
+  Assert(TryStringToInt64W('9223372036854775807', I),      'StringToInt');
+  Assert(I = 9223372036854775807,                          'StringToInt');
+  {$IFNDEF DELPHI7_DOWN}
+  Assert(TryStringToInt64W('-9223372036854775808', I),     'StringToInt');
+  Assert(I = -9223372036854775808,                         'StringToInt');
+  {$ENDIF}
+  Assert(not TryStringToInt64W('', I),                     'StringToInt');
+  Assert(not TryStringToInt64W('-', I),                    'StringToInt');
+  Assert(not TryStringToInt64W('0A', I),                   'StringToInt');
+  Assert(not TryStringToInt64W('9223372036854775808', I),  'StringToInt');
+  {$IFNDEF DELPHI7_DOWN}
+  Assert(not TryStringToInt64W('-9223372036854775809', I), 'StringToInt');
+  {$ENDIF}
+
+  Assert(TryStringToInt64U('9223372036854775807', I),      'StringToInt');
+  Assert(I = 9223372036854775807,                          'StringToInt');
+  {$IFNDEF DELPHI7_DOWN}
+  Assert(TryStringToInt64U('-9223372036854775808', I),     'StringToInt');
+  Assert(I = -9223372036854775808,                         'StringToInt');
+  {$ENDIF}
+  Assert(not TryStringToInt64U('', I),                     'StringToInt');
+  Assert(not TryStringToInt64U('-', I),                    'StringToInt');
+  Assert(not TryStringToInt64U('0A', I),                   'StringToInt');
+  Assert(not TryStringToInt64U('9223372036854775808', I),  'StringToInt');
+  {$IFNDEF DELPHI7_DOWN}
+  Assert(not TryStringToInt64U('-9223372036854775809', I), 'StringToInt');
+  {$ENDIF}
+
+  Assert(TryStringToInt64('9223372036854775807', I),       'StringToInt');
+  Assert(I = 9223372036854775807,                          'StringToInt');
+  {$IFNDEF DELPHI7_DOWN}
+  Assert(TryStringToInt64('-9223372036854775808', I),      'StringToInt');
+  Assert(I = -9223372036854775808,                         'StringToInt');
+  {$ENDIF}
+  Assert(not TryStringToInt64('', I),                      'StringToInt');
+  Assert(not TryStringToInt64('-', I),                     'StringToInt');
+  Assert(not TryStringToInt64('9223372036854775808', I),   'StringToInt');
+  {$IFNDEF DELPHI7_DOWN}
+  Assert(not TryStringToInt64('-9223372036854775809', I),  'StringToInt');
+  {$ENDIF}
+
+  Assert(HexToUIntA('FFFFFFFF') = $FFFFFFFF, 'HexStringToUInt');
+  Assert(HexToUIntA('FFFFFFFF') = $FFFFFFFF, 'HexStringToUInt');
+  Assert(HexToUInt('FFFFFFFF') = $FFFFFFFF,  'HexStringToUInt');
+
+  Assert(HexToLongWord('FFFFFFFF') = $FFFFFFFF,  'HexToLongWord');
+  Assert(HexToLongWord('0') = 0,                 'HexToLongWord');
+  Assert(HexToLongWord('123456') = $123456,      'HexToLongWord');
+  Assert(HexToLongWord('ABC') = $ABC,            'HexToLongWord');
+  Assert(HexToLongWord('abc') = $ABC,            'HexToLongWord');
+  Assert(not TryHexToLongWord('', W),            'HexToLongWord');
+  Assert(not TryHexToLongWord('x', W),           'HexToLongWord');
+
+  Assert(HexToLongWordA('FFFFFFFF') = $FFFFFFFF, 'HexToLongWord');
+  Assert(HexToLongWordA('0') = 0,                'HexToLongWord');
+  Assert(HexToLongWordA('ABC') = $ABC,           'HexToLongWord');
+  Assert(HexToLongWordA('abc') = $ABC,           'HexToLongWord');
+  Assert(not TryHexToLongWordA('', W),           'HexToLongWord');
+  Assert(not TryHexToLongWordA('x', W),          'HexToLongWord');
+
+  Assert(HexToLongWordW('FFFFFFFF') = $FFFFFFFF, 'HexToLongWord');
+  Assert(HexToLongWordW('0') = 0,                'HexToLongWord');
+  Assert(HexToLongWordW('123456') = $123456,     'HexToLongWord');
+  Assert(HexToLongWordW('ABC') = $ABC,           'HexToLongWord');
+  Assert(HexToLongWordW('abc') = $ABC,           'HexToLongWord');
+  Assert(not TryHexToLongWordW('', W),           'HexToLongWord');
+  Assert(not TryHexToLongWordW('x', W),          'HexToLongWord');
+
+  Assert(HexToLongWordU('FFFFFFFF') = $FFFFFFFF, 'HexToLongWord');
+  Assert(HexToLongWordU('0') = 0,                'HexToLongWord');
+  Assert(HexToLongWordU('123456') = $123456,     'HexToLongWord');
+  Assert(HexToLongWordU('ABC') = $ABC,           'HexToLongWord');
+  Assert(HexToLongWordU('abc') = $ABC,           'HexToLongWord');
+  Assert(not TryHexToLongWordU('', W),           'HexToLongWord');
+  Assert(not TryHexToLongWordU('x', W),          'HexToLongWord');
+
+  Assert(not TryStringToLongWordA('', W),             'StringToLongWord');
+  Assert(StringToLongWordA('123') = 123,              'StringToLongWord');
+  Assert(StringToLongWordA('4294967295') = $FFFFFFFF, 'StringToLongWord');
+  Assert(StringToLongWordA('999999999') = 999999999,  'StringToLongWord');
+
+  Assert(StringToLongWordW('0') = 0,                  'StringToLongWord');
+  Assert(StringToLongWordW('4294967295') = $FFFFFFFF, 'StringToLongWord');
+
+  Assert(StringToLongWordU('0') = 0,                  'StringToLongWord');
+  Assert(StringToLongWordU('4294967295') = $FFFFFFFF, 'StringToLongWord');
+
+  Assert(StringToLongWord('0') = 0,                   'StringToLongWord');
+  Assert(StringToLongWord('4294967295') = $FFFFFFFF,  'StringToLongWord');
+end;
+
+procedure Test_FloatStr;
+var A : AnsiString;
+    E : Extended;
+    L : Integer;
+begin
+  // FloatToStr
+  {$IFNDEF FREEPASCAL}
+  Assert(FloatToStringA(0.0) = '0');
+  Assert(FloatToStringA(-1.5) = '-1.5');
+  Assert(FloatToStringA(1.5) = '1.5');
+  Assert(FloatToStringA(1.1) = '1.1');
+  Assert(FloatToStringA(123) = '123');
+  Assert(FloatToStringA(0.00000000000001) = '0.00000000000001');
+  Assert(FloatToStringA(0.000000000000001) = '0.000000000000001');
+  Assert(FloatToStringA(0.0000000000000001) = '1E-0016');
+  Assert(FloatToStringA(0.0000000000000012345) = '0.000000000000001');
+  Assert(FloatToStringA(0.00000000000000012345) = '1.2345E-0016');
+  Assert(FloatToStringA(123456789.123456789) = '123456789.123456789');
+  Assert(FloatToStringA(123456789012345.1234567890123456789) = '123456789012345.1234');
+  Assert(FloatToStringA(1234567890123456.1234567890123456789) = '1.23456789012346E+0015');
+  Assert(FloatToStringA(0.12345) = '0.12345');
+  Assert(FloatToStringA(1e100) = '1E+0100');
+  Assert(FloatToStringA(1.234e+100) = '1.234E+0100');
+  Assert(FloatToStringA(-1.5e-100) = '-1.5E-0100');
+  Assert(FloatToStringA(1.234e+1000) = '1.234E+1000');
+  Assert(FloatToStringA(-1e-4000) = '0');
+
+  Assert(FloatToStringW(0.0) = '0');
+  Assert(FloatToStringW(-1.5) = '-1.5');
+  Assert(FloatToStringW(1.5) = '1.5');
+  Assert(FloatToStringW(1.1) = '1.1');
+  Assert(FloatToStringW(123456789.123456789) = '123456789.123456789');
+  Assert(FloatToStringW(123456789012345.1234567890123456789) = '123456789012345.1234');
+  Assert(FloatToStringW(1234567890123456.1234567890123456789) = '1.23456789012346E+0015');
+  Assert(FloatToStringW(0.12345) = '0.12345');
+  Assert(FloatToStringW(1e100) = '1E+0100');
+  Assert(FloatToStringW(1.234e+100) = '1.234E+0100');
+  Assert(FloatToStringW(1.5e-100) = '1.5E-0100');
+
+  Assert(FloatToStringU(0.0) = '0');
+  Assert(FloatToStringU(-1.5) = '-1.5');
+  Assert(FloatToStringU(1.5) = '1.5');
+  Assert(FloatToStringU(1.1) = '1.1');
+  Assert(FloatToStringU(123456789.123456789) = '123456789.123456789');
+  Assert(FloatToStringU(123456789012345.1234567890123456789) = '123456789012345.1234');
+  Assert(FloatToStringU(1234567890123456.1234567890123456789) = '1.23456789012346E+0015');
+  Assert(FloatToStringU(0.12345) = '0.12345');
+  Assert(FloatToStringU(1e100) = '1E+0100');
+  Assert(FloatToStringU(1.234e+100) = '1.234E+0100');
+  Assert(FloatToStringU(1.5e-100) = '1.5E-0100');
+
+  Assert(FloatToString(0.0) = '0');
+  Assert(FloatToString(-1.5) = '-1.5');
+  Assert(FloatToString(1.5) = '1.5');
+  Assert(FloatToString(1.1) = '1.1');
+  Assert(FloatToString(123456789.123456789) = '123456789.123456789');
+  Assert(FloatToString(123456789012345.1234567890123456789) = '123456789012345.1234');
+  Assert(FloatToString(1234567890123456.1234567890123456789) = '1.23456789012346E+0015');
+  Assert(FloatToString(0.12345) = '0.12345');
+  Assert(FloatToString(1e100) = '1E+0100');
+  Assert(FloatToString(1.234e+100) = '1.234E+0100');
+  Assert(FloatToString(1.5e-100) = '1.5E-0100');
+  {$ENDIF}
+
+  // StrToFloat
+  A := '123.456';
+  Assert(TryStringToFloatPA(PAnsiChar(A), Length(A), E, L) = convertOK);
+  Assert((E = 123.456) and (L = 7));
+  A := '-000.500A';
+  Assert(TryStringToFloatPA(PAnsiChar(A), Length(A), E, L) = convertOK);
+  Assert((E = -0.5) and (L = 8));
+  A := '1.234e+002X';
+  Assert(TryStringToFloatPA(PAnsiChar(A), Length(A), E, L) = convertOK);
+  Assert((E = 123.4) and (L = 10));
+  A := '1.2e300x';
+  Assert(TryStringToFloatPA(PAnsiChar(A), Length(A), E, L) = convertOK);
+  Assert(ApproxEqual(E, 1.2e300, 1e-2) and (L = 7));
+  A := '1.2e-300e';
+  Assert(TryStringToFloatPA(PAnsiChar(A), Length(A), E, L) = convertOK);
+  Assert(ApproxEqual(E, 1.2e-300, 1e-2) and (L = 8));
+
+  // 9999..9999 overflow
+  A := '';
+  for L := 1 to 5000 do
+    A := A + '9';
+  Assert(TryStringToFloatPA(PAnsiChar(A), Length(A), E, L) = convertOverflow);
+  Assert((E = 0.0) and (L >= 500));
+
+  // 1200..0000
+  A := '12';
+  for L := 1 to 500 do
+    A := A + '0';
+  Assert(TryStringToFloatPA(PAnsiChar(A), Length(A), E, L) = convertOK);
+  Assert(ApproxEqual(E, 1.2e+501, 1e-2) and (L = 502));
+
+  // 0.0000..0001 overflow
+  A := '0.';
+  for L := 1 to 5000 do
+    A := A + '0';
+  A := A + '1';
+  Assert(TryStringToFloatPA(PAnsiChar(A), Length(A), E, L) = convertOverflow);
+  Assert((E = 0.0) and (L >= 500));
+
+  // 0.0000..000123
+  A := '0.';
+  for L := 1 to 500 do
+    A := A + '0';
+  A := A + '123';
+  Assert(TryStringToFloatPA(PAnsiChar(A), Length(A), E, L) = convertOK);
+  Assert(ApproxEqual(E, 1.23e-501, 1e-3) and (L = 505));
+
+  // 1200..0000e500
+  A := '12';
+  for L := 1 to 500 do
+    A := A + '0';
+  A := A + 'e500';
+  Assert(TryStringToFloatPA(PAnsiChar(A), Length(A), E, L) = convertOK);
+  Assert(ApproxEqual(E, 1.2e+1001, 1e-1) and (L = 506));
+
+  Assert(StringToFloatA('0') = 0.0);
+  Assert(StringToFloatA('1') = 1.0);
+  Assert(StringToFloatA('1.5') = 1.5);
+  Assert(StringToFloatA('+1.5') = 1.5);
+  Assert(StringToFloatA('-1.5') = -1.5);
+  Assert(StringToFloatA('1.1') = 1.1);
+  Assert(StringToFloatA('-00.00') = 0.0);
+  Assert(StringToFloatA('+00.00') = 0.0);
+  Assert(StringToFloatA('0000000000000000000000001.1000000000000000000000000') = 1.1);
+  Assert(StringToFloatA('.5') = 0.5);
+  Assert(StringToFloatA('-.5') = -0.5);
+  Assert(ApproxEqual(StringToFloatA('1.123456789'), 1.123456789, 1e-10));
+  Assert(ApproxEqual(StringToFloatA('123456789.123456789'), 123456789.123456789, 1e-10));
+  Assert(ApproxEqual(StringToFloatA('1.5e500'), 1.5e500, 1e-2));
+  Assert(ApproxEqual(StringToFloatA('+1.5e+500'), 1.5e500, 1e-2));
+  Assert(ApproxEqual(StringToFloatA('1.2E-500'), 1.2e-500, 1e-2));
+  Assert(ApproxEqual(StringToFloatA('-1.2E-500'), -1.2e-500, 1e-2));
+  Assert(ApproxEqual(StringToFloatA('-1.23456789E-500'), -1.23456789e-500, 1e-9));
+
+  Assert(not TryStringToFloatA('', E));
+  Assert(not TryStringToFloatA('+', E));
+  Assert(not TryStringToFloatA('-', E));
+  Assert(not TryStringToFloatA('.', E));
+  Assert(not TryStringToFloatA(' ', E));
+  Assert(not TryStringToFloatA(' 0', E));
+  Assert(not TryStringToFloatA('0 ', E));
+  Assert(not TryStringToFloatA('--0', E));
+  Assert(not TryStringToFloatA('0X', E));
+end;
+
+procedure Test_Hash;
+begin
+  // HashStr
+  Assert(HashStrA('Fundamentals') = $3FB7796E, 'HashStr');
+  Assert(HashStrA('0') = $B2420DE,             'HashStr');
+  Assert(HashStrA('Fundamentals', 1, -1, False) = HashStrA('FUNdamentals', 1, -1, False), 'HashStr');
+  Assert(HashStrA('Fundamentals', 1, -1, True) <> HashStrA('FUNdamentals', 1, -1, True),  'HashStr');
+
+  Assert(HashStrW('Fundamentals') = $FD6ED837, 'HashStr');
+  Assert(HashStrW('0') = $6160DBF3,            'HashStr');
+  Assert(HashStrW('Fundamentals', 1, -1, False) = HashStrW('FUNdamentals', 1, -1, False), 'HashStr');
+  Assert(HashStrW('Fundamentals', 1, -1, True) <> HashStrW('FUNdamentals', 1, -1, True),  'HashStr');
+
+  {$IFDEF StringIsUnicode}
+  Assert(HashStr('Fundamentals') = $FD6ED837, 'HashStr');
+  Assert(HashStr('0') = $6160DBF3,            'HashStr');
+  {$ELSE}
+  Assert(HashStr('Fundamentals') = $3FB7796E, 'HashStr');
+  Assert(HashStr('0') = $B2420DE,             'HashStr');
+  {$ENDIF}
+  Assert(HashStr('Fundamentals', 1, -1, False) = HashStr('FUNdamentals', 1, -1, False), 'HashStr');
+  Assert(HashStr('Fundamentals', 1, -1, True) <> HashStr('FUNdamentals', 1, -1, True),  'HashStr');
 end;
 
 {$IFNDEF ManagedCode}
@@ -16192,235 +7929,20 @@ begin
 end;
 {$ENDIF}
 
-procedure Test_BaseConversion;
-var V : Boolean;
-begin
-  Assert(HexCharToInt('A') = 10,                        'HexCharToInt');
-  Assert(HexCharToInt('a') = 10,                        'HexCharToInt');
-  Assert(HexCharToInt('1') = 1,                         'HexCharToInt');
-  Assert(HexCharToInt('0') = 0,                         'HexCharToInt');
-  Assert(HexCharToInt('F') = 15,                        'HexCharToInt');
-  Assert(HexCharToInt('G') = -1,                        'HexCharToInt');
-
-  Assert(LongWordToStr(123) = '123',                    'LongWordToStr');
-  Assert(LongWordToStr(0) = '0',                        'LongWordToStr');
-  Assert(LongWordToStr($FFFFFFFF) = '4294967295',       'LongWordToStr');
-  Assert(LongWordToStr(10000) = '10000',                'LongWordToStr');
-  Assert(LongWordToStr(99999) = '99999',                'LongWordToStr');
-  Assert(LongWordToStr(1, 1) = '1',                     'LongWordToStr');
-  Assert(LongWordToStr(1, 3) = '001',                   'LongWordToStr');
-  Assert(LongWordToStr(1234, 3) = '1234',               'LongWordToStr');
-
-  Assert(DecStrToLongWord('', V) = 0,                   'DecStrToLongWord');
-  Assert(V = False,                                     'DecStrToLongWord');
-  Assert(DecStrToLongWord('123', V) = 123,              'DecStrToLongWord');
-  Assert(V = True,                                      'DecStrToLongWord');
-  Assert(DecStrToLongWord('4294967295', V) = $FFFFFFFF, 'DecStrToLongWord');
-  Assert(V = True,                                      'DecStrToLongWord');
-  Assert(DecStrToLongWord('99999', V) = 99999,          'DecStrToLongWord');
-
-  Assert(LongWordToHex(0) = '0',                        'LongWordToHex');
-  Assert(LongWordToHex($FFFFFFFF) = 'FFFFFFFF',         'LongWordToHex');
-  Assert(LongWordToHex($10000) = '10000',               'LongWordToHex');
-  Assert(LongWordToHex($12345678) = '12345678',         'LongWordToHex');
-  Assert(LongWordToHex($AB, 4) = '00AB',                'LongWordToHex');
-  Assert(LongWordToHex($ABCD, 8) = '0000ABCD',          'LongWordToHex');
-  Assert(LongWordToHex(0, 8) = '00000000',              'LongWordToHex');
-  Assert(LongWordToHex($CDEF, 2) = 'CDEF',              'LongWordToHex');
-
-  Assert(HexStrToLongWord('FFFFFFFF', V) = $FFFFFFFF,   'HexStrToLongWord');
-  Assert(V = True,                                      'HexStrToLongWord');
-  Assert(HexStrToLongWord('0', V) = 0,                  'HexStrToLongWord');
-  Assert(V = True,                                      'HexStrToLongWord');
-  Assert(HexStrToLongWord('123456', V) = $123456,       'HexStrToLongWord');
-  Assert(HexStrToLongWord('ABC', V) = $ABC,             'HexStrToLongWord');
-  Assert(HexStrToLongWord('', V) = 0,                   'HexStrToLongWord');
-  Assert(V = False,                                     'HexStrToLongWord');
-  Assert(HexStrToLongWord('x', V) = 0,                  'HexStrToLongWord');
-  Assert(V = False,                                     'HexStrToLongWord');
-  Assert(HexStrToLongWord('1000', V) = $1000,           'HexStrToLongWord');
-end;
-
-procedure Test_BitFunctions;
-begin
-  Assert(SetBit($100F, 5) = $102F,            'SetBit');
-  Assert(ClearBit($102F, 5) = $100F,          'ClearBit');
-  Assert(ToggleBit($102F, 5) = $100F,         'ToggleBit');
-  Assert(ToggleBit($100F, 5) = $102F,         'ToggleBit');
-  Assert(IsBitSet($102F, 5),                  'IsBitSet');
-  Assert(not IsBitSet($100F, 5),              'IsBitSet');
-  Assert(IsHighBitSet($80000000),             'IsHighBitSet');
-  Assert(not IsHighBitSet($00000001),         'IsHighBitSet');
-  Assert(not IsHighBitSet($7FFFFFFF),         'IsHighBitSet');
-
-  Assert(SetBitScanForward(0) = -1,           'SetBitScanForward');
-  Assert(SetBitScanForward($1020) = 5,        'SetBitScanForward');
-  Assert(SetBitScanReverse($1020) = 12,       'SetBitScanForward');
-  Assert(SetBitScanForward($1020, 6) = 12,    'SetBitScanForward');
-  Assert(SetBitScanReverse($1020, 11) = 5,    'SetBitScanForward');
-  Assert(ClearBitScanForward($FFFFFFFF) = -1, 'ClearBitScanForward');
-  Assert(ClearBitScanForward($1020) = 0,      'ClearBitScanForward');
-  Assert(ClearBitScanReverse($1020) = 31,     'ClearBitScanForward');
-  Assert(ClearBitScanForward($1020, 5) = 6,   'ClearBitScanForward');
-  Assert(ClearBitScanReverse($1020, 12) = 11, 'ClearBitScanForward');
-
-  Assert(ReverseBits($12345678) = $1E6A2C48,  'ReverseBits');
-  Assert(ReverseBits($1) = $80000000,         'ReverseBits');
-  Assert(ReverseBits($80000000) = $1,         'ReverseBits');
-  Assert(SwapEndian($12345678) = $78563412,   'SwapEndian');
-
-  Assert(BitCount($12341234) = 10,            'BitCount');
-  Assert(IsPowerOfTwo(1),                     'IsPowerOfTwo');
-  Assert(IsPowerOfTwo(2),                     'IsPowerOfTwo');
-  Assert(not IsPowerOfTwo(3),                 'IsPowerOfTwo');
-
-  Assert(RotateLeftBits32(0, 1) = 0,          'RotateLeftBits32');
-  Assert(RotateLeftBits32(1, 0) = 1,          'RotateLeftBits32');
-  Assert(RotateLeftBits32(1, 1) = 2,          'RotateLeftBits32');
-  Assert(RotateLeftBits32($80000000, 1) = 1,  'RotateLeftBits32');
-  Assert(RotateLeftBits32($80000001, 1) = 3,  'RotateLeftBits32');
-  Assert(RotateLeftBits32(1, 2) = 4,          'RotateLeftBits32');
-  Assert(RotateLeftBits32(1, 31) = $80000000, 'RotateLeftBits32');
-  Assert(RotateLeftBits32(5, 2) = 20,         'RotateLeftBits32');
-  Assert(RotateRightBits32(0, 1) = 0,         'RotateRightBits32');
-  Assert(RotateRightBits32(1, 0) = 1,         'RotateRightBits32');
-  Assert(RotateRightBits32(1, 1) = $80000000, 'RotateRightBits32');
-  Assert(RotateRightBits32(2, 1) = 1,         'RotateRightBits32');
-  Assert(RotateRightBits32(4, 2) = 1,         'RotateRightBits32');
-
-  Assert(LowBitMask(10) = $3FF,               'LowBitMask');
-  Assert(HighBitMask(28) = $F0000000,         'HighBitMask');
-  Assert(RangeBitMask(2, 6) = $7C,            'RangeBitMask');
-
-  Assert(SetBitRange($101, 2, 6) = $17D,      'SetBitRange');
-  Assert(ClearBitRange($17D, 2, 6) = $101,    'ClearBitRange');
-  Assert(ToggleBitRange($17D, 2, 6) = $101,   'ToggleBitRange');
-  Assert(IsBitRangeSet($17D, 2, 6),           'IsBitRangeSet');
-  Assert(not IsBitRangeSet($101, 2, 6),       'IsBitRangeSet');
-  Assert(not IsBitRangeClear($17D, 2, 6),     'IsBitRangeClear');
-  Assert(IsBitRangeClear($101, 2, 6),         'IsBitRangeClear');
-end;
-
-procedure Test_IntegerArray;
-var S, T : IntegerArray;
-    F    : Integer;
-begin
-  S := nil;
-  for F := 1 to 100 do
-    begin
-      Append(S, F);
-      Assert(Length(S) = F,                 'Append');
-      Assert(S[F - 1] = F,                  'Append');
-    end;
-
-  T := Copy(S);
-  AppendIntegerArray(S, T);
-  for F := 1 to 100 do
-    Assert(S[F + 99] = F,                   'Append');
-  Assert(PosNext(60, S) = 59,               'PosNext');
-  Assert(PosNext(60, T) = 59,               'PosNext');
-  Assert(PosNext(60, S, 59) = 159,          'PosNext');
-  Assert(PosNext(60, T, 59) = -1,           'PosNext');
-  Assert(PosNext(60, T, -1, True) = 59,     'PosNext');
-  Assert(PosNext(60, T, 59, True) = -1,     'PosNext');
-
-  for F := 1 to 100 do
-    begin
-      Remove(S, PosNext(F, S), 1);
-      Assert(Length(S) = 200 - F,           'Remove');
-    end;
-  for F := 99 downto 0 do
-    begin
-      Remove(S, PosNext(F xor 3 + 1, S), 1);
-      Assert(Length(S) = F,                 'Remove');
-    end;
-
-  S := AsIntegerArray([3, 1, 2, 5, 4]);
-  Sort(S);
-  Assert(S[0] = 1, 'Sort');
-  Assert(S[1] = 2, 'Sort');
-  Assert(S[2] = 3, 'Sort');
-  Assert(S[3] = 4, 'Sort');
-  Assert(S[4] = 5, 'Sort');
-
-  S := AsIntegerArray([3, 5, 5, 2, 5, 5, 1]);
-  Sort(S);
-  Assert(S[0] = 1, 'Sort');
-  Assert(S[1] = 2, 'Sort');
-  Assert(S[2] = 3, 'Sort');
-  Assert(S[3] = 5, 'Sort');
-  Assert(S[4] = 5, 'Sort');
-  Assert(S[5] = 5, 'Sort');
-  Assert(S[6] = 5, 'Sort');
-
-  SetLength(S, 1000);
-  for F := 0 to 999 do
-    S[F] := F mod 5;
-  Sort(S);
-  for F := 0 to 999 do
-    Assert(S[F] = F div 200, 'Sort');
-
-  S := AsIntegerArray([6, 3, 5, 1]);
-  T := AsIntegerArray([1, 2, 3, 4]);
-  Sort(S, T);
-  Assert(S[0] = 1, 'Sort');
-  Assert(S[1] = 3, 'Sort');
-  Assert(S[2] = 5, 'Sort');
-  Assert(S[3] = 6, 'Sort');
-  Assert(T[0] = 4, 'Sort');
-  Assert(T[1] = 2, 'Sort');
-  Assert(T[2] = 3, 'Sort');
-  Assert(T[3] = 1, 'Sort');
-end;
-
-procedure Test_ObjectArray;
-var S, T : ObjectArray;
-    F    : Integer;
-    V    : TObject;
-begin
-  S := nil;
-  V := TObject.Create;
-  try
-    for F := 1 to 100 do
-      begin
-        Append(S, V);
-        Assert(Length(S) = F,            'Append');
-        Assert(S[F - 1] = V,             'Append');
-      end;
-    T := Copy(S);
-    for F := 1 to 10 do
-      begin
-        Remove(S, F - 1, 1, False);
-        Assert(Length(S) = 100 - F,      'Remove');
-      end;
-    Remove(S, 89, 1, False);
-    Assert(Length(S) = 89,               'Remove');
-    Remove(S, 87, 1, False);
-    Assert(Length(S) = 88,               'Remove');
-    AppendObjectArray(S, T);
-    Assert(Length(S) = 188,              'AppendObjectArray');
-    Remove(S, 10, 88, False);
-    Assert(Length(S) = 100,              'Remove');
-    Remove(S, 0, 100, False);
-    Assert(Length(S) = 0,                'Remove');
-  finally
-    V.Free;
-  end;
-end;
-
 procedure SelfTest;
 begin
   {$IFDEF CPU_INTEL386}
   Set8087CW(Default8087CW);
   {$ENDIF}
   Test_Misc;
+  Test_BitFunctions;
+  Test_Float;
+  Test_IntStr;
+  Test_FloatStr;
+  Test_Hash;
   {$IFNDEF ManagedCode}
   Test_Memory;
   {$ENDIF}
-  Test_BaseConversion;
-  Test_BitFunctions;
-  Test_IntegerArray;
-  Test_ObjectArray;
 end;
 {$ENDIF}
 

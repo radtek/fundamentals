@@ -46,8 +46,8 @@
 {                                                                              }
 { Supported compilers:                                                         }
 {                                                                              }
-{   Borland Delphi 5/6/7/2005/2006/2007 Win32 i386                             }
-{   Borland Delphi 2009 .NET                                                   }
+{   Delphi 5/6/7/2005/2006/2007 Win32 i386                                     }
+{   Delphi 2009 .NET                                                           }
 {   FreePascal 2.0.1 Win32 i386                                                }
 {   FreePascal 2.0.1 Linux i386                                                }
 {   FreePascal 2.4.0 OSX x86-64                                                }
@@ -55,6 +55,7 @@
 {******************************************************************************}
 
 {$INCLUDE cDefines.inc}
+
 unit cTimers;
 
 interface
@@ -84,6 +85,7 @@ const
 
 function  GetTick: LongWord;
 function  TickDelta(const D1, D2: LongWord): Integer;
+function  TickDeltaW(const D1, D2: LongWord): LongWord;
 
 
 
@@ -145,6 +147,13 @@ implementation
 uses
   Windows;
 {$ENDIF}
+{$IFDEF OS_UNIX}
+  {$IFDEF FREEPASCAL}
+uses
+  BaseUnix,
+  Unix;
+  {$ENDIF}
+{$ENDIF}
 
 
 
@@ -168,6 +177,11 @@ end;
 function TickDelta(const D1, D2: LongWord): Integer;
 begin
   Result := Integer(D2 - D1);
+end;
+
+function TickDeltaW(const D1, D2: LongWord): LongWord;
+begin
+  Result := LongWord(D2 - D1);
 end;
 {$IFDEF QOn}{$Q+}{$ENDIF}
 
@@ -263,12 +277,18 @@ begin
 end;
 {$IFDEF QOn}{$Q+}{$ENDIF}
 
+{$IFOPT Q+}{$DEFINE QOn}{$ELSE}{$UNDEF QOn}{$ENDIF}{$Q-}
 procedure ResumeTimer(var StoppedTimer: THPTimer);
 var T : THPTimer;
 begin
   StartTimer(T);
+  {$IFDEF DELPHI5}
+  StoppedTimer := T - StoppedTimer;
+  {$ELSE}
   StoppedTimer := Int64(T - StoppedTimer);
+  {$ENDIF}
 end;
+{$IFDEF QOn}{$Q+}{$ENDIF}
 
 procedure InitStoppedTimer(var Timer: THPTimer);
 begin
@@ -292,7 +312,11 @@ begin
   if not TimerRunning then
     Result := Timer div HighPrecisionMillisecondFactor
   else
+    {$IFDEF DELPHI5}
+    Result := Integer((GetHighPrecisionCounter - Timer) div HighPrecisionMillisecondFactor);
+    {$ELSE}
     Result := Integer(Int64(GetHighPrecisionCounter - Timer) div HighPrecisionMillisecondFactor);
+    {$ENDIF}
 end;
 {$IFDEF QOn}{$Q+}{$ENDIF}
 
@@ -414,23 +438,31 @@ end;
 { Test cases                                                                   }
 {                                                                              }
 {$IFDEF DEBUG}{$IFDEF SELFTEST}
-{$ASSERTIONS ON}
+{$ASSERTIONS ON}{$WARNINGS OFF}
 procedure SelfTest;
 var A, B : LongWord;
     T : THPTimer;
 begin
   Assert(TickDelta(0, 10) = 10);
   Assert(TickDelta($FFFFFFFF, 10) = 11);
+  Assert(TickDelta(10, 0) = -10);
+  Assert(TickDelta($FFFFFFF6, 0) = 10);
+  Assert(TickDeltaW(0, 10) = 10);
+  Assert(TickDeltaW($FFFFFFFF, 10) = 11);
+  Assert(TickDeltaW(10, 0) = $FFFFFFF6);
+  Assert(TickDeltaW($FFFFFFF6, 0) = 10);
   {$IFDEF WindowsPlatform}
   Assert(CPUClockFrequency > 0);
   {$ENDIF}
-  // test timers using delay
+  // test timers using wait
   StartTimer(T);
   A := GetTick;
-  WaitMicroseconds(20000); // 20ms
+  WaitMicroseconds(30000); // 30ms
   B := GetTick;
   StopTimer(T);
-  Assert(TickDelta(A, B) > 0); // FAILS sometimes for less than 20ms wait above
+  Assert(TickDelta(A, B) > 0); // sometimes fails for less than 20ms wait above under Windows
+  Assert(TickDeltaW(A, B) > 0);
+  Assert(TickDelta(A, B) = TickDeltaW(A, B));
   Assert(MillisecondsElapsed(T, False) >= 10);
 end;
 {$ENDIF}{$ENDIF}

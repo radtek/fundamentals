@@ -5,7 +5,7 @@
 {   File version:     4.10                                                     }
 {   Description:      XML document                                             }
 {                                                                              }
-{   Copyright:        Copyright © 2000-2011, David J Butler                    }
+{   Copyright:        Copyright © 2000-2012, David J Butler                    }
 {                     All rights reserved.                                     }
 {                     Redistribution and use in source and binary forms, with  }
 {                     or without modification, are permitted provided that     }
@@ -35,18 +35,18 @@
 {                                                                              }
 { Revision history:                                                            }
 {                                                                              }
-{   11/05/2000  0.01  Created cXML from cInternetStandards.                    }
-{   08/05/2001  0.02  Complete revision.                                       }
-{   11/05/2001  2.03  Added DTD classes.                                       }
-{   15/01/2002  2.04  Bug fixes and 'Pretty Printer' by Laurent Baudrillard.   }
-{   17/04/2002  2.05  Created cXMLDocument from cXML.                          }
-{   26/04/2002  2.06  Revised for Unicode support.                             }
+{   2000/05/11  0.01  Created cXML from cInternetStandards.                    }
+{   2001/05/08  0.02  Complete revision.                                       }
+{   2001/05/11  2.03  Added DTD classes.                                       }
+{   2002/01/15  2.04  Bug fixes and 'Pretty Printer' by Laurent Baudrillard.   }
+{   2002/04/17  2.05  Created cXMLDocument from cXML.                          }
+{   2002/04/26  2.06  Revised for Unicode support.                             }
 {                     Merged base classes into AxmlType.                       }
 {                     Refactor PrettyPrinter to general printer.               }
-{   07/09/2003  3.07  Revised for Fundamentals 3.                              }
-{   21/02/2004  3.08  Improvements.                                            }
-{   01/04/2004  3.09  Compilable with FreePascal 1.9.2 Win32 i386.             }
-{   09/08/2007  3.10  Fixed memory leak in TxmlAttribute.                      }
+{   2003/09/07  3.07  Revised for Fundamentals 3.                              }
+{   2004/02/21  3.08  Improvements.                                            }
+{   2004/04/01  3.09  Compilable with FreePascal 1.9.2 Win32 i386.             }
+{   2007/08/09  3.10  Fixed memory leak in TxmlAttribute.                      }
 {                                                                              }
 {******************************************************************************}
 
@@ -54,6 +54,7 @@
 {$IFDEF FREEPASCAL}{$IFDEF DEBUG}
   {$WARNINGS OFF}{$HINTS OFF}
 {$ENDIF}{$ENDIF}
+
 unit cXMLDocument;
 
 interface
@@ -62,7 +63,7 @@ uses
   { Fundamentals }
   cUtils,
   cStreams,
-  cUnicode,
+  cStrings,
   cXMLFunctions;
 
 
@@ -106,7 +107,7 @@ type
     FIndentLength : Integer;
 
     procedure PrintToken(const TokenType: TxmlPrintToken;
-              const Txt: WideString); virtual; abstract;
+              const Txt: UnicodeString); virtual; abstract;
     procedure PrintSpecial(const SpecialSymbol: TxmlPrintSpecialSymbol;
               const Count: Integer); virtual; abstract;
 
@@ -117,24 +118,24 @@ type
     property  Options: TxmlPrintOptions read FOptions write FOptions;
     property  IndentLength: Integer read FIndentLength write FIndentLength;
 
-    function  GetQuoteChar(const Txt: WideString): WideChar;
+    function  GetQuoteChar(const Txt: UnicodeString): WideChar;
 
     procedure PrintEOL;
     procedure PrintSpace(const Count: Integer = 1);
     procedure PrintTab(const Count: Integer = 1);
     procedure PrintIndent(const IndentLevel: Integer);
 
-    procedure PrintDefault(const Txt: WideString);
-    procedure PrintText(const Txt: WideString);
-    procedure PrintSymbol(const Txt: WideString);
-    procedure PrintQuoteStr(const Txt: WideString);
-    procedure PrintSafeQuotedText(const Txt: WideString);
+    procedure PrintDefault(const Txt: UnicodeString);
+    procedure PrintText(const Txt: UnicodeString);
+    procedure PrintSymbol(const Txt: UnicodeString);
+    procedure PrintQuoteStr(const Txt: UnicodeString);
+    procedure PrintSafeQuotedText(const Txt: UnicodeString);
 
-    procedure PrintName(const Txt: WideString);
-    procedure PrintTagName(const Txt: WideString);
-    procedure PrintAttrName(const Txt: WideString);
+    procedure PrintName(const Txt: UnicodeString);
+    procedure PrintTagName(const Txt: UnicodeString);
+    procedure PrintAttrName(const Txt: UnicodeString);
 
-    procedure PrintComment(const Txt: WideString);
+    procedure PrintComment(const Txt: UnicodeString);
   end;
 
 
@@ -146,10 +147,10 @@ type
 type
   TxmlStringPrinter = class(AxmlPrinter)
   protected
-    FxmlWideString : TWideStringWriter;
+    FxmlWideString : TUnicodeStringWriter;
 
     procedure PrintToken(const TokenType: TxmlPrintToken;
-              const Txt: WideString); override;
+              const Txt: UnicodeString); override;
     procedure PrintSpecial(const SpecialSymbol: TxmlPrintSpecialSymbol;
               const Count: Integer); override;
 
@@ -181,49 +182,50 @@ type
   protected
     procedure Init; virtual;
 
-    function  GetName: WideString; virtual;
-    function  GetNameSpace: WideString;
-    function  GetLocalName: WideString;
+    function  GetName: UnicodeString; virtual;
+    function  GetNameSpace: UnicodeString;
+    function  GetLocalName: UnicodeString;
 
     function  GetChildCount: Integer; virtual;
     function  GetChildByIndex(const Idx: Integer): AxmlType; virtual;
 
-    function  GetChildByName(const Name: WideString): AxmlType;
+    function  GetChildByName(const Name: UnicodeString): AxmlType;
     function  PosNext(var C: AxmlType; const ClassType: CxmlType = nil;
               const PrevPos: Integer = -1): Integer; overload;
-    function  PosNext(var C: AxmlType; const Name: WideString;
+    function  PosNext(var C: AxmlType; const Name: UnicodeString;
               const ClassType: CxmlType = nil;
               const PrevPos: Integer = -1): Integer; overload;
     function  Find(const ClassType: CxmlType): AxmlType; overload;
-    function  Find(const Name: WideString;
+    function  Find(const Name: UnicodeString;
               const ClassType: CxmlType = nil): AxmlType; overload;
 
   public
     constructor Create;
 
-    property  Name: WideString read GetName;  // Name ::= <NameSpace> ':' <LocalName>
-    property  NameSpace: WideString read GetNameSpace;
-    property  LocalName: WideString read GetLocalName;
+    property  Name: UnicodeString read GetName;  // Name ::= <NameSpace> ':' <LocalName>
+    property  NameSpace: UnicodeString read GetNameSpace;
+    property  LocalName: UnicodeString read GetLocalName;
 
-    function  IsName(const Name: WideString): Boolean;
+    function  IsName(const Name: UnicodeString): Boolean;
     function  IsAsciiName(const Name: AnsiString;
               const CaseSensitive: Boolean = True): Boolean;
 
     property  ChildCount: Integer read GetChildCount;
     property  ChildByIndex[const Idx: Integer]: AxmlType read GetChildByIndex;
-    property  ChildByName[const Name: WideString]: AxmlType read GetChildByName; default;
+    property  ChildByName[const Name: UnicodeString]: AxmlType read GetChildByName; default;
     function  GetChildCountByClass(const ClassType: CxmlType = nil): Integer;
-    function  GetNames(const ClassType: CxmlType = nil): WideStringArray;
+    function  GetNames(const ClassType: CxmlType = nil): UnicodeStringArray;
 
     procedure AddChild(const Child: AxmlType); virtual;
     procedure AddChildren(const Children: Array of AxmlType);
     function  AddAssigned(const Child: AxmlType): Boolean;
 
-    function  TextContent(const Declarations: TxmlMarkupDeclarationList = nil): WideString; virtual;
+    function  TextContent(const Declarations: TxmlMarkupDeclarationList = nil): UnicodeString; virtual;
 
     procedure Print(const D: AxmlPrinter; const IndentLevel: Integer = 0); virtual;
-    function  AsWideString(const Options: TxmlPrintOptions = xmlDefaultPrintOptions;
-              const IndentLength: Integer = xmlDefaultIndentLength): WideString;
+
+    function  AsUnicodeString(const Options: TxmlPrintOptions = xmlDefaultPrintOptions;
+              const IndentLength: Integer = xmlDefaultIndentLength): UnicodeString;
     function  AsUTF8String(const Options: TxmlPrintOptions = xmlDefaultPrintOptions;
               const IndentLength: Integer = xmlDefaultIndentLength): AnsiString;
   end;
@@ -248,7 +250,7 @@ type
     procedure AddChild(const Child: AxmlType); override;
 
     procedure Print(const D: AxmlPrinter; const IndentLevel: Integer = 0); override;
-    function  TextContent(const Declarations: TxmlMarkupDeclarationList = nil): WideString; override;
+    function  TextContent(const Declarations: TxmlMarkupDeclarationList = nil): UnicodeString; override;
   end;
 
 
@@ -261,15 +263,15 @@ type
   {   [..]  CharData ::=  [^<&]*                                               }
   TxmlCharData = class(AxmlType)
   protected
-    FData : WideString;
+    FData : UnicodeString;
 
   public
-    constructor Create(const Data: WideString);
+    constructor Create(const Data: UnicodeString);
 
     procedure Print(const D: AxmlPrinter; const IndentLevel: Integer = 0); override;
-    function  TextContent(const Declarations: TxmlMarkupDeclarationList = nil): WideString; override;
+    function  TextContent(const Declarations: TxmlMarkupDeclarationList = nil): UnicodeString; override;
 
-    property  Data: WideString read FData;
+    property  Data: UnicodeString read FData;
   end;
 
   { TxmlCDSect                                                                 }
@@ -279,7 +281,7 @@ type
   {   [21]  CDEnd ::=  ']]>'                                                   }
   TxmlCDSect = class(TxmlCharData)
   public
-    constructor Create(const Data: WideString);
+    constructor Create(const Data: UnicodeString);
 
     procedure Print(const D: AxmlPrinter; const IndentLevel: Integer = 0); override;
   end;
@@ -299,15 +301,15 @@ type
   {   [68]  EntityRef ::=  '&' Name ';'                                        }
   TxmlGeneralEntityRef = class(AxmlReference)
   protected
-    FRefName : WideString;
+    FRefName : UnicodeString;
 
   public
-    constructor Create(const RefName: WideString);
+    constructor Create(const RefName: UnicodeString);
 
     procedure Print(const D: AxmlPrinter; const IndentLevel: Integer = 0); override;
-    function  TextContent(const Declarations: TxmlMarkupDeclarationList = nil): WideString; override;
+    function  TextContent(const Declarations: TxmlMarkupDeclarationList = nil): UnicodeString; override;
 
-    property  RefName: WideString read FRefName;
+    property  RefName: UnicodeString read FRefName;
   end;
 
   { TxmlCharRef                                                                }
@@ -321,7 +323,7 @@ type
     constructor Create(const Number: UCS4Char; const Hex: Boolean = True);
 
     procedure Print(const D: AxmlPrinter; const IndentLevel: Integer = 0); override;
-    function  TextContent(const Declarations: TxmlMarkupDeclarationList = nil): WideString; override;
+    function  TextContent(const Declarations: TxmlMarkupDeclarationList = nil): UnicodeString; override;
 
     property  Hex: Boolean read FHex write FHex;
     property  Number: UCS4Char read FNumber write FNumber;
@@ -331,15 +333,15 @@ type
   {   [69]  PEReference ::=  '%' Name ';'                                      }
   TxmlPEReference = class(AxmlType)
   protected
-    FRefName : WideString;
+    FRefName : UnicodeString;
 
   public
-    constructor Create(const RefName: WideString);
+    constructor Create(const RefName: UnicodeString);
 
     procedure Print(const D: AxmlPrinter; const IndentLevel: Integer = 0); override;
-    function  TextContent(const Declarations: TxmlMarkupDeclarationList = nil): WideString; override;
+    function  TextContent(const Declarations: TxmlMarkupDeclarationList = nil): UnicodeString; override;
 
-    property  RefName: WideString read FRefName;
+    property  RefName: UnicodeString read FRefName;
   end;
 
   {   [..]  ReferenceText = (CharData | Reference | PEReference)*              }
@@ -355,26 +357,26 @@ type
   {   Represents a literal formatting string.                                  }
   TxmlLiteralFormatting = class(AxmlType)
   protected
-    FText : WideString;
+    FText : UnicodeString;
 
   public
-    constructor Create(const Text: WideString);
+    constructor Create(const Text: UnicodeString);
 
     procedure Print(const D: AxmlPrinter; const IndentLevel: Integer = 0); override;
 
-    property  Text: WideString read FText;
+    property  Text: UnicodeString read FText;
   end;
 
   { TxmlLiteralFormattingList                                                  }
   {   Represents a list of formatting tokens.                                  }
   TxmlLiteralFormattingList = class(TxmlTypeList)
-    procedure Add(const Text: WideString); reintroduce; overload;
+    procedure Add(const Text: UnicodeString); reintroduce; overload;
   end;
 
   { TxmlSpace                                                                  }
   {   [3]   S ::=  (#x20 | #x9 | #xD | #xA)+                                   }
   TxmlSpace = class(TxmlLiteralFormatting)
-    constructor Create(const Text: WideString);
+    constructor Create(const Text: UnicodeString);
   end;
 
   {   [..]  QuotedReferenceText ::=  "'" ReferenceText "'" |                   }
@@ -402,29 +404,29 @@ type
   {   [15]  Comment ::=  '<!--' ((Char - '-') | ('-' (Char - '-')))* '-->'     }
   TxmlComment = class(AxmlType)
   protected
-    FText : WideString;
+    FText : UnicodeString;
 
   public
-    constructor Create(const Text: WideString);
+    constructor Create(const Text: UnicodeString);
 
     procedure Print(const D: AxmlPrinter; const IndentLevel: Integer = 0); override;
-    property  Text: WideString read FText;
+    property  Text: UnicodeString read FText;
   end;
 
   { TxmlProcessingInstruction                                                  }
   {   [16]  PI ::=  '<?' PITarget (S (Char* - (Char* '?>' Char*)))? '?>'       }
   TxmlProcessingInstruction = class(AxmlType)
   protected
-    FText     : WideString;
-    FPITarget : WideString;
+    FText     : UnicodeString;
+    FPITarget : UnicodeString;
 
   public
-    constructor Create(const PITarget, Text: WideString);
+    constructor Create(const PITarget, Text: UnicodeString);
 
     procedure Print(const D: AxmlPrinter; const IndentLevel: Integer = 0); override;
 
-    property  PITarget: WideString read FPITarget;
-    property  Text: WideString read FText;
+    property  PITarget: UnicodeString read FPITarget;
+    property  Text: UnicodeString read FText;
   end;
 
   { TxmlMiscList                                                               }
@@ -432,11 +434,11 @@ type
   {   [27]  Misc ::=  Comment | PI |  S                                        }
   TxmlMiscList = class(TxmlTypeList)
   public
-    function  FirstComment: WideString;
-    function  Comments: WideStringArray;
+    function  FirstComment: UnicodeString;
+    function  Comments: UnicodeStringArray;
 
-    function  FirstProcessingInstruction(const PITarget: WideString): WideString;
-    function  ProcessingInstructions(const PITarget: WideString): WideStringArray;
+    function  FirstProcessingInstruction(const PITarget: UnicodeString): UnicodeString;
+    function  ProcessingInstructions(const PITarget: UnicodeString): UnicodeStringArray;
   end;
 
 
@@ -460,24 +462,24 @@ type
   {   [41]  Attribute ::=  Name Eq AttValue                                    }
   TxmlAttribute = class(AxmlType)
   protected
-    FName  : WideString;
+    FName  : UnicodeString;
     FValue : TxmlAttValue;
 
-    function  GetName: WideString; override;
+    function  GetName: UnicodeString; override;
 
   public
-    constructor Create(const Name: WideString; const Value: TxmlAttValue); overload;
+    constructor Create(const Name: UnicodeString; const Value: TxmlAttValue); overload;
     destructor Destroy; override;
 
     procedure Print(const D: AxmlPrinter; const IndentLevel: Integer = 0); override;
 
     property  Value: TxmlAttValue read FValue;
-    function  TextContent(const Declarations: TxmlMarkupDeclarationList = nil): WideString; override;
+    function  TextContent(const Declarations: TxmlMarkupDeclarationList = nil): UnicodeString; override;
     function  IntegerContent(const Declarations: TxmlMarkupDeclarationList = nil; const DefaultValue: Int64 = -1): Int64;
     function  FloatContent(const Declarations: TxmlMarkupDeclarationList = nil; const DefaultValue: Extended = 0.0): Extended;
 
     function  IsNameSpaceDeclaration: Boolean;
-    function  GetNameSpaceDeclaration(var NameSpace, URI: WideString): Boolean;
+    function  GetNameSpaceDeclaration(var NameSpace, URI: UnicodeString): Boolean;
   end;
 
   { AxmlAttributeList                                                          }
@@ -486,27 +488,27 @@ type
   protected
     procedure InitList(const List: TxmlTypeList); virtual;
     function  GetAttrCount: Integer; virtual; abstract;
-    function  GetAttrNames: WideStringArray; virtual; abstract;
+    function  GetAttrNames: UnicodeStringArray; virtual; abstract;
 
   public
     constructor Create(const List: TxmlTypeList);
 
     property  AttrCount: Integer read GetAttrCount;
-    property  AttrNames: WideStringArray read GetAttrNames;
-    function  HasAttribute(const Name: WideString): Boolean; virtual; abstract;
+    property  AttrNames: UnicodeStringArray read GetAttrNames;
+    function  HasAttribute(const Name: UnicodeString): Boolean; virtual; abstract;
     function  FindNextAttr(var A: TxmlAttribute; const Idx: Integer = -1): Integer; virtual; abstract;
 
-    function  AttrAsText(const Name: WideString;
+    function  AttrAsText(const Name: UnicodeString;
               const Declarations: TxmlMarkupDeclarationList = nil;
-              const DefaultValue: WideString = ''): WideString; virtual; abstract;
-    function  AttrAsInteger(const Name: WideString;
+              const DefaultValue: UnicodeString = ''): UnicodeString; virtual; abstract;
+    function  AttrAsInteger(const Name: UnicodeString;
               const Declarations: TxmlMarkupDeclarationList = nil;
               const DefaultValue: Int64 = -1): Int64; virtual;
-    function  AttrAsFloat(const Name: WideString;
+    function  AttrAsFloat(const Name: UnicodeString;
               const Declarations: TxmlMarkupDeclarationList = nil;
               const DefaultValue: Extended = 0.0): Extended; virtual;
 
-    function  GetNameSpaceURI(const NameSpace: WideString): WideString;
+    function  GetNameSpaceURI(const NameSpace: UnicodeString): UnicodeString;
   end;
 
   { TxmlAttributeList                                                          }
@@ -517,35 +519,35 @@ type
 
     procedure InitList(const List: TxmlTypeList); override;
     function  GetAttrCount: Integer; override;
-    function  GetAttrNames: WideStringArray; override;
+    function  GetAttrNames: UnicodeStringArray; override;
 
   public
     destructor Destroy; override;
 
     procedure Print(const D: AxmlPrinter; const IndentLevel: Integer = 0); override;
-    function  HasAttribute(const Name: WideString): Boolean; override;
+    function  HasAttribute(const Name: UnicodeString): Boolean; override;
     function  FindNextAttr(var A: TxmlAttribute; const Idx: Integer = -1): Integer; override;
-    function  AttrAsText(const Name: WideString; const Declarations: TxmlMarkupDeclarationList = nil; const DefaultValue: WideString = ''): WideString; override;
-    function  AttrAsInteger(const Name: WideString; const Declarations: TxmlMarkupDeclarationList = nil; const DefaultValue: Int64 = -1): Int64; override;
-    function  AttrAsFloat(const Name: WideString; const Declarations: TxmlMarkupDeclarationList = nil; const DefaultValue: Extended = 0.0): Extended; override;
+    function  AttrAsText(const Name: UnicodeString; const Declarations: TxmlMarkupDeclarationList = nil; const DefaultValue: UnicodeString = ''): UnicodeString; override;
+    function  AttrAsInteger(const Name: UnicodeString; const Declarations: TxmlMarkupDeclarationList = nil; const DefaultValue: Int64 = -1): Int64; override;
+    function  AttrAsFloat(const Name: UnicodeString; const Declarations: TxmlMarkupDeclarationList = nil; const DefaultValue: Extended = 0.0): Extended; override;
   end;
 
   {   [..]  TextAttribute ::=  Name Eq QuotedText                              }
   { TxmlTextAttribute                                                          }
   TxmlTextAttribute = class(AxmlType)
   protected
-    FName    : WideString;
+    FName    : UnicodeString;
     FValue   : TxmlQuotedText;
 
-    function  GetName: WideString; override;
+    function  GetName: UnicodeString; override;
 
   public
-    constructor Create(const Name: WideString; const Value: TxmlQuotedText); overload;
-    constructor Create(const Name, TextValue: WideString); overload;
+    constructor Create(const Name: UnicodeString; const Value: TxmlQuotedText); overload;
+    constructor Create(const Name, TextValue: UnicodeString); overload;
 
     procedure Print(const D: AxmlPrinter; const IndentLevel: Integer = 0); override;
     property  Value: TxmlQuotedText read FValue;
-    function  ValueText: WideString;
+    function  ValueText: UnicodeString;
     function  IntegerContent(const DefaultValue: Int64 = -1): Int64;
   end;
 
@@ -568,14 +570,14 @@ type
   TxmlOptionalBoolean = (obUnspecified, obFalse, obTrue);
   TxmlXMLDecl = class(TxmlTypeList)
   protected
-    function  GetVersionNum: AnsiString;
-    function  GetEncodingName: AnsiString;
+    function  GetVersionNum: UnicodeString;
+    function  GetEncodingName: UnicodeString;
     function  GetStandalone: TxmlOptionalBoolean;
 
   public
     procedure Print(const D: AxmlPrinter; const IndentLevel: Integer = 0); override;
-    property  VersionNum: AnsiString read GetVersionNum;
-    property  EncodingName: AnsiString read GetEncodingName;
+    property  VersionNum: UnicodeString read GetVersionNum;
+    property  EncodingName: UnicodeString read GetEncodingName;
     property  Standalone: TxmlOptionalBoolean read GetStandalone;
   end;
 
@@ -583,13 +585,13 @@ type
   {   Base class for declarations.                                             }
   AxmlDeclaration = class(TxmlTypeList)
   protected
-    FName : WideString;
+    FName : UnicodeString;
 
   public
-    constructor Create(const Name: WideString);
+    constructor Create(const Name: UnicodeString);
 
     procedure Print(const D: AxmlPrinter; const IndentLevel: Integer = 0); override;
-    property  Name: WideString read FName;
+    property  Name: UnicodeString read FName;
   end;
 
   { TxmlChildrenElementContentSpec                                             }
@@ -603,12 +605,12 @@ type
   {   [..]  namechildspec ::=  Name ('?' | '*' | '+')?                         }
   TxmlNameChildSpec = class(AxmlChildSpec)
   protected
-    FName : WideString;
+    FName : UnicodeString;
 
   public
-    constructor Create(const Name: WideString);
+    constructor Create(const Name: UnicodeString);
     procedure Print(const D: AxmlPrinter; const IndentLevel: Integer = 0); override;
-    property  Name: WideString read FName;
+    property  Name: UnicodeString read FName;
   end;
   {   [..]  listchildspec ::=  childspec* ('?' | '*' | '+')?                   }
   AxmlListChildSpec = class(AxmlChildSpec)
@@ -641,12 +643,12 @@ type
   protected
     FList : TxmlTypeList;
 
-    function  GetAllowedNames: WideStringArray;
+    function  GetAllowedNames: UnicodeStringArray;
 
   public
     procedure Print(const D: AxmlPrinter; const IndentLevel: Integer = 0); override;
     property  List: TxmlTypeList read FList write FList;
-    property  AllowedNames: WideStringArray read GetAllowedNames;
+    property  AllowedNames: UnicodeStringArray read GetAllowedNames;
   end;
   TxmlChildrenContentSpec = class(AxmlContentSpec)
   protected
@@ -665,7 +667,7 @@ type
     FContentSpec : AxmlContentSpec;
 
   public
-    constructor Create(const Name: WideString;
+    constructor Create(const Name: UnicodeString;
                 const ContentSpecType: TxmlElementContentSpec);
 
     procedure Print(const D: AxmlPrinter; const IndentLevel: Integer = 0); override;
@@ -695,19 +697,19 @@ type
   TxmlDefaultType = (dtRequired, dtImplied, dtFixed, dtValue);
   TxmlAttDef = class(AxmlType)
   protected
-    FName               : WideString;
+    FName               : UnicodeString;
     FAttType            : TxmlAttType;
     FNames              : TxmlTypeList;
     FDefaultType        : TxmlDefaultType;
     FDefaultValue       : TxmlAttValue;
 
   public
-    constructor Create(const Name: WideString; const AttType: TxmlAttType;
+    constructor Create(const Name: UnicodeString; const AttType: TxmlAttType;
                 const Names: TxmlTypeList; const DefaultType: TxmlDefaultType;
                 const DefaultValue: TxmlAttValue);
 
     procedure Print(const D: AxmlPrinter; const IndentLevel: Integer = 0); override;
-    property  Name: WideString read FName;
+    property  Name: UnicodeString read FName;
     property  AttType: TxmlAttType read FAttType;
     property  Names: TxmlTypeList read FNames;
     property  DefaultType: TxmlDefaultType read FDefaultType;
@@ -743,11 +745,11 @@ type
   {   [76]  NDataDecl ::=  S 'NDATA' S Name                                    }
   TxmlExternalIDNData = class(TxmlExternalID)
   protected
-    FNData : WideString;
+    FNData : UnicodeString;
 
   public
     procedure Print(const D: AxmlPrinter; const IndentLevel: Integer = 0); override;
-    property  NData: WideString read FNData write FNData;
+    property  NData: UnicodeString read FNData write FNData;
   end;
 
   {   [70]  EntityDecl ::=  GEDecl | PEDecl                                    }
@@ -763,7 +765,7 @@ type
     FDefinition     : AxmlType;
 
   public
-    constructor Create(const PEDeclaration: Boolean; const Name: WideString;
+    constructor Create(const PEDeclaration: Boolean; const Name: UnicodeString;
                        const Definition: AxmlType);
     property  Definition: AxmlType read FDefinition;
     procedure Print(const D: AxmlPrinter; const IndentLevel: Integer = 0); override;
@@ -779,9 +781,9 @@ type
     constructor Create(const ParentDeclarationList: TxmlMarkupDeclarationList = nil);
 
     property  ParentDeclarationList: TxmlMarkupDeclarationList read FParentDeclarationList;
-    function  FindEntityDeclaration(const Name: WideString): TxmlEntityDeclaration;
-    function  ResolveEntityReference(const RefName: WideString; var Value: WideString): Boolean;
-    function  ResolveParseEntityReference(const RefName: WideString; var Value: WideString): Boolean;
+    function  FindEntityDeclaration(const Name: UnicodeString): TxmlEntityDeclaration;
+    function  ResolveEntityReference(const RefName: UnicodeString; var Value: UnicodeString): Boolean;
+    function  ResolveParseEntityReference(const RefName: UnicodeString; var Value: UnicodeString): Boolean;
   end;
 
   {   [82]  NotationDecl ::=  '<!NOTATION' S Name S                            }
@@ -792,7 +794,7 @@ type
     FExternalID : TxmlExternalID;
 
   public
-    constructor Create(const Name: WideString; const ExternalID: TxmlExternalID);
+    constructor Create(const Name: UnicodeString; const ExternalID: TxmlExternalID);
     property ExternalID: TxmlExternalID read FExternalID;
   end;
 
@@ -805,22 +807,22 @@ type
 
   TxmlDocTypeDecl = class(TxmlTypeList)
   protected
-    FName : WideString;
+    FName : UnicodeString;
 
-    function  GetName: WideString; override;
+    function  GetName: UnicodeString; override;
 
     function  GetExternalID: TxmlExternalID;
     function  GetDeclarations: TxmlDocTypeDeclarationList;
-    function  GetURI: WideString;
+    function  GetURI: UnicodeString;
 
   public
-    constructor Create(const Name: WideString);
+    constructor Create(const Name: UnicodeString);
 
     procedure Print(const D: AxmlPrinter; const IndentLevel: Integer = 0); override;
     property  ExternalID: TxmlExternalID read GetExternalID;
     property  Declarations: TxmlDocTypeDeclarationList read GetDeclarations;
 
-    property  URI: WideString read GetURI;
+    property  URI: UnicodeString read GetURI;
   end;
 
 
@@ -836,52 +838,52 @@ type
   protected
     function  GetAttributes: AxmlAttributeList; virtual; abstract;
     function  GetAttrCount: Integer; virtual; abstract;
-    function  GetAttrNames: WideStringArray; virtual; abstract;
+    function  GetAttrNames: UnicodeStringArray; virtual; abstract;
 
   public
     property  Attributes: AxmlAttributeList read GetAttributes;
     property  AttrCount: Integer read GetAttrCount;
-    property  AttrNames: WideStringArray read GetAttrNames;
-    function  HasAttribute(const Attr: WideString): Boolean; virtual; abstract;
-    function  AttrAsText(const Attr: WideString;
+    property  AttrNames: UnicodeStringArray read GetAttrNames;
+    function  HasAttribute(const Attr: UnicodeString): Boolean; virtual; abstract;
+    function  AttrAsText(const Attr: UnicodeString;
               const Declarations: TxmlMarkupDeclarationList = nil;
-              const DefaultValue: WideString = ''): WideString; virtual; abstract;
-    function  AttrAsInteger(const Attr: WideString;
+              const DefaultValue: UnicodeString = ''): UnicodeString; virtual; abstract;
+    function  AttrAsInteger(const Attr: UnicodeString;
               const Declarations: TxmlMarkupDeclarationList = nil;
               const DefaultValue: Integer = -1): Integer; virtual;
-    function  AttrAsFloat(const Attr: WideString;
+    function  AttrAsFloat(const Attr: UnicodeString;
               const Declarations: TxmlMarkupDeclarationList = nil;
               const DefaultValue: Extended = 0.0): Extended; virtual;
   end;
   ATxmlTag = class(AxmlTag)
   protected
-    FName : WideString;
+    FName : UnicodeString;
 
-    function  GetName: WideString; override;
+    function  GetName: UnicodeString; override;
 
   public
-    constructor Create(const Name: WideString);
+    constructor Create(const Name: UnicodeString);
   end;
   ATxmlTagWithAttr = class(AxmlTagWithAttr)
   protected
-    FName       : WideString;
+    FName       : UnicodeString;
     FAttributes : AxmlAttributeList;
 
-    function  GetName: WideString; override;
+    function  GetName: UnicodeString; override;
     function  GetAttrCount: Integer; override;
     function  GetAttributes: AxmlAttributeList; override;
-    function  GetAttrNames: WideStringArray; override;
+    function  GetAttrNames: UnicodeStringArray; override;
 
   public
-    constructor Create(const Name: WideString;
+    constructor Create(const Name: UnicodeString;
                 const Attributes: AxmlAttributeList = nil);
     destructor Destroy; override;
 
     property  Attributes: AxmlAttributeList read FAttributes;
-    function  HasAttribute(const Name: WideString): Boolean; override;
-    function  AttrAsText(const Name: WideString;
+    function  HasAttribute(const Name: UnicodeString): Boolean; override;
+    function  AttrAsText(const Name: UnicodeString;
               const Declarations: TxmlMarkupDeclarationList = nil;
-              const DefaultValue: WideString = ''): WideString; override;
+              const DefaultValue: UnicodeString = ''): UnicodeString; override;
   end;
 
   { TxmlStartTag                                                               }
@@ -915,13 +917,13 @@ type
   AxmlElementArray = Array of AxmlElement;
   AxmlElement = class(AxmlType)
   protected
-    function  GetName: WideString; override;
+    function  GetName: UnicodeString; override;
 
     function  GetTag: AxmlTagWithAttr; virtual; abstract;
     function  GetAttributes: AxmlAttributeList; virtual;
     function  GetContent: TxmlElementContent; virtual; abstract;
-    function  GetChildContent(const Path: WideString): TxmlElementContent; virtual;
-    function  GetChildContentText(const Path: WideString): WideString;
+    function  GetChildContent(const Path: UnicodeString): TxmlElementContent; virtual;
+    function  GetChildContentText(const Path: UnicodeString): UnicodeString;
 
   public
     // Tag
@@ -930,26 +932,26 @@ type
 
     // Content
     property  Content: TxmlElementContent read GetContent;
-    function  TextContent(const Declarations: TxmlMarkupDeclarationList = nil): WideString; override;
+    function  TextContent(const Declarations: TxmlMarkupDeclarationList = nil): UnicodeString; override;
 
     // Attributes
-    function  AttrNames: WideStringArray;
-    function  HasAttribute(const Name: WideString): Boolean;
-    function  AttrAsText(const Name: WideString; const Declarations: TxmlMarkupDeclarationList = nil; const DefaultValue: WideString = ''): WideString;
-    function  AttrAsInteger(const Name: WideString; const Declarations: TxmlMarkupDeclarationList = nil; const DefaultValue: Integer = -1): Integer;
-    function  AttrAsFloat(const Name: WideString; const Declarations: TxmlMarkupDeclarationList = nil; const DefaultValue: Extended = 0.0): Extended;
+    function  AttrNames: UnicodeStringArray;
+    function  HasAttribute(const Name: UnicodeString): Boolean;
+    function  AttrAsText(const Name: UnicodeString; const Declarations: TxmlMarkupDeclarationList = nil; const DefaultValue: UnicodeString = ''): UnicodeString;
+    function  AttrAsInteger(const Name: UnicodeString; const Declarations: TxmlMarkupDeclarationList = nil; const DefaultValue: Integer = -1): Integer;
+    function  AttrAsFloat(const Name: UnicodeString; const Declarations: TxmlMarkupDeclarationList = nil; const DefaultValue: Extended = 0.0): Extended;
 
     // Child Elements
-    property  ChildContent[const Path: WideString]: TxmlElementContent read GetChildContent;
-    property  ChildContentText[const Path: WideString]: WideString read GetChildContentText; default;
+    property  ChildContent[const Path: UnicodeString]: TxmlElementContent read GetChildContent;
+    property  ChildContentText[const Path: UnicodeString]: UnicodeString read GetChildContentText; default;
     function  FirstElement: AxmlElement;
-    function  ElementNames: WideStringArray;
-    function  ElementByName(const Path: WideString): AxmlElement;
-    function  ElementsByName(const Path: WideString): AxmlElementArray;
+    function  ElementNames: UnicodeStringArray;
+    function  ElementByName(const Path: UnicodeString): AxmlElement;
+    function  ElementsByName(const Path: UnicodeString): AxmlElementArray;
     function  PosNextElement(var C: AxmlElement; const PrevPos: Integer = -1): Integer;
-    function  PosNextElementByName(var C: AxmlElement; const Name: WideString; const PrevPos: Integer = -1): Integer;
+    function  PosNextElementByName(var C: AxmlElement; const Name: UnicodeString; const PrevPos: Integer = -1): Integer;
     function  ElementCount: Integer;
-    function  ElementCountByName(const Name: WideString): Integer;
+    function  ElementCountByName(const Name: UnicodeString): Integer;
   end;
 
   { TxmlEmptyElement                                                           }
@@ -992,27 +994,27 @@ type
   {   Path parameters can contain '/'-delimited recursive names.               }
   TxmlElementContent = class(TxmlTypeList)
   protected
-    function  ResolveElementPath(const Path: WideString; var Name: WideString): TxmlElementContent;
+    function  ResolveElementPath(const Path: UnicodeString; var Name: UnicodeString): TxmlElementContent;
 
   public
     function  PosNextElement(var C: AxmlElement; const PrevPos: Integer = -1): Integer;
-    function  PosNextElementByName(var C: AxmlElement; const Name: WideString; const PrevPos: Integer = -1): Integer;
+    function  PosNextElementByName(var C: AxmlElement; const Name: UnicodeString; const PrevPos: Integer = -1): Integer;
     function  ElementCount: Integer;
-    function  ElementCountByName(const Name: WideString): Integer;
+    function  ElementCountByName(const Name: UnicodeString): Integer;
 
     function  FirstElement: AxmlElement;
-    function  FirstElementName: WideString;
-    function  ElementNames: WideStringArray;
-    function  ElementByName(const Path: WideString): AxmlElement;
-    function  ElementsByName(const Path: WideString): AxmlElementArray;
-    function  ElementContentByName(const Path: WideString): TxmlElementContent;
+    function  FirstElementName: UnicodeString;
+    function  ElementNames: UnicodeStringArray;
+    function  ElementByName(const Path: UnicodeString): AxmlElement;
+    function  ElementsByName(const Path: UnicodeString): AxmlElementArray;
+    function  ElementContentByName(const Path: UnicodeString): TxmlElementContent;
 
-    function  ElementAttributeNames(const ElementName: WideString): WideStringArray;
-    function  ElementAttributeValues(const ElementName, AttributeName: WideString;
-              const Declarations: TxmlMarkupDeclarationList = nil; const DefaultValue: WideString = ''): WideStringArray;
+    function  ElementAttributeNames(const ElementName: UnicodeString): UnicodeStringArray;
+    function  ElementAttributeValues(const ElementName, AttributeName: UnicodeString;
+              const Declarations: TxmlMarkupDeclarationList = nil; const DefaultValue: UnicodeString = ''): UnicodeStringArray;
 
-    function  ElementTextContent(const ElementName: WideString; const Declarations: TxmlMarkupDeclarationList = nil): WideStringArray; overload;
-    function  ElementTextContent(const ElementName, AttributeName, AttributeValue: WideString; const Declarations: TxmlMarkupDeclarationList = nil): WideStringArray; overload;
+    function  ElementTextContent(const ElementName: UnicodeString; const Declarations: TxmlMarkupDeclarationList = nil): UnicodeStringArray; overload;
+    function  ElementTextContent(const ElementName, AttributeName, AttributeValue: UnicodeString; const Declarations: TxmlMarkupDeclarationList = nil): UnicodeStringArray; overload;
   end;
 
 
@@ -1039,31 +1041,31 @@ type
   protected
     function  GetProlog: TxmlProlog;
     function  GetRootElement: AxmlElement;
-    function  GetElementContentText(const RelPath: WideString): WideString;
+    function  GetElementContentText(const RelPath: UnicodeString): UnicodeString;
 
   public
     constructor Create(const Prolog: TxmlProlog; const RootElement: AxmlElement);
 
-    function  TextContent(const Declarations: TxmlMarkupDeclarationList = nil): WideString; override;
+    function  TextContent(const Declarations: TxmlMarkupDeclarationList = nil): UnicodeString; override;
 
     property  Prolog: TxmlProlog read GetProlog;
     property  RootElement: AxmlElement read GetRootElement;
 
     function  DocTypeDecl: TxmlDocTypeDecl;
-    function  DocTypeName: WideString;
-    function  DocTypeURI: WideString;
+    function  DocTypeName: UnicodeString;
+    function  DocTypeURI: UnicodeString;
 
-    function  RootElementName: WideString;
-    function  RootElementLocalName: WideString;
-    function  RootElementNameSpace: WideString;
-    function  RootElementNameSpaceURI: WideString;
-    function  RootElementDefaultNameSpaceURI: WideString;
-    function  IsRootElementName(const Name: WideString): Boolean;
+    function  RootElementName: UnicodeString;
+    function  RootElementLocalName: UnicodeString;
+    function  RootElementNameSpace: UnicodeString;
+    function  RootElementNameSpaceURI: UnicodeString;
+    function  RootElementDefaultNameSpaceURI: UnicodeString;
+    function  IsRootElementName(const Name: UnicodeString): Boolean;
     function  IsRootElementAsciiName(const Name: AnsiString;
               const CaseSensitive: Boolean = True): Boolean;
 
-    function  ElementByName(const RelPath: WideString): AxmlElement;
-    property  ElementContentText[const RelPath: WideString]: WideString read GetElementContentText; default;
+    function  ElementByName(const RelPath: UnicodeString): AxmlElement;
+    property  ElementContentText[const RelPath: UnicodeString]: UnicodeString read GetElementContentText; default;
   end;
 
 
@@ -1075,7 +1077,7 @@ uses
   SysUtils,
 
   { Fundamentals }
-  cStrings,
+  cDynArrays,
   cUnicodeCodecs;
 
 
@@ -1125,22 +1127,22 @@ begin
     PrintSpecial(xmlsSpace, IndentLength * IndentLevel);
 end;
 
-procedure AxmlPrinter.PrintDefault(const Txt: WideString);
+procedure AxmlPrinter.PrintDefault(const Txt: UnicodeString);
 begin
   PrintToken(xmltDefault, Txt);
 end;
 
-procedure AxmlPrinter.PrintText(const Txt: WideString);
+procedure AxmlPrinter.PrintText(const Txt: UnicodeString);
 begin
   PrintToken(xmltText, Txt);
 end;
 
-procedure AxmlPrinter.PrintSymbol(const Txt: WideString);
+procedure AxmlPrinter.PrintSymbol(const Txt: UnicodeString);
 begin
   PrintToken(xmltSymbol, Txt);
 end;
 
-function AxmlPrinter.GetQuoteChar(const Txt: WideString): WideChar;
+function AxmlPrinter.GetQuoteChar(const Txt: UnicodeString): WideChar;
 begin
   if xmloForceQuoteType in Options then
     begin
@@ -1150,16 +1152,16 @@ begin
     end else
     if xmloUseDoubleQuotes in Options then
       begin
-        if WidePosChar(WideChar('"'), Txt) > 0 then
+        if PosCharU(WideChar('"'), Txt) > 0 then
           Result := WideChar('''') else
           Result := WideChar('"');
       end else
-      if WidePosChar(WideChar(''''), Txt) > 0 then
+      if PosCharU(WideChar(''''), Txt) > 0 then
         Result := WideChar('"') else
         Result := WideChar('''');
 end;
 
-procedure AxmlPrinter.PrintQuoteStr(const Txt: WideString);
+procedure AxmlPrinter.PrintQuoteStr(const Txt: UnicodeString);
 var Q : WideChar;
 begin
   Q := GetQuoteChar(Txt);
@@ -1168,27 +1170,27 @@ begin
   PrintSymbol(Q);
 end;
 
-procedure AxmlPrinter.PrintSafeQuotedText(const Txt: WideString);
+procedure AxmlPrinter.PrintSafeQuotedText(const Txt: UnicodeString);
 begin
   PrintQuoteStr(xmlSafeText(Txt));
 end;
 
-procedure AxmlPrinter.PrintName(const Txt: WideString);
+procedure AxmlPrinter.PrintName(const Txt: UnicodeString);
 begin
   PrintToken(xmltName, Txt);
 end;
 
-procedure AxmlPrinter.PrintTagName(const Txt: WideString);
+procedure AxmlPrinter.PrintTagName(const Txt: UnicodeString);
 begin
   PrintToken(xmltTagName, Txt);
 end;
 
-procedure AxmlPrinter.PrintAttrName(const Txt: WideString);
+procedure AxmlPrinter.PrintAttrName(const Txt: UnicodeString);
 begin
   PrintToken(xmltAttrName, Txt);
 end;
 
-procedure AxmlPrinter.PrintComment(const Txt: WideString);
+procedure AxmlPrinter.PrintComment(const Txt: UnicodeString);
 begin
   PrintToken(xmltComment, Txt);
 end;
@@ -1201,7 +1203,7 @@ end;
 constructor TxmlStringPrinter.Create(const Options: TxmlPrintOptions; const IndentLength: Integer);
 begin
   inherited Create(Options, IndentLength);
-  FxmlWideString := TWideStringWriter.Create;
+  FxmlWideString := TUnicodeStringWriter.Create;
 end;
 
 destructor TxmlStringPrinter.Destroy;
@@ -1211,27 +1213,27 @@ begin
 end;
 
 procedure TxmlStringPrinter.PrintToken(const TokenType: TxmlPrintToken;
-    const Txt: WideString);
+    const Txt: UnicodeString);
 begin
-  FxmlWideString.WriteWideStr(Txt);
+  FxmlWideString.WriteStrW(Txt);
 end;
 
 procedure TxmlStringPrinter.PrintSpecial(const SpecialSymbol: TxmlPrintSpecialSymbol;
     const Count: Integer);
 var I : Integer;
 begin
-  Case SpecialSymbol of
+  case SpecialSymbol of
     xmlsSpace : For I := 1 to Count do
                   FxmlWideString.WriteWord(32);
     xmlsTab   : For I := 1 to Count do
                   FxmlWideString.WriteWord(9);
-    xmlsEOL   : FxmlWideString.WriteWideStr(WideCRLF);
+    xmlsEOL   : FxmlWideString.WriteStrW(WideCRLF);
   end;
 end;
 
 function TxmlStringPrinter.GetXMLWideString: WideString;
 begin
-  Result := FxmlWideString.AsWideString;
+  Result := FxmlWideString.AsStringU;
 end;
 
 function TxmlStringPrinter.GetXMLUTF8String: AnsiString;
@@ -1254,43 +1256,43 @@ procedure AxmlType.Init;
 begin
 end;
 
-function AxmlType.GetName: WideString;
+function AxmlType.GetName: UnicodeString;
 begin
   Result := '';
 end;
 
-function AxmlType.GetNameSpace: WideString;
+function AxmlType.GetNameSpace: UnicodeString;
 var I : Integer;
 begin
   Result := GetName;
-  I := WidePosChar(WideChar(':'), Result);
+  I := PosCharU(WideChar(':'), Result);
   if I <= 0 then
     Result := ''
   else
     Result := Copy(Result, 1, I - 1);
 end;
 
-function AxmlType.GetLocalName: WideString;
+function AxmlType.GetLocalName: UnicodeString;
 var I : Integer;
 begin
   Result := GetName;
-  I := WidePosChar(WideChar(':'), Result);
+  I := PosCharU(WideChar(':'), Result);
   if I <= 0 then
     exit;
-  Result := WideCopyFrom(Result, I + 1);
+  Result := CopyFromW(Result, I + 1);
 end;
 
-function AxmlType.IsName(const Name: WideString): Boolean;
+function AxmlType.IsName(const Name: UnicodeString): Boolean;
 begin
   Result := Name = GetName;
 end;
 
 function AxmlType.IsAsciiName(const Name: AnsiString; const CaseSensitive: Boolean): Boolean;
 begin
-  Result := WideEqualAnsiStr(Name, GetName, CaseSensitive);
+  Result := StrEqualAW(GetName, Name, CaseSensitive);
 end;
 
-function AxmlType.TextContent(const Declarations: TxmlMarkupDeclarationList): WideString;
+function AxmlType.TextContent(const Declarations: TxmlMarkupDeclarationList): UnicodeString;
 begin
   Result := '';
 end;
@@ -1327,7 +1329,7 @@ begin
   C := nil;
 end;
 
-function AxmlType.PosNext(var C: AxmlType; const Name: WideString;
+function AxmlType.PosNext(var C: AxmlType; const Name: UnicodeString;
     const ClassType: CxmlType; const PrevPos: Integer): Integer;
 var I : Integer;
 begin
@@ -1346,7 +1348,7 @@ begin
   C := nil;
 end;
 
-function AxmlType.GetChildByName(const Name: WideString): AxmlType;
+function AxmlType.GetChildByName(const Name: UnicodeString): AxmlType;
 var C : AxmlType;
 begin
   if PosNext(C, Name, AxmlType) >= 0 then
@@ -1360,7 +1362,7 @@ begin
   PosNext(Result, ClassType);
 end;
 
-function AxmlType.Find(const Name: WideString; const ClassType: CxmlType): AxmlType;
+function AxmlType.Find(const Name: UnicodeString; const ClassType: CxmlType): AxmlType;
 begin
   PosNext(Result, Name, ClassType);
 end;
@@ -1397,7 +1399,7 @@ begin
     end;
 end;
 
-function AxmlType.GetNames(const ClassType: CxmlType = nil): WideStringArray;
+function AxmlType.GetNames(const ClassType: CxmlType = nil): UnicodeStringArray;
 var I : Integer;
     C : AxmlType;
 begin
@@ -1405,13 +1407,13 @@ begin
   I := PosNext(C, ClassType);
   While I >= 0 do
     begin
-      WideAppend(Result, C.Name);
+      DynArrayAppendU(Result, C.Name);
       I := PosNext(C, ClassType, I);
     end;
 end;
 
-function AxmlType.AsWideString(const Options: TxmlPrintOptions;
-    const IndentLength: Integer): WideString;
+function AxmlType.AsUnicodeString(const Options: TxmlPrintOptions;
+    const IndentLength: Integer): UnicodeString;
 var P : TxmlStringPrinter;
 begin
   P := TxmlStringPrinter.Create(Options, IndentLength);
@@ -1426,7 +1428,7 @@ end;
 function AxmlType.AsUTF8String(const Options: TxmlPrintOptions;
     const IndentLength: Integer): AnsiString;
 begin
-  Result := WideStringToUTF8String(AsWideString(Options, IndentLength));
+  Result := WideStringToUTF8String(AsUnicodeString(Options, IndentLength));
 end;
 
 
@@ -1465,7 +1467,7 @@ begin
     ChildByIndex[I].Print(D, IndentLevel);
 end;
 
-function TxmlTypeList.TextContent(const Declarations: TxmlMarkupDeclarationList): WideString;
+function TxmlTypeList.TextContent(const Declarations: TxmlMarkupDeclarationList): UnicodeString;
 var I : Integer;
     C : AxmlType;
 begin
@@ -1480,7 +1482,7 @@ end;
 
 procedure TxmlTypeList.AddChild(const Child: AxmlType);
 begin
-  Append(ObjectArray(FChildren), Child);
+  DynArrayAppend(ObjectArray(FChildren), Child);
 end;
 
 
@@ -1490,7 +1492,7 @@ end;
 {                                                                              }
 
 { TxmlCharData                                                                 }
-constructor TxmlCharData.Create(const Data: WideString);
+constructor TxmlCharData.Create(const Data: UnicodeString);
 begin
   inherited Create;
   FData := Data;
@@ -1501,7 +1503,7 @@ begin
   D.PrintText(xmlSafeText(FData));
 end;
 
-function TxmlCharData.TextContent(const Declarations: TxmlMarkupDeclarationList): WideString;
+function TxmlCharData.TextContent(const Declarations: TxmlMarkupDeclarationList): UnicodeString;
 begin
   Result := FData;
 end;
@@ -1518,9 +1520,9 @@ begin
 end;
 
 { TxmlCDSect                                                                   }
-constructor TxmlCDSect.Create(const Data: WideString);
+constructor TxmlCDSect.Create(const Data: UnicodeString);
 begin
-  Assert(WidePos(']]>', Data) = 0, 'CData contains an invalid sequence');
+  Assert(PosStrW(']]>', Data) = 0, 'CData contains an invalid sequence');
   inherited Create(Data);
 end;
 
@@ -1540,7 +1542,7 @@ end;
 {                                                                              }
 
 { TxmlGeneralEntityRef                                                         }
-constructor TxmlGeneralEntityRef.Create(const RefName: WideString);
+constructor TxmlGeneralEntityRef.Create(const RefName: UnicodeString);
 begin
   Assert(xmlValidName(RefName), 'Invalid Entity Reference name');
   inherited Create;
@@ -1554,7 +1556,7 @@ begin
   D.PrintSymbol(';');
 end;
 
-function TxmlGeneralEntityRef.TextContent(const Declarations: TxmlMarkupDeclarationList): WideString;
+function TxmlGeneralEntityRef.TextContent(const Declarations: TxmlMarkupDeclarationList): UnicodeString;
 var Ch : WideChar;
 begin
   Ch := xmlResolveEntityReference(FRefName);
@@ -1588,13 +1590,13 @@ begin
   D.PrintSymbol(';');
 end;
 
-function TxmlCharRef.TextContent(const Declarations: TxmlMarkupDeclarationList): WideString;
+function TxmlCharRef.TextContent(const Declarations: TxmlMarkupDeclarationList): UnicodeString;
 begin
   Result := WideChar(FNumber);
 end;
 
 { TxmlPEReference                                                                }
-constructor TxmlPEReference.Create(const RefName: WideString);
+constructor TxmlPEReference.Create(const RefName: UnicodeString);
 begin
   Assert(xmlValidName(RefName), 'Invalid PE Reference name');
   inherited Create;
@@ -1608,7 +1610,7 @@ begin
   D.PrintSymbol(';');
 end;
 
-function TxmlPEReference.TextContent(const Declarations: TxmlMarkupDeclarationList): WideString;
+function TxmlPEReference.TextContent(const Declarations: TxmlMarkupDeclarationList): UnicodeString;
 begin
   if not Assigned(Declarations) or
      not Declarations.ResolveParseEntityReference(FRefName, Result) then
@@ -1619,7 +1621,7 @@ end;
 {   [..]  QuotedReferenceText ::=  "'" ReferenceText "'" |                     }
 {                                  '"' ReferenceText '"'                       }
 procedure TxmlQuotedReferenceText.Print(const D: AxmlPrinter; const IndentLevel: Integer);
-var Q : WideString;
+var Q : UnicodeString;
 begin
   Q := D.GetQuoteChar('');
   D.PrintSymbol(Q);
@@ -1634,7 +1636,7 @@ end;
 {                                                                              }
 
 { TxmlLiteralFormatting                                                        }
-constructor TxmlLiteralFormatting.Create(const Text: WideString);
+constructor TxmlLiteralFormatting.Create(const Text: UnicodeString);
 begin
   inherited Create;
   FText := Text;
@@ -1646,13 +1648,13 @@ begin
 end;
 
 { TxmlFormattingList                                                           }
-procedure TxmlLiteralFormattingList.Add(const Text: WideString);
+procedure TxmlLiteralFormattingList.Add(const Text: UnicodeString);
 begin
   AddChild(TxmlLiteralFormatting.Create(Text));
 end;
 
 { TxmlSpace                                                                    }
-constructor TxmlSpace.Create(const Text: WideString);
+constructor TxmlSpace.Create(const Text: UnicodeString);
 begin
   inherited Create(Text);
 end;
@@ -1678,7 +1680,7 @@ end;
 
 { TxmlAttribute                                                                }
 {   [41]  Attribute ::=  Name Eq AttValue                                      }
-constructor TxmlAttribute.Create(const Name: WideString; const Value: TxmlAttValue);
+constructor TxmlAttribute.Create(const Name: UnicodeString; const Value: TxmlAttValue);
 begin
   Assert(Assigned(Value));
   inherited Create;
@@ -1692,7 +1694,7 @@ begin
   inherited Destroy;
 end;
 
-function TxmlAttribute.GetName: WideString;
+function TxmlAttribute.GetName: UnicodeString;
 begin
   Result := FName;
 end;
@@ -1705,7 +1707,7 @@ begin
   FValue.Print(D, IndentLevel);
 end;
 
-function TxmlAttribute.TextContent(const Declarations: TxmlMarkupDeclarationList): WideString;
+function TxmlAttribute.TextContent(const Declarations: TxmlMarkupDeclarationList): UnicodeString;
 begin
   Result := FValue.TextContent(Declarations);
 end;
@@ -1723,15 +1725,15 @@ end;
 function TxmlAttribute.IsNameSpaceDeclaration: Boolean;
 begin
   Result := (FName = 'xmlns') or
-            WideMatchLeftAnsiStr('xmlns:', FName, True);
+            StrMatchLeftAW(FName, 'xmlns:', True);
 end;
 
-function TxmlAttribute.GetNameSpaceDeclaration(var NameSpace, URI: WideString): Boolean;
+function TxmlAttribute.GetNameSpaceDeclaration(var NameSpace, URI: UnicodeString): Boolean;
 begin
-  Result := WideMatchLeftAnsiStr('xmlns:', FName, True);
+  Result := StrMatchLeftAW(FName, 'xmlns:', True);
   if Result then
     begin
-      NameSpace := WideCopyFrom(FName, 7);
+      NameSpace := CopyFromW(FName, 7);
       URI := TextContent(nil);
     end else
     if FName = 'xmlns' then
@@ -1758,20 +1760,20 @@ procedure AxmlAttributeList.InitList(const List: TxmlTypeList);
 begin
 end;
 
-function AxmlAttributeList.AttrAsInteger(const Name: WideString; const Declarations: TxmlMarkupDeclarationList; const DefaultValue: Int64): Int64;
+function AxmlAttributeList.AttrAsInteger(const Name: UnicodeString; const Declarations: TxmlMarkupDeclarationList; const DefaultValue: Int64): Int64;
 begin
   Result := StrToInt64Def(AttrAsText(Name, Declarations, ''), DefaultValue);
 end;
 
-function AxmlAttributeList.AttrAsFloat(const Name: WideString; const Declarations: TxmlMarkupDeclarationList; const DefaultValue: Extended): Extended;
+function AxmlAttributeList.AttrAsFloat(const Name: UnicodeString; const Declarations: TxmlMarkupDeclarationList; const DefaultValue: Extended): Extended;
 begin
   Result := StrToFloatDef(AttrAsText(Name, Declarations, ''), DefaultValue);
 end;
 
-function AxmlAttributeList.GetNameSpaceURI(const NameSpace: WideString): WideString;
+function AxmlAttributeList.GetNameSpaceURI(const NameSpace: UnicodeString): UnicodeString;
 var I    : Integer;
     A    : TxmlAttribute;
-    N, U : WideString;
+    N, U : UnicodeString;
 begin
   I := -1;
   Repeat
@@ -1809,12 +1811,12 @@ begin
   Result := FList.GetChildCountByClass(TxmlAttribute);
 end;
 
-function TxmlAttributeList.GetAttrNames: WideStringArray;
+function TxmlAttributeList.GetAttrNames: UnicodeStringArray;
 begin
   Result := FList.GetNames(TxmlAttribute);
 end;
 
-function TxmlAttributeList.HasAttribute(const Name: WideString): Boolean;
+function TxmlAttributeList.HasAttribute(const Name: UnicodeString): Boolean;
 begin
   Result := Assigned(FList.Find(Name, TxmlAttribute));
 end;
@@ -1824,7 +1826,7 @@ begin
   Result := FList.PosNext(AxmlType(A), TxmlAttribute, Idx);
 end;
 
-function TxmlAttributeList.AttrAsText(const Name: WideString; const Declarations: TxmlMarkupDeclarationList; const DefaultValue: WideString): WideString;
+function TxmlAttributeList.AttrAsText(const Name: UnicodeString; const Declarations: TxmlMarkupDeclarationList; const DefaultValue: UnicodeString): UnicodeString;
 var A : TxmlAttribute;
 begin
   A := TxmlAttribute(FList.Find(Name, TxmlAttribute));
@@ -1833,7 +1835,7 @@ begin
     Result := DefaultValue;
 end;
 
-function TxmlAttributeList.AttrAsInteger(const Name: WideString; const Declarations: TxmlMarkupDeclarationList; const DefaultValue: Int64): Int64;
+function TxmlAttributeList.AttrAsInteger(const Name: UnicodeString; const Declarations: TxmlMarkupDeclarationList; const DefaultValue: Int64): Int64;
 var A : TxmlAttribute;
 begin
   A := TxmlAttribute(FList.Find(Name, TxmlAttribute));
@@ -1842,7 +1844,7 @@ begin
     Result := DefaultValue;
 end;
 
-function TxmlAttributeList.AttrAsFloat(const Name: WideString; const Declarations: TxmlMarkupDeclarationList; const DefaultValue: Extended): Extended;
+function TxmlAttributeList.AttrAsFloat(const Name: UnicodeString; const Declarations: TxmlMarkupDeclarationList; const DefaultValue: Extended): Extended;
 var A : TxmlAttribute;
 begin
   A := TxmlAttribute(FList.Find(Name, TxmlAttribute));
@@ -1853,7 +1855,7 @@ end;
 
 { TxmlTextAttribute                                                            }
 {   [..]  TextAttribute ::=  Name Eq QuotedText                                }
-constructor TxmlTextAttribute.Create(const Name: WideString; const Value: TxmlQuotedText);
+constructor TxmlTextAttribute.Create(const Name: UnicodeString; const Value: TxmlQuotedText);
 begin
   Assert(Assigned(Value));
   inherited Create;
@@ -1861,14 +1863,14 @@ begin
   FValue := Value;
 end;
 
-constructor TxmlTextAttribute.Create(const Name, TextValue: WideString);
+constructor TxmlTextAttribute.Create(const Name, TextValue: UnicodeString);
 begin
   inherited Create;
   FName := Name;
   FValue := TxmlQuotedText.Create(TextValue);
 end;
 
-function TxmlTextAttribute.GetName: WideString;
+function TxmlTextAttribute.GetName: UnicodeString;
 begin
   Result := FName;
 end;
@@ -1881,7 +1883,7 @@ begin
   FValue.Print(D, IndentLevel);
 end;
 
-function TxmlTextAttribute.ValueText: WideString;
+function TxmlTextAttribute.ValueText: UnicodeString;
 begin
   Result := FValue.TextContent;
 end;
@@ -1892,9 +1894,9 @@ begin
 end;
 
 { TxmlComment                                                                  }
-constructor TxmlComment.Create(const Text: WideString);
+constructor TxmlComment.Create(const Text: UnicodeString);
 begin
-  Assert(Pos(WideString('--'), Text) = 0, 'Comment may not contain ''--'' sequence');
+  Assert(Pos(UnicodeString('--'), Text) = 0, 'Comment may not contain ''--'' sequence');
   inherited Create;
   FText := Text;
 end;
@@ -1909,9 +1911,9 @@ begin
 end;
 
 { TxmlProcessingInstruction                                                    }
-constructor TxmlProcessingInstruction.Create(const PITarget, Text: WideString);
+constructor TxmlProcessingInstruction.Create(const PITarget, Text: UnicodeString);
 begin
-  Assert(Pos(WideString('?>'), Text) = 0, 'PI Text may not contain ''?>'' sequence');
+  Assert(Pos(UnicodeString('?>'), Text) = 0, 'PI Text may not contain ''?>'' sequence');
   inherited Create;
   FPITarget := PITarget;
   FText := Text;
@@ -1929,7 +1931,7 @@ begin
 end;
 
 { TxmlMiscList                                                        }
-function TxmlMiscList.FirstComment: WideString;
+function TxmlMiscList.FirstComment: UnicodeString;
 var C : TxmlComment;
 begin
   C := TxmlComment(Find(TxmlComment));
@@ -1938,7 +1940,7 @@ begin
     Result := '';
 end;
 
-function TxmlMiscList.Comments: WideStringArray;
+function TxmlMiscList.Comments: UnicodeStringArray;
 var I : Integer;
     C : AxmlType;
 begin
@@ -1946,12 +1948,12 @@ begin
   I := PosNext(C, TxmlComment);
   While I >= 0 do
     begin
-      WideAppend(Result, TxmlComment(C).Text);
+      DynArrayAppendU(Result, TxmlComment(C).Text);
       I := PosNext(C, TxmlComment, I);
     end;
 end;
 
-function TxmlMiscList.FirstProcessingInstruction(const PITarget: WideString): WideString;
+function TxmlMiscList.FirstProcessingInstruction(const PITarget: UnicodeString): UnicodeString;
 var I : Integer;
     C : AxmlType;
 begin
@@ -1968,7 +1970,7 @@ begin
   Result := '';
 end;
 
-function TxmlMiscList.ProcessingInstructions(const PITarget: WideString): WideStringArray;
+function TxmlMiscList.ProcessingInstructions(const PITarget: UnicodeString): UnicodeStringArray;
 var I : Integer;
     C : AxmlType;
 begin
@@ -1977,40 +1979,44 @@ begin
   While I >= 0 do
     begin
       if PITarget = TxmlProcessingInstruction(C).PITarget then
-        WideAppend(Result, TxmlProcessingInstruction(C).Text);
+        DynArrayAppendU(Result, TxmlProcessingInstruction(C).Text);
       I := PosNext(C, TxmlProcessingInstruction, I);
     end;
 end;
 
 { TxmlXMLDecl                                                                  }
-function TxmlXMLDecl.GetVersionNum: AnsiString;
+function TxmlXMLDecl.GetVersionNum: UnicodeString;
 var C : AxmlType;
 begin
   if PosNext(C, 'version', TxmlTextAttribute) >= 0 then
-    Result := TxmlTextAttribute(C).TextContent else
+    Result := TxmlTextAttribute(C).TextContent
+  else
     Result := '';
 end;
 
-function TxmlXMLDecl.GetEncodingName: AnsiString;
+function TxmlXMLDecl.GetEncodingName: UnicodeString;
 var C : AxmlType;
 begin
   if PosNext(C, 'encoding', TxmlTextAttribute) >= 0 then
-    Result := TxmlTextAttribute(C).TextContent else
+    Result := TxmlTextAttribute(C).TextContent
+  else
     Result := '';
 end;
 
 function TxmlXMLDecl.GetStandalone: TxmlOptionalBoolean;
 var C : AxmlType;
-    S : AnsiString;
+    S : UnicodeString;
 begin
   if PosNext(C, 'standalone', TxmlTextAttribute) < 0 then
-    Result := obUnspecified else
+    Result := obUnspecified
+  else
     begin
       S := TxmlTextAttribute(C).TextContent;
       if S = 'yes' then
         Result := obTrue else
       if S = 'no' then
-        Result := obFalse else
+        Result := obFalse
+      else
         Result := obUnspecified;
     end;
 end;
@@ -2025,7 +2031,7 @@ begin
 end;
 
 { AxmlDeclaration                                                              }
-constructor AxmlDeclaration.Create(const Name: WideString);
+constructor AxmlDeclaration.Create(const Name: UnicodeString);
 begin
   Assert(xmlValidName(Name), 'Invalid Name');
   inherited Create;
@@ -2045,7 +2051,7 @@ end;
 {   [50]  seq ::=  '(' S? cp ( S? ',' S? cp )* S? ')'                          }
 procedure AxmlChildSpec.Print(const D: AxmlPrinter; const IndentLevel: Integer);
 begin
-  Case Numerator of
+  case Numerator of
     csnOne        : ;
     csnOptional   : D.PrintSymbol('?');
     csnAny        : D.PrintSymbol('*');
@@ -2053,7 +2059,7 @@ begin
   end;
 end;
 
-constructor TxmlNameChildSpec.Create(const Name: WideString);
+constructor TxmlNameChildSpec.Create(const Name: UnicodeString);
 begin
   inherited Create;
   FName := Name;
@@ -2090,7 +2096,7 @@ begin
   D.PrintDefault('ANY');
 end;
 
-function TxmlMixedContentSpec.GetAllowedNames: WideStringArray;
+function TxmlMixedContentSpec.GetAllowedNames: UnicodeStringArray;
 var I : Integer;
     C : AxmlType;
 begin
@@ -2098,7 +2104,7 @@ begin
   I := FList.PosNext(C, TxmlLiteralFormatting);
   While I >= 0 do
     begin
-      WideAppend(Result, TxmlLiteralFormatting(C).FText);
+      DynArrayAppendU(Result, TxmlLiteralFormatting(C).FText);
       I := FList.PosNext(C, TxmlLiteralFormatting, I);
     end;
 end;
@@ -2117,11 +2123,11 @@ end;
 {   [45]  elementdecl ::=  '<!ELEMENT' S Name S contentspec S? '>'             }
 {   [51]  Mixed ::=  '(' S? '#PCDATA' (S? '|' S? Name)* S? ')*'                }
 {                  | '(' S? '#PCDATA' S? ')'                                   }
-constructor TxmlElementDeclaration.Create(const Name: WideString;
+constructor TxmlElementDeclaration.Create(const Name: UnicodeString;
     const ContentSpecType: TxmlElementContentSpec);
 begin
   inherited Create(Name);
-  Case ContentSpecType of
+  case ContentSpecType of
     ecsEmpty    : FContentSpec := TxmlEmptyContentSpec.Create;
     ecsAny      : FContentSpec := TxmlAnyContentSpec.Create;
     ecsMixed    : FContentSpec := TxmlMixedContentSpec.Create;
@@ -2155,7 +2161,7 @@ end;
 {                        | (('#FIXED' S)? AttValue)                            }
 {   [10]  AttValue ::=  '"' ([^<&"] | Reference)* '"'                          }
 {                    |  "'" ([^<&'] | Reference)* "'"                          }
-constructor TxmlAttDef.Create(const Name: WideString; const AttType: TxmlAttType;
+constructor TxmlAttDef.Create(const Name: UnicodeString; const AttType: TxmlAttType;
     const Names: TxmlTypeList; const DefaultType: TxmlDefaultType;
     const DefaultValue: TxmlAttValue);
 begin
@@ -2172,7 +2178,7 @@ begin
   D.PrintSpace;
   D.PrintName(Name);
   D.PrintSpace;
-  Case AttType of
+  case AttType of
     atStringType                : D.PrintDefault('CDATA');
     atTokenizedTypeID           : D.PrintDefault('ID');
     atTokenizedTypeIDREF        : D.PrintDefault('IDREF');
@@ -2197,7 +2203,7 @@ begin
       end;
   end;
   D.PrintSpace;
-  Case DefaultType of
+  case DefaultType of
     dtRequired : D.PrintDefault('#REQUIRED');
     dtImplied  : D.PrintDefault('#IMPLIED');
     dtFixed    :
@@ -2226,12 +2232,12 @@ begin
   FParentDeclarationList := ParentDeclarationList;
 end;
 
-function TxmlMarkupDeclarationList.FindEntityDeclaration(const Name: WideString): TxmlEntityDeclaration;
+function TxmlMarkupDeclarationList.FindEntityDeclaration(const Name: UnicodeString): TxmlEntityDeclaration;
 begin
   Result := TxmlEntityDeclaration(Find(Name, TxmlEntityDeclaration));
 end;
 
-function TxmlMarkupDeclarationList.ResolveEntityReference(const RefName: WideString; var Value: WideString): Boolean;
+function TxmlMarkupDeclarationList.ResolveEntityReference(const RefName: UnicodeString; var Value: UnicodeString): Boolean;
 var D : TxmlEntityDeclaration;
 begin
   D := FindEntityDeclaration(RefName);
@@ -2242,7 +2248,7 @@ begin
     Value := '';
 end;
 
-function TxmlMarkupDeclarationList.ResolveParseEntityReference(const RefName: WideString; var Value: WideString): Boolean;
+function TxmlMarkupDeclarationList.ResolveParseEntityReference(const RefName: UnicodeString; var Value: UnicodeString): Boolean;
 var D : TxmlEntityDeclaration;
 begin
   D := FindEntityDeclaration(RefName);
@@ -2253,7 +2259,7 @@ begin
     Value := '';
 end;
 
-constructor TxmlNotationDeclaration.Create(const Name: WideString; const ExternalID: TxmlExternalID);
+constructor TxmlNotationDeclaration.Create(const Name: UnicodeString; const ExternalID: TxmlExternalID);
 begin
   inherited Create(Name);
   FExternalID := ExternalID;
@@ -2301,7 +2307,7 @@ begin
   D.PrintDefault(FNData);
 end;
 
-constructor TxmlEntityDeclaration.Create(const PEDeclaration: Boolean; const Name: WideString; const Definition: AxmlType);
+constructor TxmlEntityDeclaration.Create(const PEDeclaration: Boolean; const Name: UnicodeString; const Definition: AxmlType);
 begin
   inherited Create(Name);
   FPEDeclaration := PEDeclaration;
@@ -2333,7 +2339,7 @@ end;
 { TxmlDocTypeDecl                                                              }
 {   [28]  doctypedecl ::=  '<!DOCTYPE' S Name (S ExternalID)? S?               }
 {                        ('[' (markupdecl | PEReference | S)* ']' S?)? '>'     }
-constructor TxmlDocTypeDecl.Create(const Name: WideString);
+constructor TxmlDocTypeDecl.Create(const Name: UnicodeString);
 begin
   Assert(xmlValidName(Name), 'Invalid Name');
   inherited Create;
@@ -2362,12 +2368,12 @@ begin
   D.PrintEOL;
 end;
 
-function TxmlDocTypeDecl.GetName: WideString;
+function TxmlDocTypeDecl.GetName: UnicodeString;
 begin
   Result := FName;
 end;
 
-function TxmlDocTypeDecl.GetURI: WideString;
+function TxmlDocTypeDecl.GetURI: UnicodeString;
 var I : TxmlExternalID;
 begin
   I := GetExternalID;
@@ -2383,30 +2389,30 @@ end;
 {                                                                              }
 
 { AxmlTagWithAttr                                                              }
-function AxmlTagWithAttr.AttrAsInteger(const Attr: WideString; const Declarations: TxmlMarkupDeclarationList; const DefaultValue: Integer): Integer;
+function AxmlTagWithAttr.AttrAsInteger(const Attr: UnicodeString; const Declarations: TxmlMarkupDeclarationList; const DefaultValue: Integer): Integer;
 begin
   Result := StrToIntDef(AttrAsText(Attr, Declarations, ''), DefaultValue);
 end;
 
-function AxmlTagWithAttr.AttrAsFloat(const Attr: WideString; const Declarations: TxmlMarkupDeclarationList; const DefaultValue: Extended): Extended;
+function AxmlTagWithAttr.AttrAsFloat(const Attr: UnicodeString; const Declarations: TxmlMarkupDeclarationList; const DefaultValue: Extended): Extended;
 begin
   Result := StrToFloatDef(AttrAsText(Attr, Declarations, ''), DefaultValue);
 end;
 
 { ATxmlTag                                                                     }
-constructor ATxmlTag.Create(const Name: WideString);
+constructor ATxmlTag.Create(const Name: UnicodeString);
 begin
   inherited Create;
   FName := Name;
 end;
 
-function ATxmlTag.GetName: WideString;
+function ATxmlTag.GetName: UnicodeString;
 begin
   Result := FName;
 end;
 
 { ATxmlTagWithAttr                                                             }
-constructor ATxmlTagWithAttr.Create(const Name: WideString; const Attributes: AxmlAttributeList);
+constructor ATxmlTagWithAttr.Create(const Name: UnicodeString; const Attributes: AxmlAttributeList);
 begin
   inherited Create;
   FName := Name;
@@ -2419,7 +2425,7 @@ begin
   inherited Destroy;
 end;
 
-function ATxmlTagWithAttr.GetName: WideString;
+function ATxmlTagWithAttr.GetName: UnicodeString;
 begin
   Result := FName;
 end;
@@ -2434,19 +2440,20 @@ begin
   Result := FAttributes;
 end;
 
-function ATxmlTagWithAttr.HasAttribute(const Name: WideString): Boolean;
+function ATxmlTagWithAttr.HasAttribute(const Name: UnicodeString): Boolean;
 begin
   Result := Assigned(FAttributes) and FAttributes.HasAttribute(Name);
 end;
 
-function ATxmlTagWithAttr.GetAttrNames: WideStringArray;
+function ATxmlTagWithAttr.GetAttrNames: UnicodeStringArray;
 begin
   if Assigned(FAttributes) then
-    Result := FAttributes.AttrNames else
+    Result := FAttributes.AttrNames
+  else
     SetLength(Result, 0);
 end;
 
-function ATxmlTagWithAttr.AttrAsText(const Name: WideString; const Declarations: TxmlMarkupDeclarationList; const DefaultValue: WideString): WideString;
+function ATxmlTagWithAttr.AttrAsText(const Name: UnicodeString; const Declarations: TxmlMarkupDeclarationList; const DefaultValue: UnicodeString): UnicodeString;
 begin
   if Assigned(FAttributes) then
     Result := FAttributes.AttrAsText(Name, Declarations, DefaultValue) else
@@ -2482,7 +2489,7 @@ begin
  end;
 
 { AxmlElement                                                                  }
-function AxmlElement.GetName: WideString;
+function AxmlElement.GetName: UnicodeString;
 begin
   Result := GetTag.Name;
 end;
@@ -2492,32 +2499,32 @@ begin
   Result := GetTag.Attributes;
 end;
 
-function AxmlElement.AttrNames: WideStringArray;
+function AxmlElement.AttrNames: UnicodeStringArray;
 begin
   Result := GetTag.AttrNames;
 end;
 
-function AxmlElement.HasAttribute(const Name: WideString): Boolean;
+function AxmlElement.HasAttribute(const Name: UnicodeString): Boolean;
 begin
   Result := GetTag.HasAttribute(Name);
 end;
 
-function AxmlElement.AttrAsText(const Name: WideString; const Declarations: TxmlMarkupDeclarationList; const DefaultValue: WideString): WideString;
+function AxmlElement.AttrAsText(const Name: UnicodeString; const Declarations: TxmlMarkupDeclarationList; const DefaultValue: UnicodeString): UnicodeString;
 begin
   Result := GetTag.AttrAsText(Name, Declarations, DefaultValue);
 end;
 
-function AxmlElement.AttrAsInteger(const Name: WideString; const Declarations: TxmlMarkupDeclarationList; const DefaultValue: Integer): Integer;
+function AxmlElement.AttrAsInteger(const Name: UnicodeString; const Declarations: TxmlMarkupDeclarationList; const DefaultValue: Integer): Integer;
 begin
   Result := GetTag.AttrAsInteger(Name, Declarations, DefaultValue);
 end;
 
-function AxmlElement.AttrAsFloat(const Name: WideString; const Declarations: TxmlMarkupDeclarationList; const DefaultValue: Extended): Extended;
+function AxmlElement.AttrAsFloat(const Name: UnicodeString; const Declarations: TxmlMarkupDeclarationList; const DefaultValue: Extended): Extended;
 begin
   Result := GetTag.AttrAsFloat(Name, Declarations, DefaultValue);
 end;
 
-function AxmlElement.TextContent(const Declarations: TxmlMarkupDeclarationList): WideString;
+function AxmlElement.TextContent(const Declarations: TxmlMarkupDeclarationList): UnicodeString;
 var C : TxmlElementContent;
 begin
   C := GetContent;
@@ -2526,7 +2533,7 @@ begin
     Result := C.TextContent(Declarations);
 end;
 
-function AxmlElement.GetChildContent(const Path: WideString): TxmlElementContent;
+function AxmlElement.GetChildContent(const Path: UnicodeString): TxmlElementContent;
 var C : TxmlElementContent;
 begin
   C := GetContent;
@@ -2535,7 +2542,7 @@ begin
     Result := C.ElementContentByName(Path);
 end;
 
-function AxmlElement.GetChildContentText(const Path: WideString): WideString;
+function AxmlElement.GetChildContentText(const Path: UnicodeString): UnicodeString;
 var C : TxmlElementContent;
 begin
   C := GetChildContent(Path);
@@ -2553,16 +2560,17 @@ begin
     Result := C.FirstElement;
 end;
 
-function AxmlElement.ElementNames: WideStringArray;
+function AxmlElement.ElementNames: UnicodeStringArray;
 var C : TxmlElementContent;
 begin
   C := GetContent;
   if not Assigned(C) then
-    Result := nil else
+    Result := nil
+  else
     Result := C.ElementNames;
 end;
 
-function AxmlElement.ElementByName(const Path: WideString): AxmlElement;
+function AxmlElement.ElementByName(const Path: UnicodeString): AxmlElement;
 var C : TxmlElementContent;
 begin
   C := GetContent;
@@ -2571,7 +2579,7 @@ begin
     Result := C.ElementByName(Path);
 end;
 
-function AxmlElement.ElementsByName(const Path: WideString): AxmlElementArray;
+function AxmlElement.ElementsByName(const Path: UnicodeString): AxmlElementArray;
 var C : TxmlElementContent;
 begin
   C := GetContent;
@@ -2589,7 +2597,7 @@ begin
     Result := N.PosNextElement(C, PrevPos);
 end;
 
-function AxmlElement.PosNextElementByName(var C: AxmlElement; const Name: WideString;
+function AxmlElement.PosNextElementByName(var C: AxmlElement; const Name: UnicodeString;
     const PrevPos: Integer): Integer;
 var N : TxmlElementContent;
 begin
@@ -2608,7 +2616,7 @@ begin
     Result := N.ElementCount;
 end;
 
-function AxmlElement.ElementCountByName(const Name: WideString): Integer;
+function AxmlElement.ElementCountByName(const Name: UnicodeString): Integer;
 var N : TxmlElementContent;
 begin
   N := GetContent;
@@ -2703,7 +2711,7 @@ begin
   C := AxmlElement(S);
 end;
 
-function TxmlElementContent.PosNextElementByName(var C: AxmlElement; const Name: WideString; const PrevPos: Integer): Integer;
+function TxmlElementContent.PosNextElementByName(var C: AxmlElement; const Name: UnicodeString; const PrevPos: Integer): Integer;
 begin
   if Name <> '' then
     begin
@@ -2732,7 +2740,7 @@ begin
   Until I < 0;
 end;
 
-function TxmlElementContent.ElementCountByName(const Name: WideString): Integer;
+function TxmlElementContent.ElementCountByName(const Name: UnicodeString): Integer;
 var I : Integer;
     C : AxmlElement;
 begin
@@ -2750,7 +2758,7 @@ begin
   PosNextElement(Result);
 end;
 
-function TxmlElementContent.FirstElementName: WideString;
+function TxmlElementContent.FirstElementName: UnicodeString;
 var C : AxmlElement;
 begin
   PosNextElement(C);
@@ -2759,7 +2767,7 @@ begin
     Result := C.Name;
 end;
 
-function TxmlElementContent.ElementNames: WideStringArray;
+function TxmlElementContent.ElementNames: UnicodeStringArray;
 var I : Integer;
     C : AxmlElement;
 begin
@@ -2767,13 +2775,13 @@ begin
   I := PosNextElement(C);
   While I >= 0 do
     begin
-      WideAppend(Result, C.Name);
+      DynArrayAppendU(Result, C.Name);
       I := PosNextElement(C, I);
     end;
 end;
 
-function TxmlElementContent.ResolveElementPath(const Path: WideString;
-    var Name: WideString): TxmlElementContent;
+function TxmlElementContent.ResolveElementPath(const Path: UnicodeString;
+    var Name: UnicodeString): TxmlElementContent;
 var I, J : Integer;
     E    : AxmlElement;
 begin
@@ -2781,10 +2789,10 @@ begin
   I := 1;
   Result := self;
   Repeat
-    J := WidePosChar(WideChar('/'), Path, I);
+    J := PosCharU(WideChar('/'), Path, I);
     if J > 0 then
       begin
-        Result.PosNextElementByName(E, WideCopyRange(Path, I, J - 1));
+        Result.PosNextElementByName(E, CopyRangeW(Path, I, J - 1));
         if not Assigned(E) then
           begin
             Result := nil;
@@ -2796,11 +2804,11 @@ begin
         I := J + 1;
       end;
   Until J = 0;
-  Name := WideCopyFrom(Path, I);
+  Name := CopyFromW(Path, I);
 end;
 
-function TxmlElementContent.ElementByName(const Path: WideString): AxmlElement;
-var N : WideString;
+function TxmlElementContent.ElementByName(const Path: UnicodeString): AxmlElement;
+var N : UnicodeString;
     C : TxmlElementContent;
 begin
   C := ResolveElementPath(Path, N);
@@ -2810,8 +2818,8 @@ begin
     Result := nil;
 end;
 
-function TxmlElementContent.ElementsByName(const Path: WideString): AxmlElementArray;
-var N : WideString;
+function TxmlElementContent.ElementsByName(const Path: UnicodeString): AxmlElementArray;
+var N : UnicodeString;
     C : TxmlElementContent;
     E : AxmlElement;
     I, J, L : Integer;
@@ -2840,7 +2848,7 @@ begin
     end;
 end;
 
-function TxmlElementContent.ElementContentByName(const Path: WideString): TxmlElementContent;
+function TxmlElementContent.ElementContentByName(const Path: UnicodeString): TxmlElementContent;
 var C : AxmlElement;
 begin
   C := ElementByName(Path);
@@ -2849,7 +2857,7 @@ begin
     Result := C.Content;
 end;
 
-function TxmlElementContent.ElementAttributeNames(const ElementName: WideString): WideStringArray;
+function TxmlElementContent.ElementAttributeNames(const ElementName: UnicodeString): UnicodeStringArray;
 var I : Integer;
     C : AxmlElement;
 begin
@@ -2857,12 +2865,12 @@ begin
   I := PosNextElementByName(C, ElementName);
   While I >= 0 do
     begin
-      WideAppendWideStringArray(Result, C.Tag.AttrNames);
+      DynArrayAppendUnicodeStringArray(Result, C.Tag.AttrNames);
       I := PosNextElementByName(C, ElementName, I);
     end;
 end;
 
-function TxmlElementContent.ElementAttributeValues(const ElementName, AttributeName: WideString; const Declarations: TxmlMarkupDeclarationList; const DefaultValue: WideString): WideStringArray;
+function TxmlElementContent.ElementAttributeValues(const ElementName, AttributeName: UnicodeString; const Declarations: TxmlMarkupDeclarationList; const DefaultValue: UnicodeString): UnicodeStringArray;
 var I : Integer;
     C : AxmlElement;
 begin
@@ -2870,12 +2878,12 @@ begin
   I := PosNextElementByName(C, ElementName);
   While I >= 0 do
     begin
-      WideAppend(Result, C.Tag.AttrAsText(AttributeName, Declarations, DefaultValue));
+      DynArrayAppendU(Result, C.Tag.AttrAsText(AttributeName, Declarations, DefaultValue));
       I := PosNextElementByName(C, ElementName, I);
     end;
 end;
 
-function TxmlElementContent.ElementTextContent(const ElementName: WideString; const Declarations: TxmlMarkupDeclarationList): WideStringArray;
+function TxmlElementContent.ElementTextContent(const ElementName: UnicodeString; const Declarations: TxmlMarkupDeclarationList): UnicodeStringArray;
 var I : Integer;
     C : AxmlElement;
 begin
@@ -2883,12 +2891,12 @@ begin
   I := PosNextElementByName(C, ElementName);
   While I >= 0 do
     begin
-      WideAppend(Result, C.TextContent(Declarations));
+      DynArrayAppendU(Result, C.TextContent(Declarations));
       I := PosNextElementByName(C, ElementName, I);
     end;
 end;
 
-function TxmlElementContent.ElementTextContent(const ElementName, AttributeName, AttributeValue: WideString; const Declarations: TxmlMarkupDeclarationList): WideStringArray;
+function TxmlElementContent.ElementTextContent(const ElementName, AttributeName, AttributeValue: UnicodeString; const Declarations: TxmlMarkupDeclarationList): UnicodeStringArray;
 var I : Integer;
     C : AxmlElement;
 begin
@@ -2897,7 +2905,7 @@ begin
   While I >= 0 do
     begin
       if C.AttrAsText(AttributeName, Declarations) = AttributeValue then
-        WideAppend(Result, C.TextContent(Declarations));
+        DynArrayAppendU(Result, C.TextContent(Declarations));
       I := PosNextElementByName(C, ElementName, I);
     end;
 end;
@@ -2940,7 +2948,7 @@ begin
   Result := AxmlElement(Find(AxmlElement));
 end;
 
-function TxmlDocument.TextContent(const Declarations: TxmlMarkupDeclarationList): WideString;
+function TxmlDocument.TextContent(const Declarations: TxmlMarkupDeclarationList): UnicodeString;
 begin
   Result := RootElement.TextContent(Declarations);
 end;
@@ -2954,7 +2962,7 @@ begin
     Result := P.DocTypeDecl;
 end;
 
-function TxmlDocument.DocTypeName: WideString;
+function TxmlDocument.DocTypeName: UnicodeString;
 var D : TxmlDocTypeDecl;
 begin
   D := DocTypeDecl;
@@ -2963,7 +2971,7 @@ begin
     Result := D.Name;
 end;
 
-function TxmlDocument.DocTypeURI: WideString;
+function TxmlDocument.DocTypeURI: UnicodeString;
 var D : TxmlDocTypeDecl;
 begin
   D := DocTypeDecl;
@@ -2972,32 +2980,32 @@ begin
     Result := D.URI;
 end;
 
-function TxmlDocument.RootElementName: WideString;
+function TxmlDocument.RootElementName: UnicodeString;
 begin
   Result := RootElement.Name;
 end;
 
-function TxmlDocument.RootElementLocalName: WideString;
+function TxmlDocument.RootElementLocalName: UnicodeString;
 begin
   Result := RootElement.LocalName;
 end;
 
-function TxmlDocument.RootElementNameSpace: WideString;
+function TxmlDocument.RootElementNameSpace: UnicodeString;
 begin
   Result := RootElement.NameSpace;
 end;
 
-function TxmlDocument.RootElementNameSpaceURI: WideString;
+function TxmlDocument.RootElementNameSpaceURI: UnicodeString;
 begin
   Result := RootElement.Attributes.GetNameSpaceURI(RootElementNameSpace);
 end;
 
-function TxmlDocument.RootElementDefaultNameSpaceURI: WideString;
+function TxmlDocument.RootElementDefaultNameSpaceURI: UnicodeString;
 begin
   Result := RootElement.Attributes.GetNameSpaceURI('');
 end;
 
-function TxmlDocument.IsRootElementName(const Name: WideString): Boolean;
+function TxmlDocument.IsRootElementName(const Name: UnicodeString): Boolean;
 begin
   Result := RootElement.IsName(Name);
 end;
@@ -3008,12 +3016,12 @@ begin
   Result := RootElement.IsAsciiName(Name, CaseSensitive);
 end;
 
-function TxmlDocument.ElementByName(const RelPath: WideString): AxmlElement;
+function TxmlDocument.ElementByName(const RelPath: UnicodeString): AxmlElement;
 begin
   Result := RootElement.ElementByName(RelPath);
 end;
 
-function TxmlDocument.GetElementContentText(const RelPath: WideString): WideString;
+function TxmlDocument.GetElementContentText(const RelPath: UnicodeString): UnicodeString;
 begin
   Result := RootElement.ChildContentText[RelPath];
 end;

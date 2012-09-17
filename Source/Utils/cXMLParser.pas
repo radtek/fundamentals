@@ -5,7 +5,7 @@
 {   File version:     4.07                                                     }
 {   Description:      XML parser                                               }
 {                                                                              }
-{   Copyright:        Copyright © 2000-2011, David J Butler                    }
+{   Copyright:        Copyright © 2000-2012, David J Butler                    }
 {                     All rights reserved.                                     }
 {                     Redistribution and use in source and binary forms, with  }
 {                     or without modification, are permitted provided that     }
@@ -35,13 +35,13 @@
 {                                                                              }
 { Revision history:                                                            }
 {                                                                              }
-{   11/05/2000  1.01  Created cXML from cInternetStandards.                    }
-{   08/05/2001  1.02  Complete revision.                                       }
-{   11/05/2001  1.03  Added DTD parser.                                        }
-{   07/07/2001  1.04  Small revisions.                                         }
-{   17/04/2002  2.05  Created cXMLParser from cXML.                            }
-{   29/04/2002  2.06  Refactored for Unicode support.                          }
-{   07/09/2003  3.07  Revised for Fundamentals 3.                              }
+{   2000/05/11  1.01  Created cXML from cInternetStandards.                    }
+{   2001/05/08  1.02  Complete revision.                                       }
+{   2001/05/11  1.03  Added DTD parser.                                        }
+{   2001/07/07  1.04  Small revisions.                                         }
+{   2002/04/17  2.05  Created cXMLParser from cXML.                            }
+{   2002/04/29  2.06  Refactored for Unicode support.                          }
+{   2003/09/07  3.07  Revised for Fundamentals 3.                              }
 {                                                                              }
 {******************************************************************************}
 
@@ -49,6 +49,7 @@
 {$IFDEF FREEPASCAL}{$IFDEF DEBUG}
   {$WARNINGS OFF}{$HINTS OFF}
 {$ENDIF}{$ENDIF}
+
 unit cXMLParser;
 
 interface
@@ -61,7 +62,6 @@ uses
   cUtils,
   cStreams,
   cUnicodeCodecs,
-  cUnicode,
   cUnicodeReader,
   cXMLFunctions,
   cXMLDocument;
@@ -72,7 +72,7 @@ uses
 { XML Parser                                                                   }
 {                                                                              }
 type
-  TxmlParseOptions = Set of (
+  TxmlParseOptions = set of (
       xmlPreserveSpaceAroundContent,
       xmlCheckWellFormed);
 
@@ -81,15 +81,17 @@ const
 
 type
   TxmlKnownReference = record
-    Reference : WideString;
-    Value     : WideString;
+    Reference : UnicodeString;
+    Value     : UnicodeString;
   end;
+
   TxmlParser = class;
   TxmlParserObjectEvent = procedure (Sender: TxmlParser; Obj: AxmlType) of object;
+
   TxmlParser = class
   protected
     FOptions        : TxmlParseOptions;
-    FEncoding       : AnsiString;
+    FEncoding       : UnicodeString;
     FOnTag          : TxmlParserObjectEvent;
     FOnElement      : TxmlParserObjectEvent;
     FOnPI           : TxmlParserObjectEvent;
@@ -103,28 +105,28 @@ type
 
     function  GetCheckWellFormed: Boolean;
 
-    procedure ParseError(const Msg: AnsiString);
+    procedure ParseError(const Msg: String);
 
     procedure GetNextToken; virtual;
 
     function  ParseProlog: TxmlProlog;
     function  ParseElement: AxmlElement;
 
-    function  CreateCharData(const Text: WideString): AxmlType; virtual;
+    function  CreateCharData(const Text: UnicodeString): AxmlType; virtual;
     function  CreateCharRef(const Number: LongWord; const Hex: Boolean): AxmlType; virtual;
-    function  CreatePEReference(const Name: WideString): TxmlPEReference; virtual;
-    function  CreateGeneralEntityRef(const Name: WideString): AxmlType; virtual;
+    function  CreatePEReference(const Name: UnicodeString): TxmlPEReference; virtual;
+    function  CreateGeneralEntityRef(const Name: UnicodeString): AxmlType; virtual;
 
-    function  CreateAttribute(const Name: WideString; const Value: TxmlAttValue): AxmlType; virtual;
-    function  CreateTextAttribute(const Name: WideString; const Value: TxmlQuotedText): AxmlType; virtual;
-    function  CreateAttributeList(const TagName: WideString; const List: TxmlTypeList): AxmlAttributeList;
+    function  CreateAttribute(const Name: UnicodeString; const Value: TxmlAttValue): AxmlType; virtual;
+    function  CreateTextAttribute(const Name: UnicodeString; const Value: TxmlQuotedText): AxmlType; virtual;
+    function  CreateAttributeList(const TagName: UnicodeString; const List: TxmlTypeList): AxmlAttributeList;
 
-    function  CreateProcessingInstruction(const PITarget, Text: WideString): AxmlType;
-    function  CreateComment(const Text: WideString): AxmlType; virtual;
+    function  CreateProcessingInstruction(const PITarget, Text: UnicodeString): AxmlType;
+    function  CreateComment(const Text: UnicodeString): AxmlType; virtual;
 
-    function  CreateStartTag(const Name: WideString; const Attributes: AxmlAttributeList): AxmlType; virtual;
-    function  CreateEndTag(const Name: WideString): AxmlType; virtual;
-    function  CreateEmptyElementTag(const Name: WideString; const Attributes: AxmlAttributeList): AxmlType; virtual;
+    function  CreateStartTag(const Name: UnicodeString; const Attributes: AxmlAttributeList): AxmlType; virtual;
+    function  CreateEndTag(const Name: UnicodeString): AxmlType; virtual;
+    function  CreateEmptyElementTag(const Name: UnicodeString; const Attributes: AxmlAttributeList): AxmlType; virtual;
 
     function  CreateElement(const StartTag: TxmlStartTag; const EndTag: TxmlEndTag; const Content: TxmlElementContent): AxmlElement; virtual;
     function  CreateEmptyElement(const Tag: TxmlEmptyElementTag): AxmlElement; virtual;
@@ -133,29 +135,29 @@ type
     function  CreateDocTypeDeclarationList: TxmlDocTypeDeclarationList; virtual;
     function  CreateDocument(const Prolog: TxmlProlog; const RootElement: AxmlElement): TxmlDocument; virtual;
 
-    procedure ExpectChar(const Ch: AnsiChar);
+    procedure ExpectChar(const Ch: WideChar);
     procedure ExpectAnsiStr(const S: AnsiString);
-    function  ExtractName(const Required: Boolean = False): WideString;
-    function  ExtractNmToken(const Required: Boolean = False): WideString;
+    function  ExtractName(const Required: Boolean = False): UnicodeString;
+    function  ExtractNmToken(const Required: Boolean = False): UnicodeString;
     function  MatchSpace: Boolean;
     function  SkipSpace: Boolean;
     function  MatchSpaceDelimited(const Text: AnsiString; const SkipText: Boolean = True): Boolean;
     function  ExtractEq(const Required: Boolean = True): Boolean;
-    function  ExtractTextString(const Delimiters: CharSet): WideString;
+    function  ExtractTextString(const Delimiters: CharSet): UnicodeString;
     function  ExtractText(const Delimiters: CharSet): AxmlType;
     function  ExtractPEReference: TxmlPEReference;
     function  ExtractCharRef: AxmlType;
     function  ExtractEntityRef: AxmlType;
     function  ExtractReference: AxmlType;
     procedure ExtractReferenceText(const List: TxmlTypeList; const Delimiters: CharSet; const InclPEReference: Boolean);
-    function  ExtractQuote(var Quote: AnsiChar): Boolean;
-    function  ExtractQuotedTextString(var Quote: AnsiChar; const Delimiters: CharSet): WideString;
+    function  ExtractQuote(out Quote: WideChar): Boolean;
+    function  ExtractQuotedTextString(out Quote: WideChar; const Delimiters: CharSet): UnicodeString;
     function  ExtractQuotedText(const Delimiters: CharSet): TxmlQuotedText;
     function  ExtractQuotedReferenceText(const TextClass: CxmlQuotedReferenceText; const Delimiters: CharSet; const InclPEReference: Boolean): TxmlQuotedReferenceText;
     function  ExtractTextAttribute: AxmlType;
     function  ExtractAttributeValue: TxmlAttValue;
     function  ExtractAttribute: AxmlType;
-    function  ExtractAttributeList(const TagName: WideString): AxmlAttributeList;
+    function  ExtractAttributeList(const TagName: UnicodeString): AxmlAttributeList;
     function  ExtractXMLDeclaration: TxmlXMLDecl;
     function  ExtractProcessingInstruction: AxmlType;
     function  ExtractQTag: AxmlType;
@@ -183,7 +185,7 @@ type
     destructor Destroy; override;
 
     property  Options: TxmlParseOptions read FOptions write FOptions default xmlDefaultParseOptions;
-    property  Encoding: AnsiString read FEncoding write FEncoding;
+    property  Encoding: UnicodeString read FEncoding write FEncoding;
 
     property  OnTag: TxmlParserObjectEvent read FOnTag write FOnTag;
     property  OnElement: TxmlParserObjectEvent read FOnElement write FOnElement;
@@ -195,7 +197,7 @@ type
     procedure SetReader(const Reader: AReaderEx; const ReaderOwner: Boolean = False);
     procedure SetBuffer(const Buf: Pointer; const Size: Integer);
     procedure SetString(const Buf: AnsiString);
-    procedure SetFileName(const FileName: AnsiString);
+    procedure SetFileName(const FileName: String);
 
     function  ExtractDocument: TxmlDocument;
   end;
@@ -208,8 +210,8 @@ type
 { Parse functions                                                              }
 {                                                                              }
 function  ParseXMLBuffer(const Buffer: Pointer; const Size: Integer): TxmlDocument;
-function  ParseXMLString(const S: AnsiString): TxmlDocument;
-function  ParseXMLFile(const FileName: AnsiString): TxmlDocument;
+function  ParseXMLStringA(const S: AnsiString): TxmlDocument;
+function  ParseXMLFile(const FileName: String): TxmlDocument;
 
 
 
@@ -279,7 +281,7 @@ end;
 
 procedure TxmlParser.SetReader(const Reader: AReaderEx; const ReaderOwner: Boolean);
 var T    : TUnicodeCodecClass;
-    B    : Array[0..1023] of Byte;
+    B    : array[0..1023] of Byte;
     L, N : Integer;
 begin
   if FRawReaderOwner then
@@ -289,7 +291,7 @@ begin
   if Assigned(Reader) then
     begin
       if FEncoding <> '' then
-        T := GetCodecClassByAlias(FEncoding)
+        T := GetCodecClassByAliasU(FEncoding)
       else
         T := nil;
       if not Assigned(T) then
@@ -317,12 +319,12 @@ begin
   SetBuffer(Pointer(FRawString), Length(FRawString));
 end;
 
-procedure TxmlParser.SetFileName(const FileName: AnsiString);
+procedure TxmlParser.SetFileName(const FileName: String);
 begin
   SetReader(TFileReader.Create(FileName), True);
 end;
 
-procedure TxmlParser.ParseError(const Msg: AnsiString);
+procedure TxmlParser.ParseError(const Msg: String);
 begin
   raise EXMLParser.Create(Msg);
 end;
@@ -332,7 +334,7 @@ end;
 {                                                                              }
 { XML STRUCTURES                                                               }
 {                                                                              }
-function TxmlParser.CreateCharData(const Text: WideString): AxmlType;
+function TxmlParser.CreateCharData(const Text: UnicodeString): AxmlType;
 begin
   Result := TxmlCharData.Create(Text);
 end;
@@ -342,52 +344,52 @@ begin
   Result := TxmlCharRef.Create(Number, Hex);
 end;
 
-function TxmlParser.CreatePEReference(const Name: WideString): TxmlPEReference;
+function TxmlParser.CreatePEReference(const Name: UnicodeString): TxmlPEReference;
 begin
   Result := TxmlPEReference.Create(Name);
 end;
 
-function TxmlParser.CreateGeneralEntityRef(const Name: WideString): AxmlType;
+function TxmlParser.CreateGeneralEntityRef(const Name: UnicodeString): AxmlType;
 begin
   Result := TxmlGeneralEntityRef.Create(Name);
 end;
 
-function TxmlParser.CreateAttribute(const Name: WideString; const Value: TxmlAttValue): AxmlType;
+function TxmlParser.CreateAttribute(const Name: UnicodeString; const Value: TxmlAttValue): AxmlType;
 begin
   Result := TxmlAttribute.Create(Name, Value);
 end;
 
-function TxmlParser.CreateAttributeList(const TagName: WideString; const List: TxmlTypeList): AxmlAttributeList;
+function TxmlParser.CreateAttributeList(const TagName: UnicodeString; const List: TxmlTypeList): AxmlAttributeList;
 begin
   Result := TxmlAttributeList.Create(List);
 end;
 
-function TxmlParser.CreateTextAttribute(const Name: WideString; const Value: TxmlQuotedText): AxmlType;
+function TxmlParser.CreateTextAttribute(const Name: UnicodeString; const Value: TxmlQuotedText): AxmlType;
 begin
   Result := TxmlTextAttribute.Create(Name, Value);
 end;
 
-function TxmlParser.CreateProcessingInstruction(const PITarget, Text: WideString): AxmlType;
+function TxmlParser.CreateProcessingInstruction(const PITarget, Text: UnicodeString): AxmlType;
 begin
   Result := TxmlProcessingInstruction.Create(PITarget, Text);
 end;
 
-function TxmlParser.CreateComment(const Text: WideString): AxmlType;
+function TxmlParser.CreateComment(const Text: UnicodeString): AxmlType;
 begin
   Result := TxmlComment.Create(Text);
 end;
 
-function TxmlParser.CreateStartTag(const Name: WideString; const Attributes: AxmlAttributeList): AxmlType;
+function TxmlParser.CreateStartTag(const Name: UnicodeString; const Attributes: AxmlAttributeList): AxmlType;
 begin
   Result := TxmlStartTag.Create(Name, Attributes);
 end;
 
-function TxmlParser.CreateEndTag(const Name: WideString): AxmlType;
+function TxmlParser.CreateEndTag(const Name: UnicodeString): AxmlType;
 begin
   Result := TxmlEndTag.Create(Name);
 end;
 
-function TxmlParser.CreateEmptyElementTag(const Name: WideString; const Attributes: AxmlAttributeList): AxmlType;
+function TxmlParser.CreateEmptyElementTag(const Name: UnicodeString; const Attributes: AxmlAttributeList): AxmlType;
 begin
   Result := TxmlEmptyElementTag.Create(Name, Attributes);
 end;
@@ -422,16 +424,16 @@ end;
 {                                                                              }
 { TOKENS                                                                       }
 {                                                                              }
-procedure TxmlParser.ExpectChar(const Ch: AnsiChar);
+procedure TxmlParser.ExpectChar(const Ch: WideChar);
 begin
-  if not FReader.MatchWideChar(WideChar(Ch), True) then
+  if not FReader.MatchWideChar(Ch, True) then
     ParseError(Ch + ' expected');
 end;
 
 procedure TxmlParser.ExpectAnsiStr(const S: AnsiString);
 begin
   if not FReader.MatchAnsiStr(S, True, True) then
-    ParseError(S + ' expected');
+    ParseError(String(S) + ' expected');
 end;
 
 {   [3]   S ::=  (#x20 | #x9 | #xD | #xA)+                                     }
@@ -453,20 +455,22 @@ end;
 {   [4]   NameChar ::=  Letter | Digit | '.' | '-' | '_' | ':' |               }
 {                 CombiningChar | Extender                                     }
 {   [5]   Name ::=  (Letter | '_' | ':') (NameChar)*                           }
-function TxmlParser.ExtractName(const Required: Boolean): WideString;
+function TxmlParser.ExtractName(const Required: Boolean): UnicodeString;
 begin
   if FReader.MatchChar(xmlIsNameStartChar, False) then
     begin
       Result := FReader.ReadChar;
       Result := Result + FReader.ReadChars(xmlIsNameChar); // keep as two statements
-    end else
+    end
+  else
     if Required then
-      ParseError('Name expected') else
+      ParseError('Name expected')
+    else
       Result := '';
 end;
 
 {   [7]   Nmtoken ::=  (NameChar)+                                             }
-function TxmlParser.ExtractNmToken(const Required: Boolean): WideString;
+function TxmlParser.ExtractNmToken(const Required: Boolean): UnicodeString;
 begin
   Result := FReader.ReadChars(xmlIsNameChar);
   if Result = '' then
@@ -486,26 +490,27 @@ begin
 end;
 
 {   [..]  TextString ::=  [^Delimiters]*                                       }
-function TxmlParser.ExtractTextString(const Delimiters: CharSet): WideString;
+function TxmlParser.ExtractTextString(const Delimiters: CharSet): UnicodeString;
 begin
   Result := FReader.ReadToAnsiChar(Delimiters);
 end;
 
 {   [..]  Text ::=  TextString                                                 }
 function TxmlParser.ExtractText(const Delimiters: CharSet): AxmlType;
-var Text : WideString;
+var Text : UnicodeString;
 begin
   Text := ExtractTextString(Delimiters);
   if not (xmlPreserveSpaceAroundContent in FOptions) then
-    WideTrimInPlace(Text, xmlIsSpaceChar);
+    StrTrimInPlaceU(Text, xmlIsSpaceChar);
   if Text = '' then
-    Result := nil else
+    Result := nil
+  else
     Result := CreateCharData(Text);
 end;
 
 {   [69]  PEReference ::=  '%' Name ';'                                        }
 function TxmlParser.ExtractPEReference: TxmlPEReference;
-var Name : WideString;
+var Name : UnicodeString;
 begin
   if not FReader.MatchWideChar('%', True) then
     begin
@@ -519,7 +524,7 @@ end;
 
 {   [66]  CharRef ::=  '&#' [0-9]+ ';' | '&#x' [0-9a-fA-F]+ ';'                }
 function TxmlParser.ExtractCharRef: AxmlType;
-var Str : WideString;
+var Str : AnsiString;
     Val : LongWord;
 begin
   Result := nil;
@@ -530,13 +535,15 @@ begin
       Str := FReader.ReadAnsiChars(['0'..'9', 'A'..'F', 'a'..'f']);
       if Str = '' then
         if GetCheckWellFormed then
-          ParseError('Hexadecimal number expected') else
+          ParseError('Hexadecimal number expected')
+        else
           Result := CreateCharData('&#x')
       else
         if not FReader.MatchWideChar(';', True) then
           if GetCheckWellFormed then
-            ParseError('; expected') else
-            Result := CreateCharData('&#x' + Str)
+            ParseError('; expected')
+          else
+            Result := CreateCharData('&#x' + ToStringA(Str))
         else
           begin
             Val := HexToLongWord(Str);
@@ -547,13 +554,15 @@ begin
       Str := FReader.ReadAnsiChars(['0'..'9']);
       if Str = '' then
         if GetCheckWellFormed then
-          ParseError('Number expected') else
+          ParseError('Number expected')
+        else
           Result := CreateCharData('&#')
       else
         if not FReader.MatchWideChar(';', True) then
           if GetCheckWellFormed then
-            ParseError('; expected') else
-            Result := CreateCharData('&#' + Str)
+            ParseError('; expected')
+          else
+            Result := CreateCharData('&#' + ToStringA(Str))
         else
           begin
             Val := StrToLongWord(Str);
@@ -564,7 +573,7 @@ end;
 
 {   [68]  EntityRef ::=  '&' Name ';'                                          }
 function TxmlParser.ExtractEntityRef: AxmlType;
-var Name : WideString;
+var Name : UnicodeString;
 begin
   Result := nil;
   if not FReader.MatchWideChar('&', True) then
@@ -573,17 +582,21 @@ begin
   if Name = '' then
     begin
       if GetCheckWellFormed then
-        ParseError('Entity name expected') else
+        ParseError('Entity name expected')
+      else
         Result := CreateCharData('&');
-    end else
+    end
+  else
     begin
       if FReader.MatchWideChar(';', False) then
         begin
           Result := CreateGeneralEntityRef(Name);
           FReader.Skip(1);
-        end else
+        end
+      else
         if GetCheckWellFormed then
-          ParseError('; expected') else
+          ParseError('; expected')
+        else
           Result := CreateCharData('&' + Name);
     end;
 end;
@@ -603,7 +616,7 @@ var C : AxmlType;
     R : Boolean;
 begin
   Assert(Assigned(List));
-  Repeat
+  repeat
     C := ExtractText(Delimiters);
     if not Assigned(C) then
       C := ExtractReference;
@@ -612,20 +625,21 @@ begin
     R := Assigned(C);
     if R then
       List.AddChild(C);
-  Until not R;
+  until not R;
 end;
 
 {   [..]  Quote ::=  "'" | '"'                                                 }
-function TxmlParser.ExtractQuote(var Quote: AnsiChar): Boolean;
+function TxmlParser.ExtractQuote(out Quote: WideChar): Boolean;
 var C : WideChar;
 begin
   C := FReader.PeekChar;
   if (C = '''') or (C = '"') then
     begin
       FReader.Skip(1);
-      Quote := AnsiChar(Ord(C));
+      Quote := C;
       Result := True;
-    end else
+    end
+  else
     begin
       Quote := #0;
       Result := False;
@@ -633,7 +647,7 @@ begin
 end;
 
 {   [..]  QuotedText ::=  "'" Text "'" | '"' Text '"'                          }
-function TxmlParser.ExtractQuotedTextString(var Quote: AnsiChar; const Delimiters: CharSet): WideString;
+function TxmlParser.ExtractQuotedTextString(out Quote: WideChar; const Delimiters: CharSet): UnicodeString;
 var D : CharSet;
 begin
   if not ExtractQuote(Quote) then
@@ -642,18 +656,19 @@ begin
       exit;
     end;
   D := Delimiters;
-  Include(D, Quote);
+  Include(D, AnsiChar(Ord(Quote)));
   Result := ExtractTextString(D);
   ExpectChar(Quote);
 end;
 
 function TxmlParser.ExtractQuotedText(const Delimiters: CharSet): TxmlQuotedText;
-var Q : AnsiChar;
-    T : WideString;
+var Q : WideChar;
+    T : UnicodeString;
 begin
   T := ExtractQuotedTextString(Q, Delimiters);
   if Q = #0 then
-    Result := nil else
+    Result := nil
+  else
     Result := TxmlQuotedText.Create(T);
 end;
 
@@ -661,7 +676,7 @@ end;
 {                                  '"' ReferenceText '"'                       }
 function TxmlParser.ExtractQuotedReferenceText(const TextClass: CxmlQuotedReferenceText; const Delimiters: CharSet; const InclPEReference: Boolean): TxmlQuotedReferenceText;
 var D : CharSet;
-    C : AnsiChar;
+    C : WideChar;
 begin
   if not ExtractQuote(C) then
     begin
@@ -670,14 +685,14 @@ begin
     end;
   Result := TextClass.Create;
   AssignCharSet(D, Delimiters);
-  Include(D, C);
+  Include(D, AnsiChar(Ord(C)));
   ExtractReferenceText(Result, D, InclPEReference);
   ExpectChar(C);
 end;
 
 {   [..]  TextAttribute ::=  Name Eq QuotedText                                }
 function TxmlParser.ExtractTextAttribute: AxmlType;
-var Name : AnsiString;
+var Name : UnicodeString;
     Val  : TxmlQuotedText;
 begin
   Name := ExtractName;
@@ -700,7 +715,7 @@ end;
 
 {   [41]  Attribute ::=  Name Eq AttValue                                      }
 function TxmlParser.ExtractAttribute: AxmlType;
-var Name : WideString;
+var Name : UnicodeString;
     Val  : TxmlAttValue;
 begin
   Name := ExtractName;
@@ -715,7 +730,7 @@ begin
 end;
 
 {   [..]  (S Attribute)* S?                                                    }
-function TxmlParser.ExtractAttributeList(const TagName: WideString): AxmlAttributeList;
+function TxmlParser.ExtractAttributeList(const TagName: UnicodeString): AxmlAttributeList;
 var D : AxmlType;
     L : TxmlTypeList;
     R : Boolean;
@@ -728,13 +743,13 @@ begin
       exit;
     end;
   L := TxmlTypeList.Create(D);
-  Repeat
+  repeat
     SkipSpace;
     D := ExtractAttribute;
     R := Assigned(D);
     if R then
       L.AddChild(D);
-  Until not R;
+  until not R;
   Result := CreateAttributeList(TagName, L);
 end;
 
@@ -750,26 +765,28 @@ var C : AxmlType;
 begin
   Result := TxmlXMLDecl.Create;
   R := False;
-  Repeat
+  repeat
     if not SkipSpace then
       R := True else
       begin
         C := ExtractTextAttribute;
         if Assigned(C) then
-          Result.AddChild(C) else
+          Result.AddChild(C)
+        else
           R := True;
       end;
-  Until R;
+  until R;
   ExpectAnsiStr('?>');
 end;
 
 {   [16]  PI ::=  '<?' PITarget (S (Char* - (Char* '?>' Char*)))? '?>'         }
 function TxmlParser.ExtractProcessingInstruction: AxmlType;
-var Target, Text : WideString;
+var Target, Text : UnicodeString;
 begin
   Target := ExtractName;
   if Target = '' then
-    Result := nil else
+    Result := nil
+  else
     begin
       Text := FReader.ReadToAnsiStr('?>', True);
       ExpectAnsiStr('?>');
@@ -785,13 +802,14 @@ function TxmlParser.ExtractQTag: AxmlType;
 begin
   FReader.Skip(1);
   if FReader.MatchAnsiStr('xml', False, True) then
-    Result := ExtractXMLDeclaration else
+    Result := ExtractXMLDeclaration
+  else
     Result := ExtractProcessingInstruction;
 end;
 
 {   [15]  Comment ::=  '<!--' ((Char - '-') | ('-' (Char - '-')))* '-->'       }
 function TxmlParser.ExtractComment: AxmlType;
-var S : WideString;
+var S : UnicodeString;
 begin
   FReader.Skip(2);
   S := FReader.ReadToAnsiStr('-->', True);
@@ -806,7 +824,7 @@ end;
 {   [20]  CData ::=  (Char* - (Char* ']]>' Char*))                             }
 {   [21]  CDEnd ::=  ']]>'                                                     }
 function TxmlParser.ExtractCDATASection: AxmlType;
-var S : WideString;
+var S : UnicodeString;
 begin
   FReader.Skip(7);
   S := FReader.ReadToAnsiStr(']]>', True);
@@ -819,30 +837,33 @@ procedure TxmlParser.ExtractNamesRest(const L: TxmlTypeList; const NmToken: Bool
 var R : Boolean;
 begin
   R := False;
-  Repeat
+  repeat
     SkipSpace;
     if FReader.MatchWideChar(WideChar(Delimiter), True) then
       begin
         SkipSpace;
         if NmToken then
-          L.AddChild(TxmlLiteralFormatting.Create(ExtractNmToken(True))) else
+          L.AddChild(TxmlLiteralFormatting.Create(ExtractNmToken(True)))
+        else
           L.AddChild(TxmlLiteralFormatting.Create(ExtractName(True)));
       end else
     if FReader.MatchWideChar(')', True) then
-      R := True else
+      R := True
+    else
       ParseError(') expected');
-  Until R;
+  until R;
 end;
 
 {   [..]  Names ::=  S? Name NamesRest                                         }
 procedure TxmlParser.ExtractNames(const L: TxmlTypeList; const NmToken: Boolean; const Delimiter: AnsiChar);
-var N : WideString;
+var N : UnicodeString;
 begin
   SkipSpace;
   if FReader.MatchWideChar(WideChar(')'), True) then
     exit;
   if NmToken then
-    N := ExtractNmToken else
+    N := ExtractNmToken
+  else
     N := ExtractName;
   if N = '' then
     exit;
@@ -864,7 +885,7 @@ function TxmlParser.ExtractElementDeclaration: AxmlType;
   var IsChoice, IsSeq : Boolean;
       C : AxmlChildSpec;
       R : Boolean;
-      Ch : AnsiChar;
+      Ch : WideChar;
   begin
     Result := nil;
     SkipSpace;
@@ -876,9 +897,10 @@ function TxmlParser.ExtractElementDeclaration: AxmlType;
     IsSeq := False;
     try
       R := False;
-      Repeat
+      repeat
         if FReader.MatchWideChar('(', True) then
-          C := ExtractChildren else
+          C := ExtractChildren
+        else
           C := TxmlNameChildSpec.Create(ExtractName(True));
         SkipSpace;
         if FReader.MatchWideChar(',', True) then
@@ -924,14 +946,14 @@ function TxmlParser.ExtractElementDeclaration: AxmlType;
             Result.List.AddAssigned(TxmlLiteralFormatting.Create(Ch));
             SkipSpace;
           end;
-      Until R;
+      until R;
     except
       FreeAndNil(Result);
       raise;
     end;
   end;
 
-var N : WideString;
+var N : UnicodeString;
     E : TxmlElementDeclaration;
 
 begin
@@ -955,7 +977,8 @@ begin
           begin
             E := TxmlElementDeclaration.Create(N, ecsMixed);
             ExtractNamesRest(TxmlMixedContentSpec(E.ContentSpec).List, False, '|');
-          end else
+          end
+        else
           begin
             E := TxmlElementDeclaration.Create(N, ecsChildren);
             TxmlChildrenContentSpec(E.ContentSpec).ChildrenSpec := ExtractChildren;
@@ -981,7 +1004,7 @@ end;
 {   [60]  DefaultDecl ::=  '#REQUIRED' | '#IMPLIED'                            }
 {                        | (('#FIXED' S)? AttValue)                            }
 function TxmlParser.ExtractAttDef: TxmlAttDef;
-var N : WideString;
+var N : UnicodeString;
     P : TxmlTypeList;
     T : TxmlAttType;
     D : TxmlDefaultType;
@@ -1038,7 +1061,8 @@ begin
           begin
             D := dtFixed;
             SkipSpace;
-          end else
+          end
+        else
           D := dtValue;
         A := ExtractAttributeValue;
       end;
@@ -1048,7 +1072,7 @@ begin
     raise;
   end;
 
-  Case T of
+  case T of
     atEnumeratedEnumerationType,
     atEnumeratedNotationType :
       Result := TxmlAttDef.Create(N, T, P, D, A);
@@ -1060,14 +1084,14 @@ end;
 {   [..]  AttDef* S?                                                           }
 procedure TxmlParser.ExtractAttDefList(const L: TxmlTypeList);
 begin
-  Repeat
+  repeat
     SkipSpace;
-  Until not L.AddAssigned(ExtractAttDef);
+  until not L.AddAssigned(ExtractAttDef);
 end;
 
 {   [52]  AttlistDecl ::=  '<!ATTLIST' S Name AttDef* S? '>'                   }
 function TxmlParser.ExtractAttListDeclaration: AxmlType;
-var N : WideString;
+var N : UnicodeString;
 begin
   if not MatchSpaceDelimited('<!ATTLIST') then
     begin
@@ -1106,7 +1130,8 @@ begin
             ParseError('SystemID expected');
           Result := C.CreateSystemID(T);
         end;
-    end else
+    end
+  else
     Result := nil;
   if not Assigned(Result) and FReader.MatchAnsiStr('PUBLIC', True, True) then
     begin
@@ -1153,7 +1178,7 @@ end;
 {   [9]   EntityValue ::=  '"' ([^%&"] | PEReference | Reference)* '"'       }
 {                       |  "'" ([^%&'] | PEReference | Reference)* "'"       }
 function TxmlParser.ExtractEntityDeclaration: AxmlType;
-var N : WideString;
+var N : UnicodeString;
     PE : Boolean;
     D : AxmlType;
 begin
@@ -1183,7 +1208,7 @@ end;
 {   [83]  PublicID ::=  'PUBLIC' S PubidLiteral                              }
 function TxmlParser.ExtractNotationDeclaration: AxmlType;
 var X : TxmlExternalID;
-    N : AnsiString;
+    N : UnicodeString;
 begin
   if not MatchSpaceDelimited('<!NOTATION') then
     begin
@@ -1244,14 +1269,15 @@ begin
   Result := CreateDocTypeDeclarationList;
   try
     R := False;
-    Repeat
+    repeat
       if not SkipSpace then
         if not Result.AddAssigned(ExtractPEReference) then
           if not Result.AddAssigned(ExtractMarkupDeclaration) then
             if FReader.MatchWideChar(']', True) then
-              R := True else
+              R := True
+            else
               ParseError('Unexpected token');
-    Until R;
+    until R;
   except
     FreeAndNil(Result);
     raise;
@@ -1261,7 +1287,7 @@ end;
 {   [28]  doctypedecl ::=  '<!DOCTYPE' S Name (S ExternalID)? S?             }
 {                        ('[' (markupdecl | PEReference | S)* ']' S?)? '>'   }
 function TxmlParser.ExtractDTD: AxmlType;
-var N : WideString;
+var N : UnicodeString;
     D : TxmlDocTypeDecl;
 begin
   if not SkipSpace then
@@ -1290,7 +1316,7 @@ end;
 {   [28]  doctypedecl ::=  '<!DOCTYPE' S Name (S ExternalID)? S?             }
 {                        ('[' (markupdecl | PEReference | S)* ']' S?)? '>'   }
 function TxmlParser.ExtractETag: AxmlType;
-var S : WideString;
+var S : UnicodeString;
 begin
   FReader.Skip(1);
   if FReader.MatchAnsiStr('--', True, False) then
@@ -1300,7 +1326,8 @@ begin
     begin
       S := FReader.ReadToAnsiChar(xmlSpace + ['[', '<', '>', '&']);
       if S = 'DOCTYPE' then
-        Result := ExtractDTD else
+        Result := ExtractDTD
+      else
         begin
           Result := nil;
           ParseError('Unrecognised <! tag');
@@ -1312,7 +1339,7 @@ end;
 {   [42]  ETag ::=  '</' Name S? '>'                                         }
 {   [44]  EmptyElemTag ::=  '<' Name (S Attribute)* S? '/>'                  }
 function TxmlParser.ExtractTag: AxmlType;
-var N : AnsiString;
+var N : UnicodeString;
     EmptyTag, EndTag : Boolean;
     C : AxmlAttributeList;
 begin
@@ -1330,9 +1357,11 @@ begin
         if Assigned(C) then
           ParseError('Attributes not allowed in end tag');
         Result := CreateEndTag(N);
-      end else
+      end
+    else
       if EmptyTag then
-        Result := CreateEmptyElementTag(N, C) else
+        Result := CreateEmptyElementTag(N, C)
+      else
         Result := CreateStartTag(N, C);
     if Assigned(FOnTag) then
       FOnTag(self, Result);
@@ -1358,7 +1387,8 @@ begin
     exit;
   Ch := FReader.PeekChar;
   if Ch = '&' then
-    FToken := ExtractReference else
+    FToken := ExtractReference
+  else
     begin
       Assert(Ch = '<', 'Unexpected character');
       FReader.Skip(1);
@@ -1366,7 +1396,8 @@ begin
       if Ch = '?' then
         FToken := ExtractQTag else
       if Ch = '!' then
-        FToken := ExtractETag else
+        FToken := ExtractETag
+      else
         FToken := ExtractTag;
     end;
 end;
@@ -1374,7 +1405,8 @@ end;
 {   [27]  Misc ::=  Comment | PI |  S                                          }
 function IsMiscToken(const Token: AxmlType): Boolean;
 begin
-  Result := (Token is TxmlSpace) or (Token is TxmlComment) or
+  Result := (Token is TxmlSpace) or
+            (Token is TxmlComment) or
             (Token is TxmlProcessingInstruction);
 end;
 
@@ -1387,14 +1419,15 @@ begin
   DocTypeDecl := False;
   FirstToken := True;
   try
-    While IsMiscToken(FToken) or (FToken is TxmlXMLDecl) or (FToken is TxmlDocTypeDecl) do
+    while IsMiscToken(FToken) or (FToken is TxmlXMLDecl) or (FToken is TxmlDocTypeDecl) do
       begin
         if FToken is TxmlXMLDecl then
           if not FirstToken then
             ParseError('XML Declaration must be first item in document prolog');
         if FToken is TxmlDocTypeDecl then
           if DocTypeDecl then
-            ParseError('Duplicate Document Type Declaration (DTD)') else
+            ParseError('Duplicate Document Type Declaration (DTD)')
+          else
             DocTypeDecl := True;
         if FirstToken then
           begin
@@ -1427,10 +1460,11 @@ begin
       Closed := False;
       Content := nil; EndTag := nil;
       try
-        Repeat
+        repeat
           if FToken is TxmlEndTag then
             if TxmlEndTag(FToken).Name = StartTag.Name then
-              Closed := True else
+              Closed := True
+            else
               ParseError('Close tag </' + TxmlEndTag(FToken).Name + '> without matching open tag: Expected </' + StartTag.Name + '>')
           else
             begin
@@ -1446,10 +1480,11 @@ begin
                   if not Assigned(Content) then
                     Content := CreateElementContent(StartTag);
                   Content.AddChild(C);
-                end else
+                end
+              else
                 ParseError('Closing tag </' + StartTag.Name + '> expected');
             end;
-        Until Closed;
+        until Closed;
         EndTag := TxmlEndTag(FToken);
         GetNextToken;
       except
@@ -1488,7 +1523,7 @@ begin
     end;
   Result := CreateDocument(Prolog, RootElement);
   try
-    While IsMiscToken(FToken) do
+    while IsMiscToken(FToken) do
       begin
         Result.AddChild(FToken);
         GetNextToken;
@@ -1518,12 +1553,12 @@ begin
   end;
 end;
 
-function ParseXMLString(const S: AnsiString): TxmlDocument;
+function ParseXMLStringA(const S: AnsiString): TxmlDocument;
 begin
   Result := ParseXMLBuffer(Pointer(S), Length(S));
 end;
 
-function ParseXMLFile(const FileName: AnsiString): TxmlDocument;
+function ParseXMLFile(const FileName: String): TxmlDocument;
 var P : TxmlParser;
 begin
   P := TxmlParser.Create;
@@ -1545,7 +1580,7 @@ end;
 procedure TestParser(const S: AnsiString);
 var D : TxmlDocument;
 begin
-  D := ParseXMLString(S);
+  D := ParseXMLStringA(S);
   try
     Assert(D.AsUTF8String([xmloNoFormatting], 0) = S, 'ParseXML');
   finally

@@ -5,7 +5,7 @@
 {   File version:     4.08                                                     }
 {   Description:      XML functions                                            }
 {                                                                              }
-{   Copyright:        Copyright © 2000-2011, David J Butler                    }
+{   Copyright:        Copyright © 2000-2012, David J Butler                    }
 {                     All rights reserved.                                     }
 {                     Redistribution and use in source and binary forms, with  }
 {                     or without modification, are permitted provided that     }
@@ -35,15 +35,15 @@
 {                                                                              }
 { Revision history:                                                            }
 {                                                                              }
-{   11/05/2000  1.01  Created cXML from cInternetStandards.                    }
-{   14/02/2002  2.02  Fixed bug in xmlValidEncName. Thanks to Thomas Jensen    }
+{   2000/05/11  1.01  Created cXML from cInternetStandards.                    }
+{   2002/02/14  2.02  Fixed bug in xmlValidEncName. Thanks to Thomas Jensen    }
 {                     <tjensen@xs4all.nl> for finding it.                      }
-{   17/04/2002  2.03  Created cXMLFunctions from cXML.                         }
-{   26/04/2002  2.04  Unicode support.                                         }
-{   07/09/2003  3.05  Revised for Fundamentals 3.                              }
-{   21/02/2004  3.06  Added xmlResolveEntityReference function.                }
-{   01/04/2004  3.07  Compilable with FreePascal 1.9.2 Win32 i386.             }
-{   07/12/2005  4.08  Compilable with FreePascal 2.0.1 Linux i386.             }
+{   2002/04/17  2.03  Created cXMLFunctions from cXML.                         }
+{   2002/04/26  2.04  Unicode support.                                         }
+{   2003/09/07  3.05  Revised for Fundamentals 3.                              }
+{   2004/02/21  3.06  Added xmlResolveEntityReference function.                }
+{   2004/04/01  3.07  Compilable with FreePascal 1.9.2 Win32 i386.             }
+{   2005/12/07  4.08  Compilable with FreePascal 2.0.1 Linux i386.             }
 {                                                                              }
 { Supported compilers:                                                         }
 {                                                                              }
@@ -57,6 +57,7 @@
 {$IFDEF FREEPASCAL}{$IFDEF DEBUG}
   {$HINTS OFF}
 {$ENDIF}{$ENDIF}
+
 unit cXMLFunctions;
 
 interface
@@ -66,6 +67,7 @@ uses
   SysUtils,
 
   { Fundamentals }
+  cUtils,
   cUnicodeCodecs;
 
 
@@ -100,40 +102,40 @@ function  xmlIsDigit(const Ch: WideChar): Boolean;
 function  xmlIsNameStartChar(const Ch: WideChar): Boolean;
 function  xmlIsNameChar(const Ch: WideChar): Boolean;
 function  xmlIsPubidChar(const Ch: WideChar): Boolean;
-function  xmlValidName(const Text: WideString): Boolean;
+function  xmlValidName(const Text: UnicodeString): Boolean;
 
 const
   xmlSpace = [#$20, #$9, #$D, #$A];
 
 function  xmlSkipSpace(var P: PWideChar): Boolean;
 function  xmlSkipEq(var P: PWideChar): Boolean;
-function  xmlExtractQuotedText(var P: PWideChar; var S: WideString): Boolean;
+function  xmlExtractQuotedText(var P: PWideChar; var S: UnicodeString): Boolean;
 
 { xmlGetEntityEncoding                                                         }
 {   Buf is a pointer to the first part of an xml entity. It must include       }
 {   the xml declaration. HeaderSize returns the number of bytes offset in      }
 {   Buf to the actual xml.                                                     }
 function  xmlGetEntityEncoding(const Buf: Pointer; const BufSize: Integer;
-          var HeaderSize: Integer): TUnicodeCodecClass;
+          out HeaderSize: Integer): TUnicodeCodecClass;
 
-function  xmlResolveEntityReference(const RefName: WideString): WideChar;
+function  xmlResolveEntityReference(const RefName: UnicodeString): WideChar;
 
 
 
 {                                                                              }
 { Encoding                                                                     }
 {                                                                              }
-function  xmlTag(const Tag: WideString): WideString;
-function  xmlEndTag(const Tag: WideString): WideString;
-function  xmlAttrTag(const Tag: WideString;
-          const Attr: WideString = ''): WideString;
-function  xmlEmptyTag(const Tag, Attr: WideString): WideString;
-procedure xmlSafeTextInPlace(var Txt: WideString);
-function  xmlSafeText(const Txt: WideString): WideString;
+function  xmlTag(const Tag: UnicodeString): UnicodeString;
+function  xmlEndTag(const Tag: UnicodeString): UnicodeString;
+function  xmlAttrTag(const Tag: UnicodeString;
+          const Attr: UnicodeString = ''): UnicodeString;
+function  xmlEmptyTag(const Tag, Attr: UnicodeString): UnicodeString;
+procedure xmlSafeTextInPlace(var Txt: UnicodeString);
+function  xmlSafeText(const Txt: UnicodeString): UnicodeString;
 function  xmlSpaceIndent(const IndentLength: Integer;
-          const IndentLevel: Integer): WideString;
-function  xmlTabIndent(const IndentLevel: Integer): WideString;
-function  xmlComment(const Comment: WideString): WideString;
+          const IndentLevel: Integer): UnicodeString;
+function  xmlTabIndent(const IndentLevel: Integer): UnicodeString;
+function  xmlComment(const Comment: UnicodeString): UnicodeString;
 
 
 
@@ -150,8 +152,7 @@ implementation
 
 uses
   { Fundamentals }
-  cUtils,
-  cUnicode;
+  cStrings;
 
 
 
@@ -177,7 +178,7 @@ begin
     if Ch > $10FFFF then
       Result := False
     else
-      Case Ch of
+      case Ch of
         $D800..$DFFF,
         $FFFE..$FFFF : Result := False;
       else
@@ -193,7 +194,7 @@ begin
     else
       Result := Byte(Ord(Ch)) in [$9, $A, $D]
   else
-    Case Ch of
+    case Ch of
       #$D800..#$DFFF,
       #$FFFE..#$FFFF : Result := False;
     else
@@ -213,7 +214,7 @@ end;
 {   [84]  Letter ::=  BaseChar | Ideographic                                   }
 function xmlIsLetter(const Ch: WideChar): Boolean;
 begin
-  Result := IsLetter(Ch);
+  Result := UnicodeIsLetter(Ch);
 end;
 
 {   [88]  Digit ::=  [#x0030-#x0039] | [#x0660-#x0669] | [#x06F0-#x06F9] |     }
@@ -223,7 +224,7 @@ end;
 {                    [#x0E50-#x0E59] | [#x0ED0-#x0ED9] | [#x0F20-#x0F29]       }
 function xmlIsDigit(const Ch: WideChar): Boolean;
 begin
-  Result := IsDecimalDigit(Ch);
+  Result := UnicodeIsDecimalDigit(Ch);
 end;
 
 
@@ -234,7 +235,7 @@ begin
   Result := xmlIsLetter(Ch) or xmlIsDigit(Ch);
   if Result then
     exit;
-  Case Ch of
+  case Ch of
     '.', '-', '_', ':' : Result := True;
   end;
 end;
@@ -249,7 +250,7 @@ end;
 {                        [-'()+,./:=?;!*#@$_%]                                 }
 function xmlIsPubidChar(const Ch: WideChar): Boolean;
 begin
-  Case Ch of
+  case Ch of
     ' ', #$D, #$A, 'A'..'Z', 'a'..'z', '0'..'9',
     '-', '''', '(', ')', '+', ',', '.', '/', ':',
     '=', '?', ';', '!', '*', '#', '@', '$', '_', '%' :
@@ -259,7 +260,7 @@ begin
   end;
 end;
 
-function xmlValidName(const Text: WideString): Boolean;
+function xmlValidName(const Text: UnicodeString): Boolean;
 var P : PWideChar;
     L : Integer;
 begin
@@ -272,14 +273,14 @@ begin
     exit;
   Inc(P);
   Dec(L);
-  Result := WidePMatchChars(xmlIsNameChar, P, L) = L;
+  Result := StrPMatchCharW(P, L, xmlIsNameChar);
 end;
 
 {   [3]   S ::=  (#x20 | #x9 | #xD | #xA)+                                     }
 function xmlSkipSpace(var P: PWideChar): Boolean;
 begin
   Assert(Assigned(P));
-  Result := WideZSkipChars(xmlIsSpaceChar, P) > 0;
+  Result := StrZSkipAllW(P, xmlIsSpaceChar) > 0;
 end;
 
 {   [25]  Eq ::=  S? '=' S?                                                    }
@@ -300,10 +301,10 @@ end;
 function xmlSkipComment(var P: PWideChar): Boolean;
 var I : Integer;
 begin
-  Result := WidePMatchAnsiStr('<!--', P, True);
+  Result := StrZMatchStrAsciiAW(P, '<!--', True);
   if not Result then
     exit;
-  I := WideZPosAnsiStr('-->', P, True);
+  I := StrZPosAW('-->', P);
   Result := I >= 0;
   if not Result then
     exit;
@@ -311,13 +312,13 @@ begin
 end;
 
 {   [..]  QuotedText  ::=  ' Text ' | " Text "                                 }
-function xmlExtractQuotedText(var P: PWideChar; var S: WideString): Boolean;
+function xmlExtractQuotedText(var P: PWideChar; var S: UnicodeString): Boolean;
 begin
   Assert(Assigned(P));
-  Result := WideZExtractAnsiCharQuoted('''', P, S);
+  Result := StrZExtractQuotedU(P, S, ['''']);
   if Result then
     exit;
-  Result := WideZExtractAnsiCharQuoted('"', P, S);
+  Result := StrZExtractQuotedU(P, S, ['"']);
 end;
 
 { Entity encoding                                                              }
@@ -327,8 +328,8 @@ end;
 {   [80]  EncodingDecl ::=  S 'encoding' Eq ('"' EncName '"' |                 }
 {         "'" EncName "'" )                                                    }
 function xmlGetEntityEncoding(const Buf: Pointer; const BufSize: Integer;
-    var HeaderSize: Integer): TUnicodeCodecClass;
-var S    : WideString;
+    out HeaderSize: Integer): TUnicodeCodecClass;
+var S    : UnicodeString;
     R    : PAnsiChar;
     P, Q : PWideChar;
     L    : Integer;
@@ -350,7 +351,7 @@ begin
       if L >= 2 then
         begin
           P := Pointer(R);
-          Case Ord(P^) of
+          case Ord(P^) of
             $0009, $000A, $000D, $0020, $003C : Result := TUTF16BECodec;
             $0900, $0A00, $0D00, $2000, $3C00 : Result := TUTF16LECodec;
           end;
@@ -362,26 +363,25 @@ begin
   S := EncodingToUTF16(Result, R, MinI(L, 4096));
   // Locate XML declaration
   P := Pointer(S);
-  While xmlSkipSpace(P) or xmlSkipComment(P) do ;
-  if not WidePSkipAnsiStr('<?xml', P, False) then
+  while xmlSkipSpace(P) or xmlSkipComment(P) do ;
+  if not StrZSkipStrAW(P, '<?xml', False) then
     exit;
   if not xmlSkipSpace(P) then
     exit;
   // Locate encoding attribute
-  While (Ord(P^) <> 0) and (P^ <> '>') do
+  while (Ord(P^) <> 0) and (P^ <> '>') do
     begin
       if xmlIsSpaceChar(P^) then
         begin
           Q := P;
           Inc(Q);
-          if WidePSkipAnsiStr('encoding', Q, False) then
+          if StrZSkipStrAW(Q, 'encoding', False) then
             if xmlSkipEq(Q) then
               begin
                 // Extract encoding
                 if not xmlExtractQuotedText(Q, S) then
-                  if not WideZExtractBeforeAnsiCharSet(['>', #0] + xmlSpace, Q, S) then
-                    S := '';
-                WideTrimInPlace(S, IsWhiteSpace);
+                  S := StrZExtractToW(Q, ['>', #0] + xmlSpace);
+                StrTrimInPlaceU(S, UnicodeIsWhiteSpace);
                 if S <> '' then
                   // Get codec type from encoding name
                   Result := GetCodecClassByAlias(S);
@@ -394,17 +394,17 @@ begin
     end;
 end;
 
-function xmlResolveEntityReference(const RefName: WideString): WideChar;
+function xmlResolveEntityReference(const RefName: UnicodeString): WideChar;
 begin
-  if WideEqualAnsiStr('amp', RefName, True) then
+  if StrEqualU(RefName, 'amp', True) then
     Result := '&' else
-  if WideEqualAnsiStr('lt', RefName, True) then
+  if StrEqualU(RefName, 'lt', True) then
     Result := '<' else
-  if WideEqualAnsiStr('gt', RefName, True) then
+  if StrEqualU(RefName, 'gt', True) then
     Result := '>' else
-  if WideEqualAnsiStr('quot', RefName, True) then
+  if StrEqualU(RefName, 'quot', True) then
     Result := '"' else
-  if WideEqualAnsiStr('apos', RefName, True) then
+  if StrEqualU(RefName, 'apos', True) then
     Result := '''' 
   else
     Result := WideChar(#0);
@@ -415,12 +415,12 @@ end;
 {                                                                              }
 { Encoding                                                                     }
 {                                                                              }
-function xmlTag(const Tag: WideString): WideString;
+function xmlTag(const Tag: UnicodeString): UnicodeString;
 begin
   Result := '<' + Tag + '>';
 end;
 
-function xmlAttrTag(const Tag: WideString; const Attr: WideString): WideString;
+function xmlAttrTag(const Tag: UnicodeString; const Attr: UnicodeString): UnicodeString;
 begin
   if Attr = '' then
     Result := xmlTag(Tag)
@@ -428,12 +428,12 @@ begin
     Result := '<' + Tag + ' ' + Attr + '>';
 end;
 
-function xmlEndTag(const Tag: WideString): WideString;
+function xmlEndTag(const Tag: UnicodeString): UnicodeString;
 begin
   Result := '</' + Tag + '>';
 end;
 
-function xmlEmptyTag(const Tag, Attr: WideString): WideString;
+function xmlEmptyTag(const Tag, Attr: UnicodeString): UnicodeString;
 begin
   if Attr = '' then
     Result := '<' + Tag + '/>'
@@ -441,38 +441,38 @@ begin
     Result := '<' + Tag + ' ' + Attr + '/>';
 end;
 
-procedure xmlSafeTextInPlace(var Txt: WideString);
+procedure xmlSafeTextInPlace(var Txt: UnicodeString);
 begin
-  if WidePosAnsiCharSet([#0, '&', '''', '"', '>', '<'], Txt) <= 0 then
+  if PosCharSetU([#0, '&', '''', '"', '>', '<'], Txt) <= 0 then
     exit;
-  WideReplaceChar(#0, '', Txt);
-  WideReplaceChar('&', '&amp;', Txt);
-  WideReplaceChar('''', '&apos;', Txt);
-  WideReplaceChar('"', '&quot;', Txt);
-  WideReplaceChar('>', '&gt;', Txt);
-  WideReplaceChar('<', '&lt;', Txt);
+  Txt := StrReplaceCharStrU(#0, '', Txt);
+  Txt := StrReplaceCharStrU('&', '&amp;', Txt);
+  Txt := StrReplaceCharStrU('''', '&apos;', Txt);
+  Txt := StrReplaceCharStrU('"', '&quot;', Txt);
+  Txt := StrReplaceCharStrU('>', '&gt;', Txt);
+  Txt := StrReplaceCharStrU('<', '&lt;', Txt);
 end;
 
-function xmlSafeText(const Txt: WideString): WideString;
+function xmlSafeText(const Txt: UnicodeString): UnicodeString;
 begin
   Result := Txt;
   xmlSafeTextInPlace(Result);
 end;
 
-function xmlSpaceIndent(const IndentLength: Integer; const IndentLevel: Integer): WideString;
+function xmlSpaceIndent(const IndentLength: Integer; const IndentLevel: Integer): UnicodeString;
 begin
-  Result := WideDup(#32, IndentLevel * IndentLength);
+  Result := DupCharU(#32, IndentLevel * IndentLength);
 end;
 
-function xmlTabIndent(const IndentLevel: Integer): WideString;
+function xmlTabIndent(const IndentLevel: Integer): UnicodeString;
 begin
-  Result := WideDup(#9, IndentLevel);
+  Result := DupCharU(#9, IndentLevel);
 end;
 
 {   [15]  Comment ::=  '<!--' ((Char - '-') | ('-' (Char - '-')))* '-->'       }
-function xmlComment(const Comment: WideString): WideString;
+function xmlComment(const Comment: UnicodeString): UnicodeString;
 begin
-  Assert(WidePos('--', Comment) = 0, 'Invalid sequence in comment');
+  Assert(PosStrU('--', Comment) = 0, 'Invalid sequence in comment');
   Result := '<!--' + Comment + '-->';
 end;
 
@@ -485,6 +485,7 @@ end;
 {$ASSERTIONS ON}
 procedure SelfTest;
 var S : AnsiString;
+    T : UnicodeString;
     I : Integer;
 begin
   Assert(xmlValidChar(WideChar(#32)), 'xmlValidChar');
@@ -506,6 +507,8 @@ begin
   Assert(xmlGetEntityEncoding(Pointer(S), Length(S), I) = TUSASCIICodec, 'xmlGetEntityEncoding');
   S := '  <?xml  attr  encoding=ISO-8859-10 >  ';
   Assert(xmlGetEntityEncoding(Pointer(S), Length(S), I) = TISO8859_10Codec, 'xmlGetEntityEncoding');
+  T := '<?xml version="1.0">';
+  Assert(xmlGetEntityEncoding(Pointer(T), Length(T) * SizeOf(WideChar), I) = TUTF16BECodec, 'xmlGetEntityEncoding');
 end;
 {$ENDIF}{$ENDIF}
 
