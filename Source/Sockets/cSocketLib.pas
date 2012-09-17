@@ -664,7 +664,8 @@ uses
   {$ENDIF}
   SyncObjs,
   { Fundamentals }
-  cMultiStrSysUtils;
+  cUtils,
+  cStrings;
 
 
 
@@ -903,7 +904,7 @@ end;
 
 function SocketAddrStrA(const Addr: TSocketAddr): AnsiString;
 begin
-  Result := SocketAddrIPStrA(Addr) + ':' + IntToStrA(Addr.Port);
+  Result := SocketAddrIPStrA(Addr) + ':' + IntToStringA(Addr.Port);
 end;
 
 function SocketAddrStr(const Addr: TSocketAddr): String;
@@ -1603,7 +1604,7 @@ begin
       if I < 7 then
         Result := Result + ':';
     end;
-  Result := LowerCaseA(Result);
+  AsciiConvertLowerA(Result);
 end;
 
 function IPAddressStr(const Address: TIP4Addr): String;
@@ -1837,7 +1838,7 @@ begin
   else
     begin
       for I := Low(TIPProtocol) to High(TIPProtocol) do
-        if SameTextA(Protocol, ProtocolStr[I]) then
+        if StrEqualNoAsciiCaseA(Protocol, ProtocolStr[I]) then
           begin
             Result := I;
             exit;
@@ -2292,7 +2293,7 @@ begin
   if Port = '' then
     raise ESocketLib.Create('Port not specified');
   // Resolve numeric port value
-  if TryStrToIntA(Port, PortInt) then
+  if TryStringToIntA(Port, PortInt) then
     begin
       if (PortInt < 0) or (PortInt > $FFFF) then
         raise ESocketLib.Create('Port number out of range');

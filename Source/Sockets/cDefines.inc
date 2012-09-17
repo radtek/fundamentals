@@ -1,11 +1,11 @@
 {******************************************************************************}
 {                                                                              }
 {   File name:        cDefines.inc                                             }
-{   File updated:     2011/09/27                                               }
+{   File updated:     2012/05/12                                               }
 {                                                                              }
 {   Library:          Fundamentals 4.00                                        }
 {   Home page:        http://fundementals.sourceforge.net                      }
-{   Copyright:        Copyright © 1998-2011, David J Butler                    }
+{   Copyright:        Copyright © 1998-2012, David J Butler                    }
 {                     All rights reserved.                                     }
 {                                                                              }
 { Conditionals defined elsewhere:                                              }
@@ -67,11 +67,13 @@
 {     FREEPASCAL2_0   - FreePascal 2.0                                         }
 {     FREEPASCAL2_2   - FreePascal 2.2                                         }
 {     FREEPASCAL2_4   - FreePascal 2.4                                         }
+{     FREEPASCAL2_6   - FreePascal 2.6                                         }
 {                                                                              }
 {   SupportCardinal            - Compiler supports Cardinal type.              }
 {   SupportDynArray            - Compiler supports dynamic arrays.             }
 {   SupportInt64               - Compiler supports Int64 type.                 }
 {   SupportWideChar            - Compiler supports WideChar type.              }
+{   SupportUCS4Char            - Compiler supports UC4Char type.               }
 {   SupportCurrency            - Compiler supports Currency type.              }
 {   SupportVariant             - Compiler supports Variant type.               }
 {   SupportAssert              - Compiler supports Assert statement.           }
@@ -86,6 +88,8 @@
 {   SupportUnicodeString       - Compiler supports UnicodeString type.         }
 {   SupportRawByteString       - Compiler supports RawByteString type.         }
 {   SupportEnumValue           - Compiler supports enumeration values.         }
+{   SupportNativeInt           - Compiler supports NativeInt type.             }
+{   SupportUInt64              - Compiler supports UInt64 type.                }
 {                                                                              }
 {   CharIsAnsi      - Default Char type is AnsiChar (1 byte).                  }
 {   CharIsWide      - Default Char type is WideChar (2 bytes).                 }
@@ -558,8 +562,10 @@
 {$IFDEF DELPHI6_UP}
   {$DEFINE SupportUTF8String}
   {$DEFINE SupportUCS4String}
+  {$DEFINE SupportUCS4Char}
   {$IFDEF DELPHI2009_UP}{$IFDEF ManagedCode}
     {$UNDEF SupportUCS4String}
+    {$UNDEF SupportUCS4Char}
   {$ENDIF}{$ENDIF}
   {$DEFINE SupportEnumValue}
 {$ENDIF}
@@ -590,6 +596,8 @@
     {$UNDEF SupportRawByteString}
     {$UNDEF SupportUTF8String}
   {$ENDIF}
+  {$DEFINE SupportNativeInt}
+  {$DEFINE SupportUInt64}
 {$ENDIF}
 
 {$IFDEF DELPHI}
@@ -625,6 +633,9 @@
     {$ENDIF}
     {$IFDEF VER2_4}
       {$DEFINE FREEPASCAL2_4}
+    {$ENDIF}
+    {$IFDEF VER2_6}
+      {$DEFINE FREEPASCAL2_6}
     {$ENDIF}
   {$ENDIF}
   {$MODE DELPHI}
@@ -676,7 +687,17 @@
   {$DEFINE SupportUCS4String}
   {$DEFINE CharIsAnsi}
   {$DEFINE StringIsAnsi}
-  {$DEFINE SetSizeAlignIsLongWord}
+  {$IFDEF FREEPASCAL2_0}
+    {$DEFINE SetSizeAlignIsLongWord}
+  {$ELSE}
+  {$IFDEF FREEPASCAL2_2}
+    {$DEFINE SetSizeAlignIsLongWord}
+  {$ELSE}
+  {$IFDEF FREEPASCAL2_4}
+    {$DEFINE SetSizeAlignIsLongWord}
+  {$ELSE}
+    {$DEFINE SetSizeAlignIsByte}
+  {$ENDIF}{$ENDIF}{$ENDIF}
   {$DEFINE SupportEnumValue}
 {$ENDIF}
 
