@@ -11,8 +11,8 @@
   {$DEFINE HTTP_SELFTEST_LOG_TO_CONSOLE}
   {$DEFINE HTTPSERVER_SELFTEST}
   {$DEFINE HTTPCLIENT_SELFTEST}
-  {$DEFINE HTTPCLIENT_SELFTEST_WEB1}
-  {$DEFINE HTTPCLIENT_SELFTEST_WEB2}
+  {.DEFINE HTTPCLIENT_SELFTEST_WEB1}
+  {.DEFINE HTTPCLIENT_SELFTEST_WEB2}
   {$DEFINE HTTPCLIENTSERVER_SELFTEST}
   {$IFDEF HTTP_TLS}
     {$DEFINE HTTPCLIENTSERVER_SELFTEST_HTTPS}
@@ -100,7 +100,7 @@ begin
   Srv := TF4HTTPServer.Create(nil);
   try
     Srv.OnLog := Tst.HTTPServerLog;
-    Srv.AddressFamily := iaIP4;
+    Srv.AddressFamily := safIP4;
     Srv.ServerPort := 8088;
     Assert(not Srv.Active);
     Srv.Active := True;
@@ -328,7 +328,7 @@ begin
     //
     Srv.OnPrepareResponse := Tst.HTTPServerPrepareResponse;
     Srv.OnRequestComplete := Tst.HTTPServerRequestComplete;
-    Srv.AddressFamily := iaIP4;
+    Srv.AddressFamily := safIP4;
     Srv.ServerPort := 8795;
     {$IFDEF HTTPCLIENTSERVER_SELFTEST_HTTPS}
     if HTTPS then

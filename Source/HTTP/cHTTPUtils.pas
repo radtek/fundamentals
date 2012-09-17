@@ -1,5 +1,42 @@
 {******************************************************************************}
 {                                                                              }
+{   Library:          Fundamentals 4.00                                        }
+{   File name:        cHTTPUtils.pas                                           }
+{   File version:     0.08                                                     }
+{   Description:      HTTP utilities.                                          }
+{                                                                              }
+{   Copyright:        Copyright (c) 2011, David J Butler                       }
+{                     All rights reserved.                                     }
+{                     This file is licensed under the BSD License.             }
+{                     See http://www.opensource.org/licenses/bsd-license.php   }
+{                     Redistribution and use in source and binary forms, with  }
+{                     or without modification, are permitted provided that     }
+{                     the following conditions are met:                        }
+{                     Redistributions of source code must retain the above     }
+{                     copyright notice, this list of conditions and the        }
+{                     following disclaimer.                                    }
+{                     THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND   }
+{                     CONTRIBUTORS "AS IS" AND ANY EXPRESS OR IMPLIED          }
+{                     WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED   }
+{                     WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A          }
+{                     PARTICULAR PURPOSE ARE DISCLAIMED. IN NO EVENT SHALL     }
+{                     THE REGENTS OR CONTRIBUTORS BE LIABLE FOR ANY DIRECT,    }
+{                     INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR             }
+{                     CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO,    }
+{                     PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF     }
+{                     USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION)         }
+{                     HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER   }
+{                     IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING        }
+{                     NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE   }
+{                     USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE             }
+{                     POSSIBILITY OF SUCH DAMAGE.                              }
+{                                                                              }
+{   Home page:        http://fundementals.sourceforge.net                      }
+{   Forum:            http://sourceforge.net/forum/forum.php?forum_id=2117     }
+{   E-mail:           fundamentals.library@gmail.com                           }
+{                                                                              }
+{ Revision history:                                                            }
+{                                                                              }
 {  2011/06/05  0.01  Initial development on HTTP parser                        }
 {  2011/06/11  0.02  Further development. Simple test cases.                   }
 {  2011/06/12  0.03  Structure to string functions.                            }
@@ -919,7 +956,6 @@ implementation
 
 uses
   { Fundamentals }
-  cMultiStrSysUtils,
   cUtils,
   cDateTime;
 
@@ -1278,10 +1314,10 @@ begin
             hpHTTP   : B.Append('HTTP');
             hpHTTPS  : B.Append('HTTPS');
           end;
-          B.Append('/');
-          B.Append(IntToStrA(A.CustomMajVersion));
-          B.Append('.');
-          B.Append(IntToStrA(A.CustomMinVersion));
+          B.AppendCh('/');
+          B.Append(IntToStringA(A.CustomMajVersion));
+          B.AppendCh('.');
+          B.Append(IntToStringA(A.CustomMinVersion));
         end;
     hvHTTP10 : B.Append('HTTP/1.0');
     hvHTTP11 : B.Append('HTTP/1.1');
@@ -1298,7 +1334,7 @@ procedure BuildStrHTTPContentLengthValue(const A: THTTPContentLength; const B: T
 begin
   case A.Value of
     hcltNone      : ;
-    hcltByteCount : B.Append(IntToStrA(A.ByteCount));
+    hcltByteCount : B.Append(IntToStringA(A.ByteCount));
   end;
 end;
 
@@ -1320,7 +1356,7 @@ begin
     hctCustomParts :
       begin
         B.Append(A.CustomMajor);
-        B.Append('/');
+        B.AppendCh('/');
         B.Append(A.CustomMinor);
       end;
     hctCustomString : B.Append(A.CustomStr);
@@ -1330,7 +1366,7 @@ begin
       if S <> '' then
         begin
           B.Append(S);
-          if StrMatchRight(S, '/') then
+          if StrMatchRightA(S, '/') then
             begin
               B.Append(A.CustomMinor);
             end;
@@ -1361,18 +1397,18 @@ procedure BuildStrRFCDateTime(
 begin
   B.Append(RFC1123DayNames[DOW]);
   B.Append(', ');
-  B.Append(IntToStrA(Da));
-  B.Append(' ');
+  B.Append(IntToStringA(Da));
+  B.AppendCh(' ');
   B.Append(RFCMonthNames[Mo]);
-  B.Append(' ');
-  B.Append(IntToStrA(Ye));
-  B.Append(' ');
-  B.Append(IntToStrA(Ho));
-  B.Append(':');
-  B.Append(IntToStrA(Mi));
-  B.Append(':');
-  B.Append(IntToStrA(Se));
-  B.Append(' ');
+  B.AppendCh(' ');
+  B.Append(IntToStringA(Ye));
+  B.AppendCh(' ');
+  B.Append(IntToStringA(Ho));
+  B.AppendCh(':');
+  B.Append(IntToStringA(Mi));
+  B.AppendCh(':');
+  B.Append(IntToStringA(Se));
+  B.AppendCh(' ');
   B.Append(TZ);
 end;
 
@@ -1445,11 +1481,11 @@ begin
     hcrfCustom    : B.Append(A.Custom);
     hcrfByteRange :
       begin
-        B.Append(IntToStrA(A.ByteFirst));
-        B.Append('-');
-        B.Append(IntToStrA(A.ByteLast));
-        B.Append('/');
-        B.Append(IntToStrA(A.ByteSize));
+        B.Append(IntToStringA(A.ByteFirst));
+        B.AppendCh('-');
+        B.Append(IntToStringA(A.ByteLast));
+        B.AppendCh('/');
+        B.Append(IntToStringA(A.ByteSize));
       end;
   end;
   B.Append(HTTP_CRLF);
@@ -1481,7 +1517,7 @@ begin
   BuildStrHTTPHeaderName(hntAge, B, P);
   case A.Value of
     hafCustom : B.Append(A.Custom);
-    hafAge    : B.Append(IntToStrA(A.Age));
+    hafAge    : B.Append(IntToStringA(A.Age));
   end;
   B.Append(HTTP_CRLF);
 end;
@@ -1579,7 +1615,7 @@ var L : Integer;
   procedure BuildNameValue(const N, V: AnsiString);
   begin
     BuildParam(N);
-    B.Append('=');
+    B.AppendCh('=');
     B.Append(V);
   end;
 
@@ -1601,7 +1637,7 @@ begin
         if A.MaxAge > 0 then
           begin
             BuildParam('Max-Age=');
-            B.Append(IntToStrA(A.MaxAge));
+            B.Append(IntToStringA(A.MaxAge));
           end;
         for I := 0 to Length(A.CustomFields) - 1 do
           begin
@@ -1609,7 +1645,7 @@ begin
             S := A.CustomFields[I].Value;
             if S <> '' then
               begin
-                B.Append('=');
+                B.AppendCh('=');
                 B.Append(S);
               end;
           end;
@@ -1632,9 +1668,9 @@ begin
         for I := 0 to Length(A.Entries) - 1 do
           begin
             if I > 0 then
-              B.Append(';');
+              B.AppendCh(';');
             B.Append(A.Entries[I].Name);
-            B.Append('=');
+            B.AppendCh('=');
             B.Append(A.Entries[I].Value);
           end;
       end;
@@ -1685,9 +1721,9 @@ end;
 procedure BuildStrHTTPRequestStartLine(const A: THTTPRequestStartLine; const B: TAnsiStringBuilder; const P: THTTPStringOptions);
 begin
   BuildStrHTTPMethod(A.Method, B, P);
-  B.Append(' ');
+  B.AppendCh(' ');
   B.Append(A.URI);
-  B.Append(' ');
+  B.AppendCh(' ');
   BuildStrHTTPVersion(A.Version, B, P);
   B.Append(HTTP_CRLF);
 end;
@@ -1723,9 +1759,9 @@ end;
 procedure BuildStrHTTPResponseStartLine(const A: THTTPResponseStartLine; const B: TAnsiStringBuilder; const P: THTTPStringOptions);
 begin
   BuildStrHTTPVersion(A.Version, B, P);
-  B.Append(' ');
-  B.Append(IntToStrA(A.Code));
-  B.Append(' ');
+  B.AppendCh(' ');
+  B.Append(IntToStringA(A.Code));
+  B.AppendCh(' ');
   case A.Msg of
     hslmNone   : ;
     hslmCustom : B.Append(A.CustomMsg);
@@ -1832,7 +1868,7 @@ function GetHTTPCookieFieldEntryIndexByName(const A: THTTPCookieFieldEntryArray;
 var I : Integer;
 begin
   for I := 0 to Length(A) - 1 do
-    if StrEqualNoCase(A[I].Name, Name) then
+    if StrEqualNoAsciiCaseA(A[I].Name, Name) then
       begin
         Result := I;
         exit;
@@ -1855,7 +1891,7 @@ begin
     begin
       F := @B[I];
       if F^.Secure = Secure then
-        if StrEqualNoCase(F^.Domain, Domain) then
+        if StrEqualNoAsciiCaseA(F^.Domain, Domain) then
           for J := 0 to Length(F^.CustomFields) - 1 do
             begin
               G := @F^.CustomFields[J];
@@ -2172,7 +2208,7 @@ function THTTPParser.ExtractInt(const Default: Int64): Int64;
 var S : AnsiString;
 begin
   S := ExtractAllCh(['0'..'9']);
-  if not TryStrToInt64A(S, Result) then
+  if not TryStringToInt64A(S, Result) then
     Result := Default;
 end;
 
@@ -2180,7 +2216,7 @@ function THTTPParser.ExtractIntTo(const C: AnsiCharSet; const SkipDelim: Boolean
 var S : AnsiString;
 begin
   ExtractTo(C, S, SkipDelim);
-  if not TryStrToInt64A(S, Result) then
+  if not TryStringToInt64A(S, Result) then
     Result := Default;
 end;
 
@@ -2283,7 +2319,7 @@ begin
   for I := Low(THTTPContentTypeEnum) to High(THTTPContentTypeEnum) do
     begin
       S := HTTP_ContentTypeStr[I];
-      if (S <> '') and not StrMatchRight(S, '/') then
+      if (S <> '') and not StrMatchRightA(S, '/') then
         if SkipStrAndCh(S, HTTP_ContentTypeDelimSet, False, False) then
           begin
             Value.Value := I;
@@ -2563,7 +2599,7 @@ begin
         case F of
           scsfDomain : Cookie.Domain := FieldValue;
           scsfPath   : Cookie.Path := FieldValue;
-          scsfMaxAge : Cookie.MaxAge := StrToInt64DefA(FieldValue, -1);
+          scsfMaxAge : Cookie.MaxAge := StringToInt64DefA(FieldValue, -1);
           scsfCustom :
             begin
               L := Length(Cookie.CustomFields);
@@ -3051,6 +3087,7 @@ const
 var
   ParamPos : Integer;
   HdrValid : Boolean;
+  Chunk32  : LongWord;
 begin
   Result := ProcessChunked_ReadStrToCRLF(HeaderBlockSize, HdrStr);
   if not Result then
@@ -3059,9 +3096,10 @@ begin
   if ParamPos > 0 then
     SetLength(HdrStr, ParamPos - 1);
   HdrStr := StrTrimRightA(HdrStr);
-  ChunkSize := HexStrToLongWord(HdrStr, HdrValid);
+  HdrValid := TryHexToLongWordA(HdrStr, Chunk32);
   if not HdrValid then
     raise EHTTP.Create(SError_InvalidChunkedEncoding);
+  ChunkSize := Chunk32;
   Result := True;
 end;
 
@@ -3405,7 +3443,7 @@ begin
     raise EHTTP.Create('Mechanism not supported');
   end;
   {$IFDEF HTTP_DEBUG}
-  Log('ContentLength:' + IntToStrA(L));
+  Log('ContentLength:' + IntToStringA(L));
   {$ENDIF}
   ContentLength := L;
   FContentComplete := (L = 0);

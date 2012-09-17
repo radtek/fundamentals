@@ -1,5 +1,42 @@
 {******************************************************************************}
 {                                                                              }
+{   Library:          Fundamentals 4.00                                        }
+{   File name:        cHTTPServer.pas                                          }
+{   File version:     0.04                                                     }
+{   Description:      HTTP server.                                             }
+{                                                                              }
+{   Copyright:        Copyright (c) 2011, David J Butler                       }
+{                     All rights reserved.                                     }
+{                     This file is licensed under the BSD License.             }
+{                     See http://www.opensource.org/licenses/bsd-license.php   }
+{                     Redistribution and use in source and binary forms, with  }
+{                     or without modification, are permitted provided that     }
+{                     the following conditions are met:                        }
+{                     Redistributions of source code must retain the above     }
+{                     copyright notice, this list of conditions and the        }
+{                     following disclaimer.                                    }
+{                     THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND   }
+{                     CONTRIBUTORS "AS IS" AND ANY EXPRESS OR IMPLIED          }
+{                     WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED   }
+{                     WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A          }
+{                     PARTICULAR PURPOSE ARE DISCLAIMED. IN NO EVENT SHALL     }
+{                     THE REGENTS OR CONTRIBUTORS BE LIABLE FOR ANY DIRECT,    }
+{                     INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR             }
+{                     CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO,    }
+{                     PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF     }
+{                     USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION)         }
+{                     HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER   }
+{                     IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING        }
+{                     NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE   }
+{                     USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE             }
+{                     POSSIBILITY OF SUCH DAMAGE.                              }
+{                                                                              }
+{   Home page:        http://fundementals.sourceforge.net                      }
+{   Forum:            http://sourceforge.net/forum/forum.php?forum_id=2117     }
+{   E-mail:           fundamentals.library@gmail.com                           }
+{                                                                              }
+{ Revision history:                                                            }
+{                                                                              }
 {  2011/05/29  0.01  Initial development.                                      }
 {  2011/06/13  0.02  Further development.                                      }
 {  2011/06/21  0.03  Request and response flow.                                }
@@ -42,6 +79,20 @@ type
     sltInfo,
     sltError);
 
+  THTTPServerAddressFamily = (
+    safIP4,
+    safIP6);
+
+  {$IFDEF HTTP_TLS}
+  THTTPSServerOption = (
+    ssoDontUseSSL3,
+    ssoDontUseTLS10,
+    ssoDontUseTLS11,
+    ssoDontUseTLS12);
+
+  THTTPSServerOptions = set of THTTPSServerOption;
+  {$ENDIF}
+  
   TF4HTTPServer = class;
 
   THTTPServerClientState = (
@@ -210,13 +261,17 @@ type
     FOnResponseComplete : THTTPServerClientEvent;
 
     // parameters
-    FAddressFamily  : TIPAddressFamily;
+    FAddressFamily  : THTTPServerAddressFamily;
     FBindAddressStr : AnsiString;
     FServerPort     : Integer;
     FMaxBacklog     : Integer;
     FMaxClients     : Integer;
     FServerName     : AnsiString;
-    FHTTPSEnabled   : Boolean;
+
+    {$IFDEF HTTP_TLS}
+    FHTTPSEnabled : Boolean;
+    FHTTPSOptions : THTTPSServerOptions;
+    {$ENDIF}
 
     FRequestContentMechanism  : THTTPContentReaderMechanism;
     FResponseContentMechanism : THTTPContentWriterMechanism;
@@ -245,15 +300,17 @@ type
 
     procedure CheckNotActive;
 
-    procedure SetAddressFamily(const AddressFamily: TIPAddressFamily);
+    procedure SetAddressFamily(const AddressFamily: THTTPServerAddressFamily);
     procedure SetBindAddress(const BindAddressStr: AnsiString);
     procedure SetServerPort(const ServerPort: Integer);
     procedure SetMaxBacklog(const MaxBacklog: Integer);
     procedure SetMaxClients(const MaxClients: Integer);
 
     procedure SetServerName(const ServerName: AnsiString);
+
     {$IFDEF HTTP_TLS}
     procedure SetHTTPSEnabled(const HTTPSEnabled: Boolean);
+    procedure SetHTTPSOptions(const HTTPSOptions: THTTPSServerOptions);
     {$ENDIF}
 
     procedure SetRequestContentMechanism(const RequestContentMechanism: THTTPContentReaderMechanism);
@@ -314,15 +371,17 @@ type
     property  OnPrepareResponse: THTTPServerClientEvent read FOnPrepareResponse write FOnPrepareResponse;
     property  OnResponseComplete: THTTPServerClientEvent read FOnResponseComplete write FOnResponseComplete;
 
-    property  AddressFamily: TIPAddressFamily read FAddressFamily write SetAddressFamily default iaIP4;
+    property  AddressFamily: THTTPServerAddressFamily read FAddressFamily write SetAddressFamily default safIP4;
     property  BindAddress: AnsiString read FBindAddressStr write SetBindAddress;
     property  ServerPort: Integer read FServerPort write SetServerPort;
     property  MaxBacklog: Integer read FMaxBacklog write SetMaxBacklog default HTTP_SERVER_DEFAULT_MaxBacklog;
     property  MaxClients: Integer read FMaxClients write SetMaxClients default HTTP_SERVER_DEFAULT_MaxClients;
 
     property  ServerName: AnsiString read FServerName write SetServerName;
+    
     {$IFDEF HTTP_TLS}
     property  HTTPSEnabled: Boolean read FHTTPSEnabled write SetHTTPSEnabled default False;
+    property  HTTPSOptions: THTTPSServerOptions read FHTTPSOptions write SetHTTPSOptions default [];
     {$ENDIF}
 
     property  RequestContentMechanism: THTTPContentReaderMechanism read FRequestContentMechanism write SetRequestContentMechanism default hcrmEvent;
@@ -372,6 +431,7 @@ type
 
     {$IFDEF HTTP_TLS}
     property  HTTPSEnabled;
+    property  HTTPSOptions;
     {$ENDIF}
 
     property  RequestContentMechanism;
@@ -380,9 +440,21 @@ type
     property  Active;
   end;
 
+{$IFDEF HTTPSERVER_CUSTOM}
+  {$INCLUDE cHTTPServerIntf.inc}
+{$ENDIF}
+
 
 
 implementation
+
+{$IFDEF HTTP_TLS}
+uses
+  {$IFDEF HTTPSERVER_CUSTOM}
+    {$INCLUDE cHTTPServerUses.inc}
+  {$ENDIF}
+  cTLSServer;
+{$ENDIF}
 
 
 
@@ -1013,7 +1085,7 @@ end;
 
 procedure TF4HTTPServer.InitDefaults;
 begin
-  FAddressFamily  := iaIP4;
+  FAddressFamily  := safIP4;
   FBindAddressStr := '0.0.0.0';
   FServerPort     := HTTPSERVER_PORT;
   FMaxBacklog     := HTTP_SERVER_DEFAULT_MaxBacklog;
@@ -1069,7 +1141,7 @@ begin
       raise EHTTPServer.Create(SError_NotAllowedWhileActive);
 end;
 
-procedure TF4HTTPServer.SetAddressFamily(const AddressFamily: TIPAddressFamily);
+procedure TF4HTTPServer.SetAddressFamily(const AddressFamily: THTTPServerAddressFamily);
 begin
   if AddressFamily = FAddressFamily then
     exit;
@@ -1127,6 +1199,14 @@ begin
   {$IFDEF HTTP_DEBUG}
   Log(sltDebug, 'HTTPSEnabled:%d', [Ord(HTTPSEnabled)]);
   {$ENDIF}
+end;
+
+procedure TF4HTTPServer.SetHTTPSOptions(const HTTPSOptions: THTTPSServerOptions);
+begin
+  if HTTPSOptions = FHTTPSOptions then
+    exit;
+  CheckNotActive;
+  FHTTPSOptions := HTTPSOptions;
 end;
 {$ENDIF}
 
@@ -1350,6 +1430,8 @@ begin
 end;
 
 procedure TF4HTTPServer.SetupTCPServer;
+var AF : TIPAddressFamily;
+    TLSOpt : TTLSServerOptions;
 begin
   {$IFDEF HTTP_DEBUG}
   Log(sltDebug, 'SetupTCPServer');
@@ -1357,11 +1439,27 @@ begin
 
   Assert(Assigned(FTCPServer));
 
-  FTCPServer.AddressFamily := FAddressFamily;
+  case FAddressFamily of
+    safIP4 : AF := iaIP4;
+    safIP6 : AF := iaIP6;
+  else
+    raise EHTTPServer.Create('Invalid parameter');
+  end;
+  FTCPServer.AddressFamily := AF;
   FTCPServer.BindAddress   := FBindAddressStr;
   FTCPServer.ServerPort    := FServerPort;
   {$IFDEF HTTP_TLS}
-  FTCPServer.TLSEnabled    := FHTTPSEnabled;
+  FTCPServer.TLSEnabled := FHTTPSEnabled;
+  TLSOpt := [];
+  if ssoDontUseSSL3 in FHTTPSOptions then
+    Include(TLSOpt, tlssoDontUseSSL3);
+  if ssoDontUseTLS10 in FHTTPSOptions then
+    Include(TLSOpt, tlssoDontUseTLS10);
+  if ssoDontUseTLS11 in FHTTPSOptions then
+    Include(TLSOpt, tlssoDontUseTLS11);
+  if ssoDontUseTLS12 in FHTTPSOptions then
+    Include(TLSOpt, tlssoDontUseTLS12);
+  FTCPServer.TLSServer.Options := TLSOpt;
   {$ENDIF}
 end;
 
@@ -1407,6 +1505,12 @@ function TF4HTTPServer.GetClientCount: Integer;
 begin
   Result := FTCPServer.ClientCount;
 end;
+
+
+
+{$IFDEF HTTPSERVER_CUSTOM}
+  {$INCLUDE cHTTPServerImpl.inc}
+{$ENDIF}
 
 
 

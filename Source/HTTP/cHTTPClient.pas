@@ -1,5 +1,42 @@
 {******************************************************************************}
 {                                                                              }
+{   Library:          Fundamentals 4.00                                        }
+{   File name:        cHTTPClient.pas                                          }
+{   File version:     4.08                                                     }
+{   Description:      HTTP client.                                             }
+{                                                                              }
+{   Copyright:        Copyright (c) 2009-2011, David J Butler                  }
+{                     All rights reserved.                                     }
+{                     This file is licensed under the BSD License.             }
+{                     See http://www.opensource.org/licenses/bsd-license.php   }
+{                     Redistribution and use in source and binary forms, with  }
+{                     or without modification, are permitted provided that     }
+{                     the following conditions are met:                        }
+{                     Redistributions of source code must retain the above     }
+{                     copyright notice, this list of conditions and the        }
+{                     following disclaimer.                                    }
+{                     THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND   }
+{                     CONTRIBUTORS "AS IS" AND ANY EXPRESS OR IMPLIED          }
+{                     WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED   }
+{                     WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A          }
+{                     PARTICULAR PURPOSE ARE DISCLAIMED. IN NO EVENT SHALL     }
+{                     THE REGENTS OR CONTRIBUTORS BE LIABLE FOR ANY DIRECT,    }
+{                     INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR             }
+{                     CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO,    }
+{                     PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF     }
+{                     USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION)         }
+{                     HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER   }
+{                     IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING        }
+{                     NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE   }
+{                     USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE             }
+{                     POSSIBILITY OF SUCH DAMAGE.                              }
+{                                                                              }
+{   Home page:        http://fundementals.sourceforge.net                      }
+{   Forum:            http://sourceforge.net/forum/forum.php?forum_id=2117     }
+{   E-mail:           fundamentals.library@gmail.com                           }
+{                                                                              }
+{ Revision history:                                                            }
+{                                                                              }
 {  2009/09/03  0.01  Initial development.                                      }
 {  2011/06/12  0.02  Further development.                                      }
 {  2011/06/14  0.03  HTTPS support.                                            }
@@ -7,6 +44,7 @@
 {  2011/06/18  0.05  Multiple requests on same connection.                     }
 {  2011/06/19  0.06  Response content mechanisms.                              }
 {  2011/07/31  0.07  Connection close support.                                 }
+{  2011/10/06  4.08  SynchronisedEvents option.                                }
 {                                                                              }
 {******************************************************************************}
 
@@ -18,6 +56,7 @@ interface
 
 uses
   { System }
+  Windows,
   SysUtils,
   Classes,
   SyncObjs,
@@ -54,6 +93,16 @@ type
     kaKeepAlive,
     kaClose);
 
+  {$IFDEF HTTP_TLS}
+  THTTPSClientOption = (
+    csoDontUseSSL3,
+    csoDontUseTLS10,
+    csoDontUseTLS11,
+    csoDontUseTLS12);
+
+  THTTPSClientOptions = set of THTTPSClientOption;
+  {$ENDIF}
+
   THTTP4ClientState = (
     hcsInit,
     hcsStarting,
@@ -74,6 +123,8 @@ type
 
   TF4HTTPClient = class;
 
+  TSyncProc = procedure of object;
+  
   THTTPClientEvent = procedure (Client: TF4HTTPClient) of object;
   THTTPClientLogEvent = procedure (Client: TF4HTTPClient; LogType: THTTPClientLogType; Msg: String; Level: Integer) of object;
   THTTPClientStateEvent = procedure (Client: TF4HTTPClient; State: THTTP4ClientState) of object;
@@ -81,7 +132,9 @@ type
 
   TF4HTTPClient = class(TComponent)
   protected
-    // events
+    FSynchronisedEvents : Boolean;
+    
+    // event handlers
     FOnLog                     : THTTPClientLogEvent;
     FOnStateChange             : THTTPClientStateEvent;
     FOnStart                   : THTTPClientEvent;
@@ -101,6 +154,7 @@ type
     // https
     {$IFDEF HTTP_TLS}
     FUseHTTPS      : Boolean;
+    FHTTPSOptions  : THTTPSClientOptions;
     {$ENDIF}
 
     // http proxy
@@ -144,17 +198,25 @@ type
     FRequest            : THTTPRequest;
     FRequestHasContent  : Boolean;
 
-    FResponse              : THTTPResponse;
-    FResponseCode          : Integer;
-    FResponseCookies       : TStrings;
-    FResponseContentReader : THTTPContentReader;
-    FResponseRequireClose  : Boolean;
+    FResponse               : THTTPResponse;
+    FResponseCode           : Integer;
+    FResponseCookies        : TStrings;
+    FResponseContentReader  : THTTPContentReader;
+    FResponseRequireClose   : Boolean;
+    FResponseContentBufPtr  : Pointer;
+    FResponseContentBufSize : Integer;
+    FSyncLogType            : THTTPClientLogType;
+    FSyncLogMsg             : String;
+    FSyncLogLevel           : Integer;
 
     procedure Init; virtual;
     procedure InitDefaults; virtual;
 
     procedure Loaded; override;
 
+    procedure Synchronize(const SyncProc: TSyncProc);
+
+    procedure SyncLog;
     procedure Log(const LogType: THTTPClientLogType; const Msg: String; const Level: Integer = 0); overload;
     procedure Log(const LogType: THTTPClientLogType; const Msg: String; const Args: array of const; const Level: Integer = 0); overload;
 
@@ -170,12 +232,15 @@ type
     function  IsBusyWithRequest: Boolean;
     procedure CheckNotBusyWithRequest;
 
+    procedure SetSynchronisedEvents(const SynchronisedEvents: Boolean);
+
     procedure SetAddressFamily(const AddressFamily: THTTPClientAddressFamily);
     procedure SetHost(const Host: AnsiString);
     procedure SetPort(const Port: AnsiString);
 
     {$IFDEF HTTP_TLS}
     procedure SetUseHTTPS(const UseHTTPS: Boolean);
+    procedure SetHTTPSOptions(const HTTPSOptions: THTTPSClientOptions);
     {$ENDIF}
 
     procedure SetUseHTTPProxy(const UseHTTPProxy: Boolean);
@@ -207,6 +272,16 @@ type
     procedure SetResponseContentFileName(const ResponseContentFileName: String);
     function  GetResponseContentStream: TStream;
     procedure SetResponseContentStream(const ResponseContentStream: TStream);
+
+    procedure SyncTriggerStateChanged;
+    procedure SyncTriggerStart;
+    procedure SyncTriggerStop;
+    procedure SyncTriggerActive;
+    procedure SyncTriggerInactive;
+    procedure SyncTriggerResponseHeader;
+    procedure SyncTriggerResponseContentBuffer;
+    procedure SyncTriggerResponseContentComplete;
+    procedure SyncTriggerResponseComplete;
 
     procedure TriggerStateChanged;
     procedure TriggerStart;
@@ -280,6 +355,12 @@ type
     constructor Create(AOwner: TComponent); override;
     destructor Destroy; override;
 
+    // When SynchronisedEvents is set, events handlers are called in the main thread
+    // through the TThread.Synchronise mechanism. If not set, events handlers may
+    // be called from any thread. In this case event handler should handle their
+    // own synchronisation if required.
+    property  SynchronisedEvents: Boolean read FSynchronisedEvents write SetSynchronisedEvents default False;
+    
     property  OnLog: THTTPClientLogEvent read FOnLog write FOnLog;
 
     property  OnStateChange: THTTPClientStateEvent read FOnStateChange write FOnStateChange;
@@ -298,6 +379,7 @@ type
 
     {$IFDEF HTTP_TLS}
     property  UseHTTPS: Boolean read FUseHTTPS write SetUseHTTPS default False;
+    property  HTTPSOptions: THTTPSClientOptions read FHTTPSOptions write SetHTTPSOptions default [];
     {$ENDIF}
 
     property  UseHTTPProxy: Boolean read FUseHTTPProxy write SetUseHTTPProxy default False;
@@ -352,6 +434,8 @@ type
 type
   TFnd4HTTPClient = class(TF4HTTPClient)
   published
+    property  SynchronisedEvents;
+
     property  OnLog;
 
     property  OnStateChange;
@@ -370,6 +454,7 @@ type
 
     {$IFDEF HTTP_TLS}
     property  UseHTTPS;
+    property  HTTPSOptions;
     {$ENDIF}
 
     property  UseHTTPProxy;
@@ -397,12 +482,18 @@ type
     property  Active;
   end;
 
+{$IFDEF HTTPCLIENT_CUSTOM}
+  {$INCLUDE cHTTPClientIntf.inc}
+{$ENDIF}
+
 
 
 implementation
 
 uses
-  Forms,
+  {$IFDEF HTTPCLIENT_CUSTOM}
+    {$INCLUDE cHTTPClientUses.inc}
+  {$ENDIF}
   { Fundamentals }
   cDateTime,
   cSocketLib
@@ -476,15 +567,6 @@ const
   SError_URINotSet    = 'URI not set';
   SError_HostNotSet   = 'Host not set';
 
-  {$IFDEF HTTP_DEBUG}
-  SDebug_Start            = 'Start';
-  SDebug_Stop             = 'Stop';
-  SDebug_Active           = 'Active';
-  SDebug_Inactive         = 'Inactive';
-  SDebug_ContentComplete  = 'ContentComplete';
-  SDebug_ResponseComplete = 'ResponseComplete';
-  {$ENDIF}
-
   SClientState : array[THTTP4ClientState] of String = (
       'Initialise',
       'Starting',
@@ -537,10 +619,12 @@ end;
 
 procedure TF4HTTPClient.InitDefaults;
 begin
+  FSynchronisedEvents := False;
   FMethod := cmGET;
   FPort := HTTPCLIENT_PORT_STR;
   {$IFDEF HTTP_TLS}
   FUseHTTPS := False;
+  FHTTPSOptions := [];
   {$ENDIF}
   FUseHTTPProxy := False;
   FUserAgent := HTTPCLIENT_UserAgent;
@@ -569,10 +653,36 @@ begin
     DoStart;
 end;
 
+procedure TF4HTTPClient.Synchronize(const SyncProc: TSyncProc);
+begin
+  {$IFDEF DELPHI6_DOWN}
+  if GetCurrentThreadID = MainThreadID then
+    SyncProc;
+  {$ELSE}
+  TThread.Synchronize(nil, SyncProc);
+  {$ENDIF}
+end;
+
+procedure TF4HTTPClient.SyncLog;
+begin
+  if csDestroying in ComponentState then
+    exit;
+  if Assigned(FOnLog) then
+    FOnLog(self, FSyncLogType, FSyncLogMsg, FSyncLogLevel);
+end;
+
 procedure TF4HTTPClient.Log(const LogType: THTTPClientLogType; const Msg: String; const Level: Integer);
 begin
   if Assigned(FOnLog) then
-    FOnLog(self, LogType, Msg, Level);
+    if FSynchronisedEvents and (GetCurrentThreadID <> MainThreadID) then
+      begin
+        FSyncLogType := LogType;
+        FSyncLogMsg := Msg;
+        FSyncLogLevel := Level;
+        Synchronize(SyncLog);
+      end
+    else
+      FOnLog(self, LogType, Msg, Level);
 end;
 
 procedure TF4HTTPClient.Log(const LogType: THTTPClientLogType; const Msg: String; const Args: array of const; const Level: Integer);
@@ -656,6 +766,14 @@ begin
     end;
 end;
 
+procedure TF4HTTPClient.SetSynchronisedEvents(const SynchronisedEvents: Boolean);
+begin
+  if SynchronisedEvents = FSynchronisedEvents then
+    exit;
+  CheckNotActive;
+  FSynchronisedEvents := SynchronisedEvents;
+end;
+
 procedure TF4HTTPClient.SetAddressFamily(const AddressFamily: THTTPClientAddressFamily);
 begin
   if AddressFamily = FAddressFamily then
@@ -687,6 +805,14 @@ begin
     exit;
   CheckNotBusyWithRequest;
   FUseHTTPS := UseHTTPS;
+end;
+
+procedure TF4HTTPClient.SetHTTPSOptions(const HTTPSOptions: THTTPSClientOptions);
+begin
+  if HTTPSOptions = FHTTPSOptions then
+    exit;
+  CheckNotBusyWithRequest;
+  FHTTPSOptions := HTTPSOptions;
 end;
 {$ENDIF}
 
@@ -869,49 +995,136 @@ begin
   FResponseContentReader.ContentStream := ResponseContentStream;
 end;
 
+procedure TF4HTTPClient.SyncTriggerStateChanged;
+begin
+  if csDestroying in ComponentState then
+    exit;
+  if Assigned(FOnStateChange) then
+    FOnStateChange(self, FState);
+end;
+
+procedure TF4HTTPClient.SyncTriggerStart;
+begin
+  if csDestroying in ComponentState then
+    exit;
+  if Assigned(FOnStart) then
+    FOnStart(self);
+end;
+
+procedure TF4HTTPClient.SyncTriggerStop;
+begin
+  if csDestroying in ComponentState then
+    exit;
+  if Assigned(FOnStop) then
+    FOnStop(self);
+end;
+
+procedure TF4HTTPClient.SyncTriggerActive;
+begin
+  if csDestroying in ComponentState then
+    exit;
+  if Assigned(FOnActive) then
+    FOnActive(self);
+end;
+
+procedure TF4HTTPClient.SyncTriggerInactive;
+begin
+  if csDestroying in ComponentState then
+    exit;
+  if Assigned(FOnInactive) then
+    FOnInactive(self);
+end;
+
+procedure TF4HTTPClient.SyncTriggerResponseHeader;
+begin
+  if csDestroying in ComponentState then
+    exit;
+  if Assigned(FOnResponseHeader) then
+    FOnResponseHeader(self);
+end;
+
+procedure TF4HTTPClient.SyncTriggerResponseContentBuffer;
+begin
+  if csDestroying in ComponentState then
+    exit;
+  if Assigned(FOnResponseContentBuffer) then
+    FOnResponseContentBuffer(self, FResponseContentBufPtr^, FResponseContentBufSize);
+end;
+
+procedure TF4HTTPClient.SyncTriggerResponseContentComplete;
+begin
+  if csDestroying in ComponentState then
+    exit;
+  if Assigned(FOnResponseContentComplete) then
+    FOnResponseContentComplete(self);
+end;
+
+procedure TF4HTTPClient.SyncTriggerResponseComplete;
+begin
+  if csDestroying in ComponentState then
+    exit;
+  if Assigned(FOnResponseComplete) then
+    FOnResponseComplete(self);
+end;
+
 procedure TF4HTTPClient.TriggerStateChanged;
 begin
   {$IFDEF HTTP_DEBUG}
   Log(cltDebug, 'State:%s', [GetStateStr]);
   {$ENDIF}
   if Assigned(FOnStateChange) then
-    FOnStateChange(self, FState);
+    if FSynchronisedEvents then
+      Synchronize(SyncTriggerStateChanged)
+    else
+      FOnStateChange(self, FState);
 end;
 
 procedure TF4HTTPClient.TriggerStart;
 begin
   {$IFDEF HTTP_DEBUG}
-  Log(cltDebug, SDebug_Start);
+  Log(cltDebug, 'Start');
   {$ENDIF}
   if Assigned(FOnStart) then
-    FOnStart(self);
+    if FSynchronisedEvents then
+      Synchronize(SyncTriggerStart)
+    else
+      FOnStart(self);
 end;
 
 procedure TF4HTTPClient.TriggerStop;
 begin
   {$IFDEF HTTP_DEBUG}
-  Log(cltDebug, SDebug_Stop);
+  Log(cltDebug, 'Stop');
   {$ENDIF}
   if Assigned(FOnStop) then
-    FOnStop(self);
+    if FSynchronisedEvents then
+      Synchronize(SyncTriggerStop)
+    else
+      FOnStop(self);
 end;
 
 procedure TF4HTTPClient.TriggerActive;
 begin
   {$IFDEF HTTP_DEBUG}
-  Log(cltDebug, SDebug_Active);
+  Log(cltDebug, 'Active');
   {$ENDIF}
   if Assigned(FOnActive) then
-    FOnActive(self);
+    if FSynchronisedEvents then
+      Synchronize(SyncTriggerActive)
+    else
+      FOnActive(self);
 end;
 
 procedure TF4HTTPClient.TriggerInactive;
 begin
   {$IFDEF HTTP_DEBUG}
-  Log(cltDebug, SDebug_Inactive);
+  Log(cltDebug, 'Inactive');
   {$ENDIF}
   if Assigned(FOnInactive) then
-    FOnInactive(self);
+    if FSynchronisedEvents then
+      Synchronize(SyncTriggerInactive)
+    else
+      FOnInactive(self);
 end;
 
 procedure TF4HTTPClient.TriggerResponseHeader;
@@ -920,7 +1133,10 @@ begin
   Log(cltDebug, 'ResponseHeader:'#13#10'%s', [HTTPResponseToStr(FResponse)]);
   {$ENDIF}
   if Assigned(FOnResponseHeader) then
-    FOnResponseHeader(self);
+    if FSynchronisedEvents then
+      Synchronize(SyncTriggerResponseHeader)
+    else
+      FOnResponseHeader(self);
 end;
 
 procedure TF4HTTPClient.TriggerResponseContentBuffer(const Buf; const BufSize: Integer);
@@ -929,25 +1145,38 @@ begin
   Log(cltDebug, 'ContentBuffer:%db', [BufSize]);
   {$ENDIF}
   if Assigned(FOnResponseContentBuffer) then
-    FOnResponseContentBuffer(self, Buf, BufSize);
+    if FSynchronisedEvents then
+      begin
+        FResponseContentBufPtr := @Buf;
+        FResponseContentBufSize := BufSize;
+        Synchronize(SyncTriggerResponseContentBuffer);
+      end
+    else
+      FOnResponseContentBuffer(self, Buf, BufSize);
 end;
 
 procedure TF4HTTPClient.TriggerResponseContentComplete;
 begin
   {$IFDEF HTTP_DEBUG}
-  Log(cltDebug, SDebug_ContentComplete);
+  Log(cltDebug, 'ContentComplete');
   {$ENDIF}
   if Assigned(FOnResponseContentComplete) then
-    FOnResponseContentComplete(self);
+    if FSynchronisedEvents then
+      Synchronize(SyncTriggerResponseContentComplete)
+    else
+      FOnResponseContentComplete(self);
 end;
 
 procedure TF4HTTPClient.TriggerResponseComplete;
 begin
   {$IFDEF HTTP_DEBUG}
-  Log(cltDebug, SDebug_ResponseComplete);
+  Log(cltDebug, 'ResponseComplete');
   {$ENDIF}
   if Assigned(FOnResponseComplete) then
-    FOnResponseComplete(self);
+    if FSynchronisedEvents then
+      Synchronize(SyncTriggerResponseComplete)
+    else
+      FOnResponseComplete(self);
 end;
 
 procedure TF4HTTPClient.ProcessResponseHeader;
@@ -1009,7 +1238,6 @@ begin
 end;
 
 procedure TF4HTTPClient.InitTCPClientHost;
-
 begin
   Assert(Assigned(FTCPClient));
 
@@ -1027,6 +1255,9 @@ begin
 end;
 
 procedure TF4HTTPClient.InitTCPClient;
+{$IFDEF HTTP_TLS}
+var TLSOpt : TTCPClientTLSOptions;
+{$ENDIF}
 begin
   FTCPClient := TF4TCPClient.Create(nil);
   try
@@ -1041,9 +1272,19 @@ begin
     FTCPClient.OnWrite := TCPClientWrite;
     FTCPClient.OnClose := TCPClientClose;
     FTCPClient.SocksEnabled := False;
+    FTCPClient.SynchronisedEvents := False;
     {$IFDEF HTTP_TLS}
     FTCPClient.TLSEnabled := FUseHTTPS;
-    FTCPClient.TLSOptions := [ctoDontUseTLS11, ctoDontUseTLS12];
+    TLSOpt := [];
+    if csoDontUseSSL3 in FHTTPSOptions then
+      Include(TLSOpt, ctoDontUseSSL3);
+    if csoDontUseTLS10 in FHTTPSOptions then
+      Include(TLSOpt, ctoDontUseTLS10);
+    if csoDontUseTLS11 in FHTTPSOptions then
+      Include(TLSOpt, ctoDontUseTLS11);
+    if csoDontUseTLS12 in FHTTPSOptions then
+      Include(TLSOpt, ctoDontUseTLS12);
+    FTCPClient.TLSOptions := TLSOpt;
     {$ENDIF}
     InitTCPClientHost;
   except
@@ -1559,6 +1800,12 @@ function TF4HTTPClient.GetResponseContentStr: AnsiString;
 begin
   Result := FResponseContentReader.ContentString;
 end;
+
+
+
+{$IFDEF HTTPCLIENT_CUSTOM}
+  {$INCLUDE cHTTPClientImpl.inc}
+{$ENDIF}
 
 
 
