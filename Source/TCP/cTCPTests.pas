@@ -41,6 +41,7 @@
 {   2011/04/22  0.03  Simple buffer tests.                                     }
 {   2011/04/22  4.04  Test for multiple connections.                           }
 {   2011/10/13  4.05  SSL3 tests.                                              }
+{   2012/04/19  4.06  Test for stopping and restarting client.                 }
 {                                                                              }
 { Todo:                                                                        }
 { - Test case socks proxy                                                      }
@@ -74,7 +75,7 @@
 {$IFDEF TCP_SELFTEST}
   {$DEFINE TCPCLIENT_SELFTEST}
   {.DEFINE TCPCLIENT_SELFTEST_TLS_LOCAL_PROXY}
-  {$DEFINE TCPCLIENT_SELFTEST_TLS_WEB}
+  {.DEFINE TCPCLIENT_SELFTEST_TLS_WEB}
   {.DEFINE TCPCLIENT_SELFTEST_WEB}
 {$ENDIF}
 
@@ -272,7 +273,7 @@ type
     Lock    : TCriticalSection;
     constructor Create;
     destructor Destroy; override;
-    procedure ClientLog(Sender: TF4TCPClient; LogType: TTCPClientLogType; LogMsg: AnsiString; LogLevel: Integer);
+    procedure ClientLog(Sender: TF4TCPClient; LogType: TTCPClientLogType; LogMsg: String; LogLevel: Integer);
     procedure ClientConnect(Client: TF4TCPClient);
     procedure ClientStateChanged(Client: TF4TCPClient; State: TTCPClientState);
   end;
@@ -289,7 +290,7 @@ begin
   inherited Destroy;
 end;
 
-procedure TTCPClientSelfTestObj.ClientLog(Sender: TF4TCPClient; LogType: TTCPClientLogType; LogMsg: AnsiString; LogLevel: Integer);
+procedure TTCPClientSelfTestObj.ClientLog(Sender: TF4TCPClient; LogType: TTCPClientLogType; LogMsg: String; LogLevel: Integer);
 begin
   {$IFDEF TCP_SELFTEST_LOG_TO_CONSOLE}
   Lock.Acquire;
@@ -312,7 +313,7 @@ begin
 end;
 
 {$IFDEF TCPCLIENT_SELFTEST_WEB}
-procedure SelfTestWeb;
+procedure SelfTest_Client_Web;
 var C : TF4TCPClient;
     S : AnsiString;
     A : TTCPClientSelfTestObj;
@@ -327,6 +328,7 @@ begin
     C.Port := '80';
     C.OnStateChanged := A.ClientStateChanged;
     C.OnConnected := A.ClientConnect;
+    C.WaitForStartup := True;
     Assert(not C.Active);
     Assert(C.State = csInit);
     Assert(C.IsConnectionClosed);
@@ -378,7 +380,7 @@ end;
 {$IFDEF TCPCLIENT_TLS}
 {$IFDEF TCPCLIENT_SELFTEST_TLS_LOCAL_PROXY}
 // Test TLS with local proxy
-procedure SelfTestTLS1(const TLSClientOptions: TTCPClientTLSOptions);
+procedure SelfTest_Client_TLS1(const TLSClientOptions: TTCPClientTLSOptions);
 var C : TF4TCPClient;
     I, L : Integer;
     S : AnsiString;
@@ -394,6 +396,7 @@ begin
     C.LocalHost := '0.0.0.0';
     C.Host := '127.0.0.1';
     C.Port := '443';
+    C.WaitForStartup := True;
     // start
     C.Active := True;
     Assert(C.Active);
@@ -447,7 +450,7 @@ const
   // TLSTest2Host = 'tls.woodgrovebank.com';
   // TLSTest2Host = 'www.gmail.com';
 
-procedure SelfTestTLS2(const TLSClientOptions: TTCPClientTLSOptions);
+procedure SelfTest_Client_TLS2(const TLSClientOptions: TTCPClientTLSOptions);
 var C : TF4TCPClient;
     I, L : Integer;
     S : AnsiString;
@@ -514,20 +517,20 @@ end;
 procedure SelfTest_Client;
 begin
   {$IFDEF TCPCLIENT_SELFTEST_WEB}
-  SelfTestWeb;
+  SelfTest_Client_Web;
   {$ENDIF}
   {$IFDEF TCPCLIENT_TLS}
   {$IFDEF TCPCLIENT_SELFTEST_TLS_LOCAL_PROXY}
-  // SelfTestTLS1([ctoDontUseSSL3, ctoDontUseTLS10, ctoDontUseTLS11]); // TLS 1.2 - not supported by stunnel
-  // SelfTestTLS1([ctoDontUseSSL3, ctoDontUseTLS10, ctoDontUseTLS12]); // TLS 1.1 - not supported by stunnel
-  SelfTestTLS1([ctoDontUseSSL3, ctoDontUseTLS11, ctoDontUseTLS12]); // TLS 1.0
+  // SelfTest_Client_TLS1([ctoDontUseSSL3, ctoDontUseTLS10, ctoDontUseTLS11]); // TLS 1.2 - not supported by stunnel
+  // SelfTest_Client_TLS1([ctoDontUseSSL3, ctoDontUseTLS10, ctoDontUseTLS12]); // TLS 1.1 - not supported by stunnel
+  SelfTest_Client_TLS1([ctoDontUseSSL3, ctoDontUseTLS11, ctoDontUseTLS12]); // TLS 1.0
   {$ENDIF}
   {$IFDEF TCPCLIENT_SELFTEST_TLS_WEB}
-  // SelfTestTLS2([]);
-  //SelfTestTLS2([ctoDontUseTLS10, ctoDontUseTLS11, ctoDontUseTLS12]); // SSL 3
-  SelfTestTLS2([ctoDontUseSSL3,  ctoDontUseTLS11, ctoDontUseTLS12]); // TLS 1.0
-  //SelfTestTLS2([ctoDontUseSSL3,  ctoDontUseTLS10, ctoDontUseTLS12]); // TLS 1.1
-  //SelfTestTLS2([ctoDontUseSSL3,  ctoDontUseTLS10, ctoDontUseTLS11]); // TLS 1.2
+  // SelfTest_Client_TLS2([]);
+  //SelfTest_Client_TLS2([ctoDontUseTLS10, ctoDontUseTLS11, ctoDontUseTLS12]); // SSL 3
+  SelfTest_Client_TLS2([ctoDontUseSSL3,  ctoDontUseTLS11, ctoDontUseTLS12]); // TLS 1.0
+  //SelfTest_Client_TLS2([ctoDontUseSSL3,  ctoDontUseTLS10, ctoDontUseTLS12]); // TLS 1.1
+  //SelfTest_Client_TLS2([ctoDontUseSSL3,  ctoDontUseTLS10, ctoDontUseTLS11]); // TLS 1.2
   {$ENDIF}
   {$ENDIF}
 end;
@@ -570,7 +573,7 @@ begin
   {$IFDEF TCP_SELFTEST_LOG_TO_CONSOLE}
   Lock.Acquire;
   try
-    Writeln(Msg);
+    Writeln(FormatDateTime('hh:nn:ss.zzz', Now), ' ', Msg);
   finally
     Lock.Release;
   end;
@@ -631,7 +634,7 @@ var C : array of TF4TCPClient;
     I, J, K : Integer;
     F : AnsiString;
     {$IFDEF TCPCLIENTSERVER_SELFTEST_TLS}
-    CtL : TTLSCertificateList;
+    // CtL : TTLSCertificateList;
     {$ENDIF}
     DebugObj : TTCPDebugObj;
 begin
@@ -657,6 +660,8 @@ begin
     S.MaxClients := -1;
     {$IFDEF TCPCLIENTSERVER_SELFTEST_TLS}
     S.TLSEnabled := Mode = tmTLS;
+
+    (*
     S.TLSServer.PrivateKeyRSAPEM := // from stunnel pem file
       'MIICXAIBAAKBgQCxUFMuqJJbI9KnB8VtwSbcvwNOltWBtWyaSmp7yEnqwWel5TFf' +
       'cOObCuLZ69sFi1ELi5C91qRaDMow7k5Gj05DZtLDFfICD0W1S+n2Kql2o8f2RSvZ' +
@@ -686,6 +691,60 @@ begin
         'eSjTzV9UayOoGtmg8Dv2aj/5iabNeK1Qf35ouvlcTezVZt2ZeJRhqUHcGaE+apCN' +
         'TC9Y'));
     S.TLSServer.CertificateList := CtL;
+    *)
+
+
+
+    S.TLSServer.PEMText :=
+      '-----BEGIN CERTIFICATE-----' +
+      'MIIDQjCCAiqgAwIBAgIJAKDslQh3d8kdMA0GCSqGSIb3DQEBBQUAMB8xHTAbBgNV' +
+      'BAMTFHd3dy5ldGVybmFsbGluZXMuY29tMB4XDTExMTAxODEwMzYwOVoXDTIxMTAx' +
+      'NTEwMzYwOVowHzEdMBsGA1UEAxMUd3d3LmV0ZXJuYWxsaW5lcy5jb20wggEiMA0G' +
+      'CSqGSIb3DQEBAQUAA4IBDwAwggEKAoIBAQCw/7d6zyehR69DaJCGbk3oMP7pSWya' +
+      'U1tDMG+CdqikLqHoo3SBshbvquOVFcy9yY8fECTbNXfOjhV0M6SJgGQ/SP/nfZgx' +
+      'MHAK9sWc5G6V5sqPqrTRgkv0Wu25mdO6FRh8DIxOMY0Ppqno5hHZ0emSj1amvtWX' +
+      'zBD6pXNGgrFln6HL2eyCwqlL0wTXWO/YrvblF/83Ln9i6luVQ9NtACQBiPcYqoNM' +
+      '1OG142xYNpRNp7zrHkNCQeXVxmC6goCgj0BmcSqrUPayLdgkgv8hniUwLYQIt91r' +
+      'cxJwGNWxlbLgqQqTdhecKp01JVgO8jy3yFpMEoqCj9+BuuxVqDfvHK1tAgMBAAGj' +
+      'gYAwfjAdBgNVHQ4EFgQUbLgD+S3ZSNlU1nxTsjTmAQIfpCQwTwYDVR0jBEgwRoAU' +
+      'bLgD+S3ZSNlU1nxTsjTmAQIfpCShI6QhMB8xHTAbBgNVBAMTFHd3dy5ldGVybmFs' +
+      'bGluZXMuY29tggkAoOyVCHd3yR0wDAYDVR0TBAUwAwEB/zANBgkqhkiG9w0BAQUF' +
+      'AAOCAQEACSQTcPC8ga5C/PysnoTNAk4OB+hdgMoS3Fv7ROUV9GqgYED6rJo0+CxD' +
+      'g19GLlKt/aBlglh4Ddc7X84dWtftS4JIjjVVkWevt8/sDoZ+ISd/tC9aDX3gOAlW' +
+      'RORhfp3Qtyy0AjZcIOAGNkzkotuMG/uOVifPFhTNXwa8hHOGN60riGXEj5sNFFop' +
+      'EaxplTfakVq8TxlQivnIETjrEbVX8XkOl4nlsHevC2suXE1ZkQIbQoaAy0WzGGUR' +
+      '54GBIzXf32t80S71w5rs/mzVaGOeTZYcHtv5Epd9CNVrEle6w0NW9R7Ov4gXI9n8' +
+      'GV9jITGfsOdqu7j9Iaf7MVj+JRE7Dw==' +
+      '-----END CERTIFICATE-----' +
+      '-----BEGIN RSA PRIVATE KEY-----' +
+      'MIIEpQIBAAKCAQEAsP+3es8noUevQ2iQhm5N6DD+6UlsmlNbQzBvgnaopC6h6KN0' +
+      'gbIW76rjlRXMvcmPHxAk2zV3zo4VdDOkiYBkP0j/532YMTBwCvbFnORulebKj6q0' +
+      '0YJL9FrtuZnTuhUYfAyMTjGND6ap6OYR2dHpko9Wpr7Vl8wQ+qVzRoKxZZ+hy9ns' +
+      'gsKpS9ME11jv2K725Rf/Ny5/YupblUPTbQAkAYj3GKqDTNThteNsWDaUTae86x5D' +
+      'QkHl1cZguoKAoI9AZnEqq1D2si3YJIL/IZ4lMC2ECLfda3MScBjVsZWy4KkKk3YX' +
+      'nCqdNSVYDvI8t8haTBKKgo/fgbrsVag37xytbQIDAQABAoIBAQCdnZnOCtrHjAZO' +
+      'iLbqfx9xPPBC3deQNdp3IpKqIvBaBAy6FZSSSfySwCKZiCgieXKxvraTXjGqBmyk' +
+      'ZbiHmYWrtV3szrLQWsnreYTQCbtQUYzgEquiRd1NZAt907XvZwm+rY3js8xhu5Bi' +
+      'jT4oMf1FPc9z/UxHOLmF+f+FMqy2SM2Fxh3jAsxJBaMVEJXpqdQDI86CATgYrqVY' +
+      'mlAWQcQ8pL0wwRctZ+XgjQH52V3sk4cIzqIBTO+MN6emmxDl9JdrGZKRei9YEIhG' +
+      'mFeXH7rsGg+TZtfvu1M9Kfy2fdgNwTUoTTn93v8gcrwCbyvl5JCzKy07Om/aOXFr' +
+      'I8bSWXIhAoGBANu07hegU99zIhvTWmh2Fuml0Lr+cHcZTObh+oeZg1xaDUrlnFOY' +
+      '3fyA5x5Jxib3V7OOAeIz/AsmcYq/649nR8NfeiizY5or84Fy1mazRR8diGDV3nUG' +
+      'ZATv6yaOY/z31FOLaxT95tDvqWK+Qr5cykq4e6XDDp9P8odCIjJmUdt7AoGBAM48' +
+      'vCjtGQ99BVwkcFIj0IacRj3YKzsp06W6V2Z+czlKctJAMAQN8hu9IcXMEIUsi9GD' +
+      'MkyzzxjvGRdmIuS58IFqRbr/fIAQLVpY9SPAL771ZCFHmIrKrCYiLYAcg/BSoR29' +
+      'me6aFaEcLBFvzHPFNymdyMsaOHSRMZYUlq6VUbI3AoGBAINJeMURf00VRZqPD4VA' +
+      'm6x+813qUVY5/iQxgT2qVD7JaQwKbQHfZTdP58vHlesO/o9DGokLO1+GV27sBF0r' +
+      'AE0VLrBHkgs8nEQMVWYFVhaj1SzYYBhZ+0af/0qI5+LwTSanNxPSLS1JKVTiEIwk' +
+      'cpV37Bs/letJIMoGkNzBG8UlAoGBAKrSfZt8f3RnvmfKusoeZhsJF9kj0vMHOwob' +
+      'ZUc8152Nf7uMdPj2wCGfr3iRBOH5urnH7ILBsHjbmjHaZG6FYKMg7i7sbSf5vkcG' +
+      'Rc3d4u5NfSlfjwbuxlYzmvJxLAuDtXXX1MdgEyhGGG485uDBamZrDaTEzBwpIyRH' +
+      'W2OxxGBTAoGAZHJQKTajcqQQoRSgPPWWU3X8zdlu5hCgNU54bXaPAfJ6IBWvicMZ' +
+      'QLw+9mtshtz+Xy0aBbkxUeUlwwzexb9rg1KZppTq/yRqkOlEkI3ZdqiclTK13BCh' +
+      '6r6dC2qqq+DVm9Nlm/S9Gab9YSIA0g5MFg5WLwu1KNwuOODE4Le/91c=' +
+      '-----END RSA PRIVATE KEY-----';
+
+
     {$ENDIF}
     Assert(S.State = ssInit);
     Assert(not S.Active);
@@ -711,7 +770,10 @@ begin
         Assert(C[K].State = csInit);
         Assert(not C[K].Active);
         // start client
+        C[K].WaitForStartup := True;
         C[K].Start;
+        Assert(Assigned(C[K].Connection));
+        Assert(C[K].Active);
       end;
     for K := 0 to TestClientCount - 1 do
       // wait for client to connect
@@ -825,7 +887,7 @@ begin
     for K := TestClientCount - 1 downto 0 do
       begin
         C[K].Stop;
-        Assert(C[K].Connection.State = cnsClosed);
+        Assert(C[K].State = csStopped);
       end;
     I := 0;
     repeat
@@ -844,15 +906,97 @@ begin
   end;
 end;
 
+procedure SelfTestClientServer_StopStart;
+const
+  TestClientCount = 3;
+  TestRepeatCount = 3;
+var C : array of TF4TCPClient;
+    S : TF4TCPServer;
+    I, K : Integer;
+    J : Integer;
+    DebugObj : TTCPDebugObj;
+begin
+  DebugObj := TTCPDebugObj.Create;
+  S := TF4TCPServer.Create(nil);
+  SetLength(C, TestClientCount);
+  for K := 0 to TestClientCount - 1 do
+    begin
+      C[K] := TF4TCPClient.Create(nil);
+      // init client
+      C[K].OnLog := DebugObj.ClientLog;
+    end;
+  try
+    // init server
+    S.OnLog := DebugObj.ServerLog;
+    S.AddressFamily := iaIP4;
+    S.BindAddress := '127.0.0.1';
+    S.ServerPort := 12345;
+    S.MaxClients := -1;
+    Assert(S.State = ssInit);
+    Assert(not S.Active);
+    // start server
+    S.Start;
+    Assert(S.Active);
+    I := 0;
+    repeat
+      Inc(I);
+      Sleep(1);
+    until (S.State <> ssStarting) or (I >= 5000);
+    Assert(S.State = ssReady);
+    Assert(S.ClientCount = 0);
+    // init clients
+    for K := 0 to TestClientCount - 1 do
+      begin
+        C[K].AddressFamily := cafIP4;
+        C[K].Host := '127.0.0.1';
+        C[K].Port := '12345';
+        C[K].WaitForStartup := True;
+        Assert(C[K].State = csInit);
+        Assert(not C[K].Active);
+      end;
+    // test quickly starting and stopping clients
+    for J := 0 to TestRepeatCount - 1 do
+      begin
+        // start client
+        for K := 0 to TestClientCount - 1 do
+          begin
+            C[K].Start;
+            // connection must exist when Start exits
+            Assert(Assigned(C[K].Connection));
+            Assert(C[K].Active);
+          end;
+        // delay
+        if J > 0 then
+          Sleep(J - 1);
+        // stop clients
+        for K := TestClientCount - 1 downto 0 do
+          begin
+            C[K].Stop;
+            Assert(C[K].State = csStopped);
+            Assert(not Assigned(C[K].Connection));
+          end;
+      end;
+    // stop server
+    S.Stop;
+    Assert(not S.Active);
+  finally
+    for K := TestClientCount - 1 downto 0 do
+      C[K].Free;
+    S.Free;
+    DebugObj.Free;
+  end;
+end;
+
 procedure SelfTest_ClientServer;
 begin
   SelfTestClientServer(tmSimple, 5,  True);
   SelfTestClientServer(tmSimple, 30, False);
+  SelfTestClientServer_StopStart;
   {$IFDEF TCPCLIENTSERVER_SELFTEST_TLS}
   // SelfTestClientServer(tmTLS, 1, True, [ctoDontUseTLS10, ctoDontUseTLS11, ctoDontUseTLS12]); // SSL 3.0
   SelfTestClientServer(tmTLS, 1, True, [ctoDontUseSSL3,  ctoDontUseTLS10, ctoDontUseTLS11]); // TLS 1.2
-  SelfTestClientServer(tmTLS, 1, True, [ctoDontUseSSL3,  ctoDontUseTLS10, ctoDontUseTLS12]); // TLS 1.1
-  SelfTestClientServer(tmTLS, 1, True, [ctoDontUseSSL3,  ctoDontUseTLS11, ctoDontUseTLS12]); // TLS 1.0
+  //SelfTestClientServer(tmTLS, 1, True, [ctoDontUseSSL3,  ctoDontUseTLS10, ctoDontUseTLS12]); // TLS 1.1
+  //SelfTestClientServer(tmTLS, 1, True, [ctoDontUseSSL3,  ctoDontUseTLS11, ctoDontUseTLS12]); // TLS 1.0
   {$ENDIF}
 end;
 {$ENDIF}

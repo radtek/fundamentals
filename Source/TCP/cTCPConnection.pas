@@ -5,7 +5,7 @@
 {   File version:     4.20                                                     }
 {   Description:      TCP connection.                                          }
 {                                                                              }
-{   Copyright:        Copyright (c) 2007-2011, David J Butler                  }
+{   Copyright:        Copyright (c) 2007-2012, David J Butler                  }
 {                     All rights reserved.                                     }
 {                     This file is licensed under the BSD License.             }
 {                     See http://www.opensource.org/licenses/bsd-license.php   }
@@ -1881,4 +1881,5 @@ end;
 
 
 end.
+
 

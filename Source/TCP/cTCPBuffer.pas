@@ -5,7 +5,7 @@
 {   File version:     4.05                                                     }
 {   Description:      TCP buffer.                                              }
 {                                                                              }
-{   Copyright:        Copyright (c) 2007-2011, David J Butler                  }
+{   Copyright:        Copyright (c) 2007-2012, David J Butler                  }
 {                     All rights reserved.                                     }
 {                     This file is licensed under the BSD License.             }
 {                     See http://www.opensource.org/licenses/bsd-license.php   }
@@ -75,7 +75,7 @@ const
   ETHERNET_MTU_100MBIT = 1500;
   ETHERNET_MTU_1GBIT   = 9000;
 
-  TCP_BUFFER_DEFAULTMAXSIZE = ETHERNET_MTU_1GBIT   * 8; // ~70K
+  TCP_BUFFER_DEFAULTMAXSIZE = ETHERNET_MTU_1GBIT   * 4; // ~35K
   TCP_BUFFER_DEFAULTBUFSIZE = ETHERNET_MTU_100MBIT * 4; // ~6K
 
 procedure TCPBufferInitialise(
@@ -131,7 +131,7 @@ implementation
 
 {$IFDEF DELPHI5_DOWN}
 type
-  PByte     = ^Byte;
+  PByte = ^Byte;
 {$ENDIF}
 
 

@@ -2,10 +2,10 @@
 {                                                                              }
 {   Library:          Fundamentals 4.00                                        }
 {   File name:        cTCPClient.pas                                           }
-{   File version:     4.11                                                     }
+{   File version:     4.12                                                     }
 {   Description:      TCP client.                                              }
 {                                                                              }
-{   Copyright:        Copyright (c) 2007-2011, David J Butler                  }
+{   Copyright:        Copyright (c) 2007-2012, David J Butler                  }
 {                     All rights reserved.                                     }
 {                     This file is licensed under the BSD License.             }
 {                     See http://www.opensource.org/licenses/bsd-license.php   }
@@ -48,6 +48,9 @@
 {   2011/09/03  4.09  Revise for Fundamentals 4.                               }
 {   2011/09/10  4.10  Synchronised events option.                              }
 {   2011/10/06  4.11  Remove wait condition on startup.                        }
+{   2011/11/07  4.12  Allow client to be restarted after being stopped.        }
+{                     Added WaitForStartup property to optionally enable       }
+{                     waiting for thread initialisation.                       }
 {                                                                              }
 {******************************************************************************}
 
@@ -59,6 +62,9 @@ interface
 
 uses
   { System }
+  {$IFDEF OS_MSWIN}
+  Windows,
+  {$ENDIF}
   SysUtils,
   SyncObjs,
   Classes,
@@ -162,6 +168,7 @@ type
     {$ENDIF}
 
     FSynchronisedEvents : Boolean;
+    FWaitForStartup     : Boolean;
 
     // event handlers
     FOnLog             : TTCPClientLogEvent;
@@ -253,6 +260,7 @@ type
     {$ENDIF}
 
     procedure SetSynchronisedEvents(const SynchronisedEvents: Boolean);
+    procedure SetWaitForStartup(const WaitForStartup: Boolean);
 
     procedure SetActive(const Active: Boolean);
     procedure Loaded; override;
@@ -317,6 +325,7 @@ type
 
     function  GetConnection: TTCPConnection;
     procedure CreateConnection;
+    procedure FreeConnection;
 
     procedure DoResolve;
     procedure DoConnect;
@@ -390,6 +399,15 @@ type
     function  IsConnected: Boolean;
     function  IsConnectionClosed: Boolean;
 
+    // When WaitForStartup is set, the call to Start or Active := True will only return
+    // when the thread has started and the Connection property is available.
+    // This option is usally only needed in a non-GUI application.
+    // Note:
+    // When this is set to True in a GUI application with SynchronisedEvents True,
+    // the OnMainThreadWait handler must call Application.ProcessMessages otherwise
+    // blocking conditions may occur.
+    property  WaitForStartup: Boolean read FWaitForStartup write SetWaitForStartup default False;
+
     property  Active: Boolean read FActive write SetActive default False;
     procedure Start;
     procedure Stop;
@@ -402,16 +420,18 @@ type
     procedure StartTLS;
     {$ENDIF}
 
+    // The Connection property is only available when the client is active,
+    // when not active it is nil.
     property  Connection: TTCPConnection read GetConnection;
 
     // Blocking helpers
-    //   These functions will block until a result is available or timeout expires.
-    //   When blocking occurs in the main thread, OnMainThreadWait is called.
-    //   When blocking occurs in another thread, OnThreadWait is called.
-    //   Usually the handler for OnMainThreadWait calls Application.ProcessMessages.
-    //   Note:
-    //   Avoid these functions as they can only be used in specific situations.
-    //   These functions should not be called from this object's event handlers.
+    // These functions will block until a result is available or timeout expires.
+    // When blocking occurs in the main thread, OnMainThreadWait is called.
+    // When blocking occurs in another thread, OnThreadWait is called.
+    // Usually the handler for OnMainThreadWait calls Application.ProcessMessages.
+    // Note:
+    // Avoid these functions as they can only be used safely in specific situations.
+    // These functions should not be called from this object's event handlers.
     property  OnThreadWait: TTCPClientNotifyEvent read FOnThreadWait write FOnThreadWait;
     property  OnMainThreadWait: TTCPClientNotifyEvent read FOnMainThreadWait write FOnMainThreadWait;
 
@@ -456,6 +476,7 @@ type
     {$ENDIF}
 
     property  SynchronisedEvents;
+    property  WaitForStartup;
 
     property  OnLog;
     property  OnStateChanged;
@@ -484,7 +505,6 @@ implementation
 
 uses
   {$IFDEF OS_MSWIN}
-  Windows,
   Messages
   {$ENDIF}
   { TLS }
@@ -506,7 +526,6 @@ const
   SError_StartupFailed           = 'Startup failed';
   SError_Terminated              = 'Terminated';
   SError_TimedOut                = 'Timed out';
-
 
   SClientState : array[TTCPClientState] of AnsiString = (
       'Initialise',
@@ -841,7 +860,6 @@ procedure TF4TCPClient.Init;
 begin
   FState := csInit;
   FActivateOnLoaded := False;
-  FSynchronisedEvents := False;
   FLock := TCriticalSection.Create;
   InitDefaults;
 end;
@@ -858,6 +876,8 @@ begin
   FTLSEnabled := False;
   FTLSOptions := [ctoDontUseSSL3];
   {$ENDIF}
+  FSynchronisedEvents := False;
+  FWaitForStartup := False;
 end;
 
 destructor TF4TCPClient.Destroy;
@@ -964,7 +984,7 @@ begin
     FLock.Release;
 end;
 
-{ }
+{ State }
 
 function TF4TCPClient.GetState: TTCPClientState;
 begin
@@ -1005,6 +1025,8 @@ begin
   if not FActive then
     raise ETCPClient.Create(SError_NotAllowedWhileInactive);
 end;
+
+{ Property setters }
 
 procedure TF4TCPClient.SetAddressFamily(const AddressFamily: TTCPClientAddressFamily);
 begin
@@ -1132,6 +1154,14 @@ begin
     exit;
   CheckNotActive;
   FSynchronisedEvents := SynchronisedEvents;
+end;
+
+procedure TF4TCPClient.SetWaitForStartup(const WaitForStartup: Boolean);
+begin
+  if WaitForStartup = FWaitForStartup then
+    exit;
+  CheckNotActive;
+  FWaitForStartup := WaitForStartup;
 end;
 
 procedure TF4TCPClient.SetActive(const Active: Boolean);
@@ -1520,7 +1550,7 @@ begin
   {$ENDIF}
 end;
 
-{ Connection }
+{ Connection events }
 
 procedure TF4TCPClient.ConnectionLog(Sender: TTCPConnection; LogType: TTCPLogType; LogMsg: String; LogLevel: Integer);
 begin
@@ -1599,7 +1629,7 @@ begin
 end;
 {$ENDIF}
 
-{ }
+{ Connection }
 
 function TF4TCPClient.GetConnection: TTCPConnection;
 begin
@@ -1647,6 +1677,14 @@ begin
   {$ENDIF}
 end;
 
+procedure TF4TCPClient.FreeConnection;
+begin
+  FreeAndNil(FConnection);
+  FreeAndNil(FSocket);
+end;
+
+{ Resolve }
+
 procedure TF4TCPClient.DoResolve;
 var
   LocAddr : TSocketAddr;
@@ -1682,6 +1720,8 @@ begin
   SetState(csResolved);
 end;
 
+{ Connect / Close }
+
 procedure TF4TCPClient.DoConnect;
 begin
   Assert(FActive);
@@ -1708,6 +1748,8 @@ begin
   FConnection.Close;
   SetClosed;
 end;
+
+{ Thread }
 
 procedure TF4TCPClient.StartThread;
 begin
@@ -1833,15 +1875,18 @@ begin
   {$ENDIF}
 end;
 
+{ Start / Stop }
+
 const
   // milliseconds to wait for thread to startup,
   // this usually happens within 1 ms but could pause for a few seconds if the
   // system is busy
-  ThreadStartupTimeOut = 1500000; // 15 seconds
+  ThreadStartupTimeOut = 15000; // 15 seconds
 
 procedure TF4TCPClient.DoStart;
 var
   IsStarting : Boolean;
+  WaitStarted : Boolean;
 begin
   // ensure only one thread is doing DoStart
   Lock;
@@ -1851,15 +1896,16 @@ begin
     IsStarting := FState = csStarting;
     if not IsStarting then
       SetState(csStarting);
+    WaitStarted := FWaitForStartup;
   finally
     Unlock;
   end;
   if IsStarting then
     begin
       // this thread is not doing startup, wait for other thread to complete startup
-      // REMOVED WAIT
-      // if WaitState(TCPClientStates_All - [csStarting], ThreadStartupTimeOut) = csStarting then
-      //   raise ETCPClient.Create(SError_StartupFailed); // timed out waiting for startup
+      if WaitStarted then
+        if WaitState(TCPClientStates_All - [csStarting], ThreadStartupTimeOut) = csStarting then
+          raise ETCPClient.Create(SError_StartupFailed); // timed out waiting for startup
       exit;
     end;
   Assert(not FActive);
@@ -1877,10 +1923,11 @@ begin
   // start thread
   StartThread;
   // wait for thread to complete startup
-  // REMOVED WAIT
-  // if WaitState(TCPClientStates_All - [csStarting], ThreadStartupTimeOut) = csStarting then
-  //  raise ETCPClient.Create(SError_StartupFailed); // timed out waiting for thread
-  // started (connection object initialised)
+  if WaitStarted then
+    if WaitState(TCPClientStates_All - [csStarting], ThreadStartupTimeOut) = csStarting then
+      raise ETCPClient.Create(SError_StartupFailed); // timed out waiting for thread
+    // connection object initialised
+  // started
   TriggerActive;
 end;
 
@@ -1917,6 +1964,7 @@ begin
     FActive := False;
     TriggerInactive;
     SetStopped;
+    FreeConnection;
   finally
     Lock;
     try
@@ -1937,6 +1985,8 @@ begin
   DoStop;
 end;
 
+{ Connect state }
+
 function TF4TCPClient.IsConnecting: Boolean;
 begin
   Result := GetState in TCPClientStates_Connecting;
@@ -1956,6 +2006,8 @@ function TF4TCPClient.IsConnectionClosed: Boolean;
 begin
   Result := GetState in TCPClientStates_Closed;
 end;
+
+{ TLS }
 
 {$IFDEF TCPCLIENT_TLS}
 procedure TF4TCPClient.StartTLS;
