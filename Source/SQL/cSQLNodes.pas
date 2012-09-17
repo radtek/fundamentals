@@ -239,7 +239,10 @@ implementation
 
 uses
   { Fundamentals }
-  cUtils;
+  cUtils,
+
+  { SQL }
+  cSQLDataTypes;
 
 
 
@@ -348,7 +351,7 @@ begin
     Result := Default
   else
     try
-      Result := R.AsBoolean;
+      Result := R.AsBoolean = sbvTrue;
     finally
       R.ReleaseReference;
     end;
@@ -377,8 +380,11 @@ end;
 function ASqlSearchCondition.Evaluate(const Engine: ASqlDatabaseEngine;
     const Cursor: ASqlCursor;
     const Scope: ASqlScope): ASqlLiteral;
+var M : Boolean;
+    B : TSqlBooleanValue;
 begin
-  Result := TSqlBoolean.Create(Match(Engine, Cursor, Scope));
+  M := Match(Engine, Cursor, Scope);
+  Result := TSqlBoolean.Create();
 end;
 
 function ASqlSearchCondition.Match(const Database: ASqlDatabase;

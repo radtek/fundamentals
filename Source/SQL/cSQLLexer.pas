@@ -2,7 +2,7 @@
 (*                                                                            *)
 (*    Library:       Fundamentals SQL                                         *)
 (*    Description:   SQL lexical parser.                                      *)
-(*    Version:       1.04                                                     *)
+(*    Version:       1.05                                                     *)
 (*                                                                            *)
 (*  Copyright (c) 2003-2011 by David J Butler.                                *)
 (*  All rights reserved.                                                      *)
@@ -51,6 +51,7 @@
 (*    2005/04/02  1.02  Comments.                                             *)
 (*    2009/11/27  1.03  SQL99 development.                                    *)
 (*    2011/07/17  1.04  Test cases.                                           *)
+{     2011/10/19  1.05  Minor changes.                                        *)
 (*                                                                            *)
 (*  Features:                                                                 *)
 (*    * Fast parsing.                                                         *)
@@ -408,6 +409,8 @@ const
   SQL_KEYWORD_EVERY             = 'EVERY';
   SQL_KEYWORD_GROUPING          = 'GROUPING';
   SQL_KEYWORD_SAVEPOINT         = 'SAVEPOINT';
+  SQL_KEYWORD_ARE               = 'ARE';
+  SQL_KEYWORD_CHECKED           = 'CHECKED';
 
   // SQL2003
   SQL_KEYWORD_BEFORE            = 'BEFORE';
@@ -506,9 +509,10 @@ const
   ttLeftBracket       = $37;
   ttRightBracket      = $38;
 
-  // Reserved keywords
+  // Keywords
   tt__FirstKeyword    = $40;
 
+  // Reserved keywords
   tt__FirstReserved   = $40;
 
   ttGO                = $40;
@@ -524,7 +528,6 @@ const
 
   tt__LastReserved    = $5F;
 
-  // Keywords
   ttALL               = $60;
   ttSOME              = $61;
   ttANY               = $62;
@@ -825,6 +828,8 @@ const
   ttEVERY             = $346;
   ttGROUPING          = $347;
   ttSAVEPOINT         = $348;
+  ttARE               = $349;
+  ttCHECKED           = $34A;
 
   // SQL2003
   ttMERGE             = $400;
@@ -894,7 +899,7 @@ type
   TSqlLexer = class
   protected
     FOptions   : TSqlLexerOptions;
-    FReader    : TStringReader;
+    FReader    : TLongStringReader;
     FTokenType : Integer;
     FTokenStr  : AnsiString;
 
@@ -929,9 +934,9 @@ type
 {                                                                              }
 { Test cases                                                                   }
 {                                                                              }
-{$IFDEF DEBUG}{$IFDEF SELFTEST}
+{$IFDEF SQL_SELFTEST}
 procedure SelfTest;
-{$ENDIF}{$ENDIF}
+{$ENDIF}
 
 
 
@@ -1001,7 +1006,9 @@ begin
               if StrEqualNoAsciiCaseA(Identifier, SQL_KEYWORD_ALWAYS) then
                 Result := ttALWAYS else
               if StrEqualNoAsciiCaseA(Identifier, SQL_KEYWORD_ATTRIBUTES) then
-                Result := ttATTRIBUTES;
+                Result := ttATTRIBUTES else
+              if StrEqualNoAsciiCaseA(Identifier, SQL_KEYWORD_ARE) then
+                Result := ttARE;
         'B' : if StrEqualNoAsciiCaseA(Identifier, SQL_KEYWORD_BETWEEN) then
                 Result := ttBETWEEN else
               if StrEqualNoAsciiCaseA(Identifier, SQL_KEYWORD_BY) then
@@ -1103,7 +1110,9 @@ begin
               if StrEqualNoAsciiCaseA(Identifier, SQL_KEYWORD_CUBE) then
                 Result := ttCUBE else
               if StrEqualNoAsciiCaseA(Identifier, SQL_KEYWORD_COLLECT) then
-                Result := ttCOLLECT;
+                Result := ttCOLLECT else
+              if StrEqualNoAsciiCaseA(Identifier, SQL_KEYWORD_CHECKED) then
+                Result := ttCHECKED;
         'D' : if StrEqualNoAsciiCaseA(Identifier, SQL_KEYWORD_DELETE) then
                 Result := ttDELETE else
               if StrEqualNoAsciiCaseA(Identifier, SQL_KEYWORD_DISCONNECT) then
@@ -1706,7 +1715,7 @@ constructor TSqlLexer.Create;
 begin
   inherited Create;
   FOptions := [sloAllowLineComment, sloAllowBlockComment];
-  FReader := TStringReader.Create('');
+  FReader := TLongStringReader.Create('');
 end;
 
 destructor TSqlLexer.Destroy;
@@ -1724,11 +1733,11 @@ end;
 
 function TSqlLexer.GetTokenInt64: Int64;
 begin
-  Result := StrToInt64(FTokenStr);
+  Result := StringToInt64A(FTokenStr);
 end;
 
 function TSqlLexer.ParseIdentifierToken(const C: AnsiChar): Integer;
-var B : Array[0..4] of AnsiChar;
+var B : array[0..4] of AnsiChar;
 begin
   if C in ['B', 'b', 'N', 'n', 'X', 'x'] then
     if FReader.Peek(B[0], 2) = 2 then
@@ -2023,7 +2032,7 @@ begin
       if TokenIsKeyword then
         R := '{' + TokenStr + '}'
       else
-        R := '<#' + IntToStr(FTokenType) + '>';
+        R := '<#' + IntToStringA(FTokenType) + '>';
     end;
   end;
   if FTokenType in [
@@ -2052,7 +2061,7 @@ end;
 {                                                                              }
 { Test cases                                                                   }
 {                                                                              }
-{$IFDEF DEBUG}{$IFDEF SELFTEST}
+{$IFDEF SQL_SELFTEST}
 {$ASSERTIONS ON}
 procedure SelfTest_Simple;
 var P : TSqlLexer;
@@ -2108,7 +2117,7 @@ begin
       '1.23 ''A'' TRUE NULL GO',
       '(1.23).("A").{TRUE}.{NULL}.{GO}');
 end;
-{$ENDIF}{$ENDIF}
+{$ENDIF}
 
 
 

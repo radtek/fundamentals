@@ -203,8 +203,8 @@ type
 {                                                                              }
 { SQL types helper functions                                                   }
 {                                                                              }
-function  SqlComparisonOperatorToString(const Operator: TSqlComparisonOperator): String;
-function  SqlNumericOperatorToString(const Operator: TSqlNumericOperator): String;
+function  SqlComparisonOperatorToString(const AOperator: TSqlComparisonOperator): AnsiString;
+function  SqlNumericOperatorToString(const AOperator: TSqlNumericOperator): AnsiString;
 
 
 
@@ -218,7 +218,7 @@ type
 
 {                                                                              }
 { SQL pattern matching                                                         }
-{   Matches SQL LIKE patterns.                                                 } 
+{   Matches SQL LIKE patterns.                                                 }
 {                                                                              }
 function SqlMatchPattern(const M, S: AnsiString): Boolean;
 
@@ -242,9 +242,9 @@ uses
 {                                                                              }
 { SqlComparisonOperatorToString                                                }
 {                                                                              }
-function SqlComparisonOperatorToString(const Operator: TSqlComparisonOperator): String;
+function SqlComparisonOperatorToString(const AOperator: TSqlComparisonOperator): AnsiString;
 begin
-  case Operator of
+  case AOperator of
     scoUndefined      : Result := '';
     scoEqual          : Result := '=';
     scoNotEqual       : Result := '<>';
@@ -257,9 +257,9 @@ begin
   end;
 end;
 
-function SqlNumericOperatorToString(const Operator: TSqlNumericOperator): String;
+function SqlNumericOperatorToString(const AOperator: TSqlNumericOperator): AnsiString;
 begin
-  case Operator of
+  case AOperator of
     snoUndefined : Result := '';
     snoAdd       : Result := '+';
     snoSubtract  : Result := '-';
@@ -434,10 +434,14 @@ end;
 { SQL structure helper functions                                               }
 {                                                                              }
 function ClassToSqlStructureName(const AClass: TClass): AnsiString;
-var S : String;
+var S : AnsiString;
     I : Integer;
 begin
+  {$IFDEF StringIsUnicode}
+  S := AnsiString(AClass.ClassName);
+  {$ELSE}
   S := AClass.ClassName;
+  {$ENDIF}
   Assert(S <> '');
   if Copy(S, 1, 1) = 'T' then
     Delete(S, 1, 1);

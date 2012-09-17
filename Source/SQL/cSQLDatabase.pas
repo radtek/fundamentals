@@ -159,8 +159,7 @@ type
 
 
 {                                                                              }
-{ ASqlDatabase                                                                 }
-{   Abstract base class for SQL Databases.                                     }
+{ ASqlDatabaseEngine                                                           }
 {                                                                              }
 type
   ASqlDatabaseEngine = class;
@@ -172,6 +171,10 @@ type
               const Parameters: ASqlLiteralArray): ASqlCursor; virtual; abstract;
   end;
 
+  {                                                                            }
+  { ASqlDatabase                                                               }
+  {   Abstract base class for SQL Databases.                                   }
+  {                                                                            }
   ASqlDatabase = class
   public
     // Connection
@@ -214,22 +217,22 @@ type
   public
     // Databases
     procedure CreateDatabase(const Name: AnsiString;
-              const FileName: AnsiString;
+              const FileName: String;
               const SizeKB: Integer); virtual; abstract;
     procedure DropDatabase(const Name: AnsiString); virtual; abstract;
     function  HasDatabase(const Name: AnsiString): Boolean; virtual; abstract;
     function  GetDatabase(const Name: AnsiString): ASqlDatabase; virtual; abstract;
     function  GetDatabaseNames: AnsiStringArray; virtual; abstract;
 
-    // Current database
-    procedure UseDatabase(const Name: AnsiString); virtual; abstract;
-    property  CurrentDatabase: ASqlDatabase read GetCurrentDatabase;
-
     // Logins
     procedure CreateLogin(const Name, Password: AnsiString); virtual; abstract;
     procedure DropLogin(const Name: AnsiString); virtual; abstract;
 
-    // Login
+    // Current database
+    procedure UseDatabase(const Name: AnsiString); virtual; abstract;
+    property  CurrentDatabase: ASqlDatabase read GetCurrentDatabase;
+
+    // Current login
     procedure Login(const Name, Password: AnsiString); virtual; abstract;
   end;
   ESqlDatabaseEngine = class(ESqlError);

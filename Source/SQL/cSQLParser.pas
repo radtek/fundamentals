@@ -1,6 +1,6 @@
 {******************************************************************************}
 (*                                                                            *)
-(*   Library:       Fundamentals SQL                                          *)
+(*    Library:       Fundamentals SQL                                         *)
 (*    Description:   SQL parser.                                              *)
 (*    Version:       0.17                                                     *)
 (*                                                                            *)
@@ -212,7 +212,7 @@ type
     function  ParseSingleDateTimeField: TSqlSingleDateTimeField;
     function  ParseIntervalFractionalSecondsPrecision: Integer;
     function  ParseIntervalLeadingFieldPrecision: Integer;
-    function  ParseNonSecondPrimaryDateTimeField: Integer;
+    function  ParseNonSecondPrimaryDateTimeField: TSqlDateTimeField;
     function  ParseStartField: TSqlDateTimeField;
     function  ParseEndField: TSqlSingleDateTimeField;
     function  ParseIntervalQualifier: TSqlIntervalQualifier;
@@ -222,8 +222,8 @@ type
     function  ParseTypePrecisionAndScale(const TypeDefinition: TSqlDataTypeDefinition): Boolean;
     function  ParseTypePrecision(const TypeDefinition: TSqlDataTypeDefinition): Boolean;
     function  ParseCharacterStringType(const TypeDefinition: TSqlDataTypeDefinition): Boolean;
-    function  ParseApproximateNumericType(const TypeDefinition: TSqlDataTypeDefinition): Boolean;
     function  ParsePrecision: Integer;
+    function  ParseApproximateNumericType(const TypeDefinition: TSqlDataTypeDefinition): Boolean;
     function  ParseScale: Integer;
     function  ParseExactNumericType(const TypeDefinition: TSqlDataTypeDefinition): Boolean;
     function  ParseNumericType(const TypeDefinition: TSqlDataTypeDefinition): Boolean;
@@ -780,13 +780,13 @@ type
     function  ParseSqlArgument: TObject;
     function  ParseSqlArgumentList: TObject;
     function  ParseCallStatement: ASqlStatement;
-    function  ParseReturnValue: TObject;
-    function  ParseReturnStatement: ASqlStatement;
+    function  ParseReturnValue: ASqlValueExpression;
+    function  ParseReturnStatement: TSqlReturnStatement;
     function  ParseModifiedFieldReference: TObject;
     function  ParseMutatorReference: TObject;
     function  ParseAssignmentTarget: TObject;
     function  ParseAssignmentSource: TObject;
-    function  ParseAssignmentStatement: ASqlStatement;
+    function  ParseAssignmentStatement: TSqlAssignmentStatement;
     function  ParseStatementLabel: AnsiString;
     function  ParseSql99WhileStatement: TSqlWhileStatement;
     function  ParseRepeatStatement: ASqlStatement;
@@ -885,6 +885,8 @@ procedure SelfTest;
 implementation
 
 uses
+  { Fundamentals }
+  cDynArrays,
   { SQL } 
   cSQLDatabase;
 
@@ -1022,7 +1024,7 @@ function TSqlParser.ExpectUnsignedInt64: Int64;
 begin
   CheckToken(ttUnsignedInteger, 'Integer expected');
   try
-    Result := StrToInt64(FLexer.TokenStr);
+    Result := StringToInt64A(FLexer.TokenStr);
   except
     raise ESqlParser.Create('Integer out of range', self);
   end;
@@ -1106,7 +1108,7 @@ begin
   Result := nil;
   if FTokenType = ttIdentifier then
     repeat
-      Append(Result, ExpectIdentifier(AllowKeyword));
+      DynArrayAppendA(Result, ExpectIdentifier(AllowKeyword));
     until not SkipToken(ttComma);
 end;
 
@@ -1443,13 +1445,13 @@ begin
   Result := nil;
   try
     case FTokenType of
-      ttUnsignedInteger : Result := TSqlLiteralValue.CreateInteger(StrToInt64(FLexer.TokenStr));
-      ttRealNumber      : Result := TSqlLiteralValue.CreateFloat(StrToFloat(FLexer.TokenStr));
+      ttUnsignedInteger : Result := TSqlLiteralValue.CreateInteger(StringToInt64A(FLexer.TokenStr));
+      ttRealNumber      : Result := TSqlLiteralValue.CreateFloat(StringToFloatA(FLexer.TokenStr));
       ttPeriod          :
         begin
           GetNextToken;
           CheckToken(ttUnsignedInteger, 'Invalid floating point value');
-          Result := TSqlLiteralValue.CreateFloat(StrToFloat('0.' + FLexer.TokenStr));
+          Result := TSqlLiteralValue.CreateFloat(StringToFloatA('0.' + FLexer.TokenStr));
         end;
     end;
     if Assigned(Result) then
@@ -1474,7 +1476,7 @@ begin
     ttSciRealNumber    :
       try
         Result := TSqlLiteralValue.CreateEx(TSqlFloat.Create(
-            StrToFloat(FLexer.TokenStr)));
+            StringToFloatA(FLexer.TokenStr)));
         GetNextToken;
       except
         raise ESqlParser.Create('Invalid float value', self);
@@ -1728,15 +1730,13 @@ end;
 { <boolean literal> ::= TRUE | FALSE | UNKNOWN                                 }
 function TSqlParser.ParseBooleanLiteral: ASqlValueExpression;
 begin
-  //// TODO
-  Result := nil;
-  if SkipToken(ttTRUE) then
+  case FTokenType of
+    ttTRUE    : Result := TSqlLiteralValue.CreateBoolean(sbvTrue);
+    ttFALSE   : Result := TSqlLiteralValue.CreateBoolean(sbvFalse);
+    ttUNKNOWN : Result := TSqlLiteralValue.CreateBoolean(sbvUnknown);
   else
-  if SkipToken(ttFALSE) then
-  else
-  if SkipToken(ttUNKNOWN) then
-  else
-  Result := nil;
+    Result := nil;
+  end;
 end;
 
 { SQL2003:                                                                     }
@@ -1928,6 +1928,17 @@ end;
 { SQL2003:                                                                     }
 { <path-resolved user-defined type name> ::= <user-defined type name>          }
 
+{ SQL99/SQL2003:                                                               }
+{ <host parameter specification> ::=                                           }
+{     <host parameter name> [ <indicator parameter> ]                          }
+
+{ SQL99/SQL2003:                                                               }
+{ <embedded variable specification> ::=                                        }
+{     <embedded variable name> [ <indicator variable> ]                        }
+
+{ SQL92/SQL99/SQL2003:                                                         }
+{ <dynamic parameter specification> ::= <question mark>                        }
+
 { SQL92:                                                                       }
 { <general value specification> ::=                                            }
 {       <parameter specification>                                              }
@@ -1938,7 +1949,6 @@ end;
 {     | SESSION_USER                                                           }
 {     | SYSTEM_USER                                                            }
 {     | VALUE                                                                  }
-{ <dynamic parameter specification> ::= <question mark>                        }
 {                                                                              }
 { SQL99:                                                                       }
 { <general value specification> ::=                                            }
@@ -2082,10 +2092,19 @@ end;
 
 { SQL99/SQL2003:                                                               }
 { <non-second primary datetime field> ::= YEAR | MONTH | DAY | HOUR | MINUTE   }
-function TSqlParser.ParseNonSecondPrimaryDateTimeField: Integer;
+function TSqlParser.ParseNonSecondPrimaryDateTimeField: TSqlDateTimeField;
 begin
-  //// TODO
-  Result := -1;
+  case FTokenType of
+    ttYEAR   : Result := sdfYear;
+    ttMONTH  : Result := sdfMonth;
+    ttDAY    : Result := sdfDay;
+    ttHOUR   : Result := sdfHour;
+    ttMINUTE : Result := sdfMinute;
+  else
+    Result := sdfUndefined;
+  end;
+  if Result <> sdfUndefined then
+    GetNextToken;
 end;
 
 { SQL92:                                                                       }
@@ -2259,21 +2278,43 @@ begin
 end;
 
 { SQL92/SQL99/SQL2003:                                                         }
+{ <precision> ::= <unsigned integer>                                           }
+function TSqlParser.ParsePrecision: Integer;
+begin
+  Result := ExpectUnsignedInteger;
+end;
+
+{ SQL92/SQL99/SQL2003:                                                         }
 { <approximate numeric type> ::=                                               }
 {       FLOAT [ <left paren> <precision> <right paren> ]                       }
 {     | REAL                                                                   }
 {     | DOUBLE PRECISION                                                       }
 function TSqlParser.ParseApproximateNumericType(const TypeDefinition: TSqlDataTypeDefinition): Boolean;
 begin
-  //// TODO
-  Result := False;
-end;
-
-{ SQL92/SQL99/SQL2003:                                                         }
-{ <precision> ::= <unsigned integer>                                           }
-function TSqlParser.ParsePrecision: Integer;
-begin
-  Result := ExpectUnsignedInteger;
+  case FTokenType of
+    ttFLOAT :
+      begin
+        TypeDefinition.DataType := stFloat;
+        GetNextToken;
+        ParseTypeLength(TypeDefinition);
+        Result := True;
+      end;
+    ttREAL :
+      begin
+        TypeDefinition.DataType := SqlTokenToDataType(FTokenType);
+        GetNextToken;
+        Result := True;
+      end;
+    ttDOUBLE :
+      begin
+        GetNextToken;
+        ExpectKeyword(ttPRECISION, SQL_KEYWORD_PRECISION);
+        TypeDefinition.DataType := stDoublePrecision;
+        Result := True;
+      end;
+  else
+    Result := False;
+  end;
 end;
 
 { SQL92/SQL99/SQL2003:                                                         }
@@ -2303,34 +2344,7 @@ end;
 { 	  |	BIGINT                                                                 }
 function TSqlParser.ParseExactNumericType(const TypeDefinition: TSqlDataTypeDefinition): Boolean;
 begin
-  //// TODO
-  Result := False;
-end;
-
-{ SQL92/SQL99/SQL2003:                                                         }
-{ <numeric type> ::=                                                           }
-{       <exact numeric type>                                                   }
-{     | <approximate numeric type>                                             }
-function TSqlParser.ParseNumericType(const TypeDefinition: TSqlDataTypeDefinition): Boolean;
-begin
   case FTokenType of
-    ttDOUBLE :
-      begin
-        GetNextToken;
-        ExpectKeyword(ttPRECISION, SQL_KEYWORD_PRECISION);
-        TypeDefinition.DataType := stDoublePrecision;
-        Result := True;
-      end;
-    ttINTEGER,
-    ttINT,
-    ttSMALLINT,
-    ttBIGINT,
-    ttREAL :
-      begin
-        TypeDefinition.DataType := SqlTokenToDataType(FTokenType);
-        GetNextToken;
-        Result := True;
-      end;
     ttNUMERIC,
     ttDECIMAL,
     ttDEC :
@@ -2340,16 +2354,30 @@ begin
         ParseTypePrecisionAndScale(TypeDefinition);
         Result := True;
       end;
-    ttFLOAT :
+    ttINTEGER,
+    ttINT,
+    ttSMALLINT,
+    ttBIGINT :
       begin
-        TypeDefinition.DataType := stFloat;
+        TypeDefinition.DataType := SqlTokenToDataType(FTokenType);
         GetNextToken;
-        ParseTypeLength(TypeDefinition);
         Result := True;
       end;
   else
     Result := False;
   end;
+end;
+
+{ SQL92/SQL99/SQL2003:                                                         }
+{ <numeric type> ::=                                                           }
+{       <exact numeric type>                                                   }
+{     | <approximate numeric type>                                             }
+function TSqlParser.ParseNumericType(const TypeDefinition: TSqlDataTypeDefinition): Boolean;
+begin
+  Result := ParseExactNumericType(TypeDefinition);
+  if Result then
+    exit;
+  Result := ParseApproximateNumericType(TypeDefinition);
 end;
 
 { SQL92/SQL99/SQL2003:                                                         }
@@ -2664,8 +2692,9 @@ begin
 end;
 
 { SQL92:                                                                       }
-{ <column constraint definition> ::= [ <constraint name definition> ]          }
-{     <column constraint> [ <constraint attributes> ]                          }
+{ <column constraint definition> ::=                                           }
+{     [ <constraint name definition> ] <column constraint>                     }
+{     [ <constraint attributes> ]                                              }
 {                                                                              }
 { SQL99/SQL2003:                                                               }
 { <column constraint definition> ::=                                           }
@@ -2896,9 +2925,9 @@ end;
 function TSqlParser.ParseReferenceScopeCheck: TObject;
 begin
   SkipToken(ttREFERENCES);
-  //// SkipToken(ttARE);
+  SkipToken(ttARE);
   SkipToken(ttNOT);
-  //// SkipToken(ttCHECKED);
+  SkipToken(ttCHECKED);
   SkipToken(ttON);
   SkipToken(ttDELETE);
   ParseReferenceScopeCheckAction;
@@ -3136,13 +3165,17 @@ end;
 {         <left paren> [ <set quantifier> ] <value expression> <right paren>   }
 function TSqlParser.ParseGeneralSetFunction: TSqlSetFunctionExpression;
 begin
-  ParseSetFunctionType;
-  ExpectLeftParen;
-  ParseSetQuantifier;
-  ParseValueExpression;
-  ExpectRightParen;
-  //// TODO
-  Result := nil;
+  Result := TSqlSetFunctionExpression.Create;
+  try
+    Result.FunctionType := ParseSetFunctionType;
+    ExpectLeftParen;
+    Result.Quantifier := ParseSetQuantifier;
+    Result.ValueExpr := ParseValueExpression;
+    ExpectRightParen;
+  except
+    Result.Free;
+    raise;
+  end;
 end;
 
 { SQL99:                                                                       }
@@ -3430,9 +3463,9 @@ begin
   GetNextToken;
   ExpectLeftParen;
   try
-    Append(ObjectArray(E), ExpectValueExpression);
+    DynArrayAppend(ObjectArray(E), ExpectValueExpression);
     while SkipToken(ttComma) do
-      Append(ObjectArray(E), ExpectValueExpression);
+      DynArrayAppend(ObjectArray(E), ExpectValueExpression);
     ExpectRightParen;
   except
     FreeObjectArray(E);
@@ -3536,7 +3569,7 @@ begin
     try
       CaseOperand := ExpectCaseOperand;
       while FTokenType = ttWHEN do
-        Append(ObjectArray(S), ParseSimpleWhenClause);
+        DynArrayAppend(ObjectArray(S), ParseSimpleWhenClause);
       SimpleWhen := S;
       if SkipToken(ttELSE) then
         ElseValue := ParseResult;
@@ -3577,7 +3610,7 @@ begin
   with Result do
     try
       while FTokenType = ttWHEN do
-        Append(ObjectArray(S), ParseSearchedWhenClause);
+        DynArrayAppend(ObjectArray(S), ParseSearchedWhenClause);
       SearchedWhen := S;
       if SkipToken(ttELSE) then
         ElseValue := ParseResult;
@@ -4144,14 +4177,21 @@ end;
 { <absolute value expression> ::=                                              }
 {     ABS <left paren> <numeric value expression> <right paren>                }
 function TSqlParser.ParseAbsoluteValueExpression: ASqlValueExpression;
+var E : ASqlValueExpression;
+    R : TSqlUnaryMathematicalFunction;
 begin
   Assert(FTokenType = ttABS);
   GetNextToken;
   ExpectLeftParen;
-  ParseNumericValueExpression(nil);
-  ExpectRightParen;
-  //// TODO
-  Result := nil;
+  E := ParseNumericValueExpression(nil);
+  try
+    ExpectRightParen;
+    R := TSqlUnaryMathematicalFunction.CreateEx(sumABS, E);
+  except
+    E.Free;
+    raise;
+  end;
+  Result := R;
 end;
 
 { SQL99/SQL2003:                                                               }
@@ -5449,9 +5489,9 @@ end;
 {         [ ( <comma> <row value constructor element> )... ]                   }
 function TSqlParser.ParseRowValueConstructorList: ASqlValueExpressionArray;
 begin
-  Append(ObjectArray(Result), ParseRowValueConstructorElement);
+  DynArrayAppend(ObjectArray(Result), ParseRowValueConstructorElement);
   while SkipToken(ttComma) do
-    Append(ObjectArray(Result), ParseRowValueConstructorElement);
+    DynArrayAppend(ObjectArray(Result), ParseRowValueConstructorElement);
 end;
 
 { SQL92:                                                                       }
@@ -5488,7 +5528,7 @@ begin
         end;
       try
         repeat
-          Append(ObjectArray(E), ExpectRowValueConstructorElement);
+          DynArrayAppend(ObjectArray(E), ExpectRowValueConstructorElement);
         until not SkipToken(ttComma);
         ExpectRightParen;
       except
@@ -5775,9 +5815,9 @@ begin
       if Assigned(E) then
         begin
           try
-            Append(ObjectArray(V), E);
+            DynArrayAppend(ObjectArray(V), E);
             while SkipToken(ttComma) do
-              Append(ObjectArray(V), ParseValueExpression);
+              DynArrayAppend(ObjectArray(V), ParseValueExpression);
           except
             FreeObjectArray(V);
             raise;
@@ -6744,9 +6784,9 @@ begin
       Result := TSqlGroupByClause.Create;
       try
         try
-          Append(ObjectArray(G), ParseGroupingColumnReference);
+          DynArrayAppend(ObjectArray(G), ParseGroupingColumnReference);
           while SkipToken(ttComma) do
-            Append(ObjectArray(G), ParseGroupingColumnReference);
+            DynArrayAppend(ObjectArray(G), ParseGroupingColumnReference);
         except
           FreeObjectArray(G);
           raise;
@@ -6785,9 +6825,9 @@ begin
   if SkipToken(ttComma) then
     begin
       try
-        Append(ObjectArray(Q), Result);
+        DynArrayAppend(ObjectArray(Q), Result);
         repeat
-          Append(ObjectArray(Q), ParseTableReference);
+          DynArrayAppend(ObjectArray(Q), ParseTableReference);
         until not SkipToken(ttComma);
       except
         FreeObjectArray(Q);
@@ -6922,9 +6962,9 @@ function TSqlParser.ParseTableValueConstructorList: TSqlTableValueConstructor;
 var R : ASqlValueExpressionArray;
 begin
   try
-    Append(ObjectArray(R), ExpectRowValueConstructor);
+    DynArrayAppend(ObjectArray(R), ExpectRowValueConstructor);
     while SkipToken(ttComma) do
-      Append(ObjectArray(R), ExpectRowValueConstructor);
+      DynArrayAppend(ObjectArray(R), ExpectRowValueConstructor);
   except
     FreeObjectArray(R);
     raise;
@@ -8499,7 +8539,7 @@ begin
   try
     ExpectLeftParen;
     repeat
-      Append(ObjectArray(Result), ParseTableElement);
+      DynArrayAppend(ObjectArray(Result), ParseTableElement);
     until not SkipToken(ttComma);
     ExpectRightParen;
   except
@@ -8933,13 +8973,13 @@ begin
         R := ParseParameterValue;
         if Assigned(R) then
           begin
-            Append(ObjectArray(V), R);
+            DynArrayAppend(ObjectArray(V), R);
             while SkipToken(ttComma) do
               begin
                 R := ParseParameterValue;
                 if not Assigned(R) then
                   ParseError('Parameter value expected');
-                Append(ObjectArray(V), R);
+                DynArrayAppend(ObjectArray(V), R);
               end;
           end;
       except
@@ -9210,7 +9250,7 @@ function TSqlParser.ParseSortSpecificationList: TSqlSortSpecificationArray;
 begin
   Result := nil;
   repeat
-    Append(ObjectArray(Result), ParseSortSpecification);
+    DynArrayAppend(ObjectArray(Result), ParseSortSpecification);
   until not SkipToken(ttComma);
 end;
 
@@ -9450,9 +9490,9 @@ begin
   Assert(FTokenType = ttTRANSACTION);
   GetNextToken;
   try
-    Append(ObjectArray(T), ParseTransactionMode);
+    DynArrayAppend(ObjectArray(T), ParseTransactionMode);
     while SkipToken(ttComma) do
-      Append(ObjectArray(T), ParseTransactionMode);
+      DynArrayAppend(ObjectArray(T), ParseTransactionMode);
   except
     FreeObjectArray(T);
     raise;
@@ -9477,9 +9517,9 @@ begin
       All := SkipToken(ttALL);
       if not All then
         begin
-          Append(S, ParseConstraintName);
+          DynArrayAppendA(S, ParseConstraintName);
           while SkipToken(ttComma) do
-            Append(S, ParseConstraintName);
+            DynArrayAppendA(S, ParseConstraintName);
           NameList := S;
         end;
       if SkipToken(ttDEFERRED) then
@@ -10042,9 +10082,9 @@ begin
       else
         begin
           try
-            Append(ObjectArray(A), ParseAction);
+            DynArrayAppend(ObjectArray(A), ParseAction);
             while SkipToken(ttComma) do
-              Append(ObjectArray(A), ParseAction);
+              DynArrayAppend(ObjectArray(A), ParseAction);
           except
             FreeObjectArray(A);
             raise;
@@ -10063,9 +10103,9 @@ function TSqlParser.ParseGrantees: TSqlGranteeArray;
 var G : TSqlGranteeArray;
 begin
   try
-    Append(ObjectArray(G), ParseGrantee);
+    DynArrayAppend(ObjectArray(G), ParseGrantee);
     while SkipToken(ttComma) do
-      Append(ObjectArray(G), ParseGrantee);
+      DynArrayAppend(ObjectArray(G), ParseGrantee);
   except
     FreeObjectArray(G);
     raise;
@@ -10239,7 +10279,7 @@ begin
       repeat
         D := ParseDomainConstraint;
         if Assigned(D) then
-          Append(ObjectArray(C), D);
+          DynArrayAppend(ObjectArray(C), D);
       until not Assigned(D);
       DomainConstraints := C;
       CollateClause := ParseCollateClause;
@@ -11086,7 +11126,7 @@ begin
       repeat
         D := ParseSchemaElement;
         if Assigned(D) then
-          Append(ObjectArray(E), D);
+          DynArrayAppend(ObjectArray(E), D);
       until not Assigned(D);
       Elements := E;
     except
@@ -12101,9 +12141,9 @@ function TSqlParser.ParseSelectTargetList: ASqlValueExpressionArray;
 var R : ASqlValueExpressionArray;
 begin
   try
-    Append(ObjectArray(R), ParseTargetSpecification);
+    DynArrayAppend(ObjectArray(R), ParseTargetSpecification);
     while SkipToken(ttComma) do
-      Append(ObjectArray(R), ParseTargetSpecification);
+      DynArrayAppend(ObjectArray(R), ParseTargetSpecification);
     Result := R;
   except
     FreeObjectArray(R);
@@ -12189,9 +12229,9 @@ function TSqlParser.ParseFetchTargetList: ASqlValueExpressionArray;
 var T : ASqlValueExpressionArray;
 begin
   try
-    Append(ObjectArray(T), ParseTargetSpecification);
+    DynArrayAppend(ObjectArray(T), ParseTargetSpecification);
     while SkipToken(ttComma) do
-      Append(ObjectArray(T), ParseTargetSpecification);
+      DynArrayAppend(ObjectArray(T), ParseTargetSpecification);
     Result := T;
   except
     FreeObjectArray(T);
@@ -12364,6 +12404,8 @@ end;
 {     FOR PROCEDURE <specific routine designator>                              }
 function TSqlParser.ParseResultSetCursor: TObject;
 begin
+  SkipToken(ttFOR);
+  SkipToken(ttPROCEDURE);
   //// TODO
   Result := nil;
 end;
@@ -12509,9 +12551,9 @@ begin
           else
             begin
               UsingType := sutArguments;
-              Append(ObjectArray(E), ParseTargetSpecification);
+              DynArrayAppend(ObjectArray(E), ParseTargetSpecification);
               while SkipToken(ttComma) do
-                Append(ObjectArray(E), ParseTargetSpecification);
+                DynArrayAppend(ObjectArray(E), ParseTargetSpecification);
               UsingArguments := E;
             end;
         except
@@ -12656,9 +12698,9 @@ begin
           begin
             GetNextToken;
             ItemNumber := ExpectSimpleValueSpecification;
-            Append(ObjectArray(D), ParseGetItemInformation);
+            DynArrayAppend(ObjectArray(D), ParseGetItemInformation);
             while SkipToken(ttComma) do
-              Append(ObjectArray(D), ParseGetItemInformation);
+              DynArrayAppend(ObjectArray(D), ParseGetItemInformation);
             Items := D;
           end;
       else
@@ -12781,9 +12823,9 @@ begin
           begin
             GetNextToken;
             ItemNumber := ExpectSimpleValueSpecification;
-            Append(ObjectArray(D), ParseSetItemInformation);
+            DynArrayAppend(ObjectArray(D), ParseSetItemInformation);
             while SkipToken(ttComma) do
-              Append(ObjectArray(D), ParseSetItemInformation);
+              DynArrayAppend(ObjectArray(D), ParseSetItemInformation);
             Items := D;
           end;
       else
@@ -13097,9 +13139,9 @@ begin
   Result := TSqlStatementInformation.Create;
   with Result do
     try
-      Append(ObjectArray(S), ParseStatementInformationItem);
+      DynArrayAppend(ObjectArray(S), ParseStatementInformationItem);
       while SkipToken(ttComma) do
-        Append(ObjectArray(S), ParseStatementInformationItem);
+        DynArrayAppend(ObjectArray(S), ParseStatementInformationItem);
       Items := S;
     except
       Result.Free;
@@ -13216,9 +13258,9 @@ begin
   with Result do
     try
       ConditionNumber := ExpectSimpleValueSpecification;
-      Append(ObjectArray(C), ParseConditionInformationItem);
+      DynArrayAppend(ObjectArray(C), ParseConditionInformationItem);
       while SkipToken(ttComma) do
-        Append(ObjectArray(C), ParseConditionInformationItem);
+        DynArrayAppend(ObjectArray(C), ParseConditionInformationItem);
       Items := C;
     except
       Result.Free;
@@ -13415,22 +13457,27 @@ end;
 
 { SQL99/SQL2003:                                                               }
 { <return value> ::= <value expression> | NULL                                 }
-function TSqlParser.ParseReturnValue: TObject;
+function TSqlParser.ParseReturnValue: ASqlValueExpression;
 begin
-  //// TODO
-  Result := nil;
+  if SkipToken(ttNULL) then
+    Result := TSqlNullValue.Create
+  else
+    Result := ParseValueExpression(nil);
 end;
 
 { SQL99/SQL2003:                                                               }
 { <return statement> ::= RETURN <return value>                                 }
-function TSqlParser.ParseReturnStatement: ASqlStatement;
+function TSqlParser.ParseReturnStatement: TSqlReturnStatement;
 begin
   Assert(FTokenType = ttRETURN);
   GetNextToken;
-  if not SkipToken(ttNULL) then
-    ParseValueExpression(nil);
-  //// TODO
-  Result := nil;
+  Result := TSqlReturnStatement.Create;
+  try
+    Result.Value := ParseReturnValue;
+  except
+    Result.Free;
+    raise;
+  end;
 end;
 
 { SQL99:                                                                       }
@@ -13507,15 +13554,20 @@ end;
 {     SET <assignment target> <equals operator> <assignment source>            }
 {                                                                              }
 { SQL2003: Not used ??                                                         }
-function TSqlParser.ParseAssignmentStatement: ASqlStatement;
+function TSqlParser.ParseAssignmentStatement: TSqlAssignmentStatement;
 begin
   Assert(FTokenType = ttSET);
   GetNextToken;
-  ParseAssignmentTarget;
-  ExpectEqualSign;
-  ParseAssignmentSource;
-  //// TODO
-  Result := nil;
+  Result := TSqlAssignmentStatement.Create;
+  try
+    ParseAssignmentTarget;
+    ExpectEqualSign;
+    ParseAssignmentSource;
+    //// TODO
+  except
+    Result.Free;
+    raise;
+  end;
 end;
 
 { SQL99:                                                                       }
@@ -14501,7 +14553,7 @@ begin
     D := ParseParameterDefinition;
     if Assigned(D) then
       repeat
-        Append(ObjectArray(E), D);
+        DynArrayAppend(ObjectArray(E), D);
         R := SkipToken(ttComma);
         if R then
           D := ParseParameterDefinition;
@@ -14513,7 +14565,7 @@ begin
       ExpectKeyword(ttRECOMPILE, SQL_KEYWORD_RECOMPILE);
     ExpectKeyword(ttAS, SQL_KEYWORD_AS);
     while not (FTokenType in [ttGO, ttEof]) do
-      Append(ObjectArray(S), ParseStatement);
+      DynArrayAppend(ObjectArray(S), ParseStatement);
     Result.Statements := S;
   except
     Result.Free;
@@ -14915,7 +14967,7 @@ end;
 {                                                                              }
 {$IFDEF SQL_SELFTEST}
 {$ASSERTIONS ON}
-procedure TestSql_SqlStr(const Sql: AnsiString);
+procedure TestSql_SqlStr(const Sql, SqlRepr: AnsiString);
 var P : TSqlParser;
     S : ASqlStatement;
 begin
@@ -14923,7 +14975,25 @@ begin
   try
     S := P.ParseSql(Sql);
     try
-      Assert(S.GetAsSql = Sql);
+      Assert(S.GetAsSql = SqlRepr);
+    finally
+      S.Free;
+    end;
+  finally
+    P.Free;
+  end;
+end;
+
+procedure TestSql_Simplify(const Sql, SqlRepr: AnsiString);
+var P : TSqlParser;
+    S : ASqlStatement;
+begin
+  P := TSqlParser.Create;
+  try
+    S := P.ParseSql(Sql);
+    try
+      S := S.Simplify;
+      Assert(S.GetAsSql = SqlRepr);
     finally
       S.Free;
     end;
@@ -14934,8 +15004,15 @@ end;
 
 procedure SelfTest;
 begin
-  TestSql_SqlStr('SELECT * FROM ABC');
-  TestSql_SqlStr('SELECT (1 + 1)');
+  TestSql_SqlStr(
+      'SELECT * FROM ABC',
+      'SELECT * FROM ABC');
+  TestSql_SqlStr(
+      'SELECT 1 + 1',
+      'SELECT (1 + 1)');
+  TestSql_Simplify(
+      'SELECT 1 + 1',
+      'SELECT 2');
 end;
 {$ENDIF}
 

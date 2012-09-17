@@ -322,7 +322,7 @@ type
 
   public
     constructor CreateEx(const StructureType: TSqlExistsStructureType;
-                const Identifier: String);
+                const Identifier: AnsiString);
 
     property  StructureType: TSqlExistsStructureType read FStructureType write FStructureType;
     property  Identifier: AnsiString read FIdentifier write FIdentifier;
@@ -1107,7 +1107,7 @@ end;
 { TSqlExistsStructureCondition                                                 }
 {                                                                              }
 constructor TSqlExistsStructureCondition.CreateEx(const StructureType: TSqlExistsStructureType;
-    const Identifier: String);
+    const Identifier: AnsiString);
 begin
   inherited Create;
   FStructureType := StructureType;

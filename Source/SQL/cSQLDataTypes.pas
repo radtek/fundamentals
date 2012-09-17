@@ -53,6 +53,10 @@ unit cSQLDataTypes;
 
 interface
 
+uses
+  { Fundamentals }
+  cUtils;
+
 
 
 {                                                                              }
@@ -177,6 +181,22 @@ procedure SqlInitVariantFloat(var Value: TSqlVariant; const Float: Extended);
 
 
 
+{                                                                              }
+{ SQL Boolean                                                                  }
+{                                                                              }
+type
+  TSqlBooleanValue = (
+      sbvTrue,
+      sbvFalse,
+      sbvUnknown);
+
+function  SqlBooleanValueOR(const A, B: TSqlBooleanValue): TSqlBooleanValue;
+function  SqlBooleanValueAND(const A, B: TSqlBooleanValue): TSqlBooleanValue;
+function  SqlBooleanValueEqual(const A, B: TSqlBooleanValue): TSqlBooleanValue;
+function  SqlBooleanValueCompare(const A, B: TSqlBooleanValue): TCompareResult;
+
+
+
 implementation
 
 uses
@@ -184,7 +204,6 @@ uses
   SysUtils,
 
   { Fundamentals }
-  cUtils,
   cStrings;
 
 
@@ -307,6 +326,64 @@ begin
   ZeroMem(Value, SqlVariantSize);
   Value.VariantType := svFloat;
   Value.Float := Float;
+end;
+
+
+
+{                                                                              }
+{ SQL Boolean                                                                  }
+{                                                                              }
+function SqlBooleanValueOR(const A, B: TSqlBooleanValue): TSqlBooleanValue;
+begin
+  if (A = sbvTrue) or (B = sbvTrue) then
+    Result := sbvTrue
+  else
+  if (A = sbvUnknown) or (B = sbvUnknown) then
+    Result := sbvUnknown
+  else
+  if (A = sbvTrue) or (B = sbvTrue) then
+    Result := sbvTrue
+  else
+    Result := sbvFalse;
+end;
+
+function SqlBooleanValueAND(const A, B: TSqlBooleanValue): TSqlBooleanValue;
+begin
+  if (A = sbvFalse) or (B = sbvFalse) then
+    Result := sbvFalse
+  else
+  if (A = sbvUnknown) or (B = sbvUnknown) then
+    Result := sbvUnknown
+  else
+  if (A = sbvTrue) and (B = sbvTrue) then
+    Result := sbvTrue
+  else
+    Result := sbvFalse;
+end;
+
+function SqlBooleanValueEqual(const A, B: TSqlBooleanValue): TSqlBooleanValue;
+begin
+  if (A = sbvUnknown) or (B = sbvUnknown) then
+    Result := sbvUnknown
+  else
+  if (A = B) then
+    Result := sbvTrue
+  else
+    Result := sbvFalse;
+end;
+
+function SqlBooleanValueCompare(const A, B: TSqlBooleanValue): TCompareResult;
+begin
+  if (A = sbvUnknown) or (B = sbvUnknown) then
+    Result := crUndefined
+  else
+  if A = B then
+    Result := crEqual
+  else
+  if A = sbvTrue then
+    Result := crGreater
+  else
+    Result := crLess;
 end;
 
 

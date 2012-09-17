@@ -1616,6 +1616,28 @@ type
 
 
 
+{                                                                              }
+{ TSqlReturnStatement                                                          }
+{                                                                              }
+type
+  TSqlReturnStatement = class(ASqlStatement)
+  protected
+    FValue : ASqlValueExpression;
+  public
+    property  Value: ASqlValueExpression read FValue write FValue;
+  end;
+
+
+
+{                                                                              }
+{ TSqlAssignmentStatement                                                      }
+{                                                                              }
+type
+  TSqlAssignmentStatement = class(ASqlStatement)
+  end;
+
+
+
 implementation
 
 uses
@@ -1623,6 +1645,7 @@ uses
   SysUtils,
 
   { Fundamentals }
+  cDynArrays,
   cStrings,
 
   { SQL }
@@ -1673,7 +1696,7 @@ begin
   // remove empty items
   for I := L - 1 downto 0 do
     if not Assigned(FList[I]) then
-      Remove(ObjectArray(FList), I, 1, False);
+      DynArrayRemove(ObjectArray(FList), I, 1, False);
   // return result
   L := Length(FList);
   if L = 0 then
@@ -1718,7 +1741,7 @@ end;
 procedure ASqlStatementList.Add(const Statement: ASqlStatement);
 begin
   Assert(Assigned(Statement));
-  Append(ObjectArray(FList), Statement);
+  DynArrayAppend(ObjectArray(FList), Statement);
 end;
 
 
@@ -2293,7 +2316,7 @@ end;
 
 procedure TSqlUpdateSetList.AddItem(const Item: TSqlUpdateSetItem);
 begin
-  Append(ObjectArray(FList), Item);
+  DynArrayAppend(ObjectArray(FList), Item);
 end;
 
 function TSqlUpdateSetList.Count: Integer;

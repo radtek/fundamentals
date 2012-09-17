@@ -81,7 +81,7 @@ uses
 type
   TSqlTextOutput = class
   protected
-    FText        : TStringWriter;
+    FText        : TLongStringWriter;
     FIndentCount : Integer;
 
   public
@@ -127,8 +127,8 @@ type
     procedure SetAsString(const Value: AnsiString); virtual;
     function  GetAsNString: WideString; virtual;
     procedure SetAsNString(const Value: WideString); virtual;
-    function  GetAsBoolean: Boolean; virtual;
-    procedure SetAsBoolean(const Value: Boolean); virtual;
+    function  GetAsBoolean: TSqlBooleanValue; virtual;
+    procedure SetAsBoolean(const Value: TSqlBooleanValue); virtual;
     function  GetAsDateTime: TDateTime; virtual;
     procedure SetAsDateTime(const Value: TDateTime); virtual;
     function  GetAsSql: AnsiString; virtual;
@@ -159,7 +159,7 @@ type
     property  AsFloat: Extended read GetAsFloat write SetAsFloat;
     property  AsString: AnsiString read GetAsString write SetAsString;
     property  AsNString: WideString read GetAsNString write SetAsNString;
-    property  AsBoolean: Boolean read GetAsBoolean write SetAsBoolean;
+    property  AsBoolean: TSqlBooleanValue read GetAsBoolean write SetAsBoolean;
     property  AsDateTime: TDateTime read GetAsDateTime write SetAsDateTime;
 
     property  AsSql: AnsiString read GetAsSql write SetAsSql;
@@ -203,7 +203,7 @@ type
 type
   TSqlMemoryScope = class(ASqlScope)
   protected
-    FScope : TObjectDictionary;
+    FScope : TObjectDictionaryA;
 
   public
     constructor Create;
@@ -406,8 +406,8 @@ type
     procedure SetAsFloat(const Value: Extended); override;
     function  GetAsString: AnsiString; override;
     procedure SetAsString(const Value: AnsiString); override;
-    function  GetAsBoolean: Boolean; override;
-    procedure SetAsBoolean(const Value: Boolean); override;
+    function  GetAsBoolean: TSqlBooleanValue; override;
+    procedure SetAsBoolean(const Value: TSqlBooleanValue); override;
 
   public
     constructor Create(const Value: Int64);
@@ -529,15 +529,16 @@ type
 type
   TSqlBoolean = class(ASqlLiteral)
   protected
-    FValue : Boolean;
+    FValue : TSqlBooleanValue;
 
-    function  GetAsBoolean: Boolean; override;
-    procedure SetAsBoolean(const Value: Boolean); override;
+    function  GetAsBoolean: TSqlBooleanValue; override;
+    procedure SetAsBoolean(const Value: TSqlBooleanValue); override;
 
   public
-    constructor Create(const Value: Boolean);
+    constructor Create(const Value: TSqlBooleanValue); overload;
+    constructor Create(const Value: Boolean); overload;
 
-    property  Value: Boolean read FValue write FValue;
+    property  Value: TSqlBooleanValue read FValue write FValue;
 
     procedure AssignLiteral(const Source: ASqlLiteral); override;
     function  IsDataType(const DataType: TSqlDataType): Boolean; override;
@@ -606,8 +607,8 @@ implementation
 
 uses
   { Fundamentals }
+  cDynArrays,
   cStrings,
-  cUnicode,
   cUnicodeCodecs;
 
 
@@ -618,7 +619,7 @@ uses
 constructor TSqlTextOutput.Create;
 begin
   inherited Create;
-  FText := TStringWriter.Create;
+  FText := TLongStringWriter.Create;
 end;
 
 destructor TSqlTextOutput.Destroy;
@@ -708,7 +709,7 @@ end;
 
 function TSqlTextOutput.GetAsString: AnsiString;
 begin
-  Result := FText.AsString;
+  Result := FText.AsStringA;
 end;
 
 
@@ -747,21 +748,21 @@ begin
       if SqlDataTypeHasLength(FDataType) then
         begin
           Symbol('(');
-          Literal(IntToStr(FLength));
+          Literal(IntToStringA(FLength));
           Symbol(')');
         end else
       if SqlDataTypeHasPrecisionAndScale(FDataType) then
         begin
           Symbol('(');
-          Literal(IntToStr(FPrecision));
+          Literal(IntToStringA(FPrecision));
           Symbol(',');
-          Literal(IntToStr(FScale));
+          Literal(IntToStringA(FScale));
           Symbol(')');
         end else
       if SqlDataTypeHasPrecision(FDataType) then
         begin
           Symbol('(');
-          Literal(IntToStr(FPrecision));
+          Literal(IntToStringA(FPrecision));
           Symbol(')');
         end;
       if (FDataType in [stTime, stTimeStamp]) and FWithTimeZone then
@@ -865,7 +866,7 @@ end;
 procedure TSqlColumnDefinitionList.Add(const Column: TSqlColumnDefinition);
 begin
   Assert(Assigned(Column));
-  Append(ObjectArray(FList), Column);
+  DynArrayAppend(ObjectArray(FList), Column);
 end;
 
 function TSqlColumnDefinitionList.GetItem(const Idx: Integer): TSqlColumnDefinition;
@@ -1050,12 +1051,12 @@ begin
   SetAsString(WideStringToLongString(Value));
 end;
 
-function ASqlLiteral.GetAsBoolean: Boolean;
+function ASqlLiteral.GetAsBoolean: TSqlBooleanValue;
 begin
   raise ESqlLiteral.Create('Cannot convert to boolean');
 end;
 
-procedure ASqlLiteral.SetAsBoolean(const Value: Boolean);
+procedure ASqlLiteral.SetAsBoolean(const Value: TSqlBooleanValue);
 begin
   raise ESqlLiteral.Create('Cannot convert from boolean');
 end;
@@ -1158,7 +1159,7 @@ end;
 constructor TSqlMemoryScope.Create;
 begin
   inherited Create;
-  FScope := TObjectDictionary.CreateEx(nil, nil, False, False, True, ddAccept);
+  FScope := TObjectDictionaryA.CreateEx(nil, nil, False, False, True, ddAccept);
 end;
 
 destructor TSqlMemoryScope.Destroy;
@@ -1292,25 +1293,30 @@ end;
 
 function TSqlInteger.GetAsString: AnsiString;
 begin
-  Result := IntToStr(FValue);
+  Result := IntToStringA(FValue);
 end;
 
-function TSqlInteger.GetAsBoolean: Boolean;
+function TSqlInteger.GetAsBoolean: TSqlBooleanValue;
 begin
-  Result := (FValue <> 0);
-end;
-
-procedure TSqlInteger.SetAsBoolean(const Value: Boolean);
-begin
-  if Value then
-    FValue := 1
+  if FValue <> 0 then
+    Result := sbvTrue
   else
-    FValue := 0;
+    Result := sbvFalse;
+end;
+
+procedure TSqlInteger.SetAsBoolean(const Value: TSqlBooleanValue);
+begin
+  case Value of
+    sbvTrue  : FValue := 1;
+    sbvFalse : FValue := 0;
+  else
+    raise ESqlLiteral.Create('Cannot convert unknown boolean value to integer');
+  end;
 end;
 
 procedure TSqlInteger.SetAsString(const Value: AnsiString);
 begin
-  FValue := StrToInt64(Value);
+  FValue := StringToInt64A(Value);
   FNullValue := False;
 end;
 
@@ -1433,12 +1439,12 @@ end;
 
 function TSqlFloat.GetAsString: AnsiString;
 begin
-  Result := FloatToStr(FValue);
+  Result := FloatToStringA(FValue);
 end;
 
 procedure TSqlFloat.SetAsString(const Value: AnsiString);
 begin
-  FValue := StrToFloat(Value);
+  FValue := StringToFloatA(Value);
   FNullValue := False;
 end;
 
@@ -1538,7 +1544,7 @@ end;
 
 function TSqlString.Compare(const Value: ASqlLiteral): TCompareResult;
 begin
-  Result := cUtils.Compare(FValue, Value.AsString);
+  Result := cUtils.CompareA(FValue, Value.AsString);
 end;
 
 
@@ -1598,7 +1604,7 @@ end;
 
 function TSqlNString.Compare(const Value: ASqlLiteral): TCompareResult;
 begin
-  Result := WideCompare(FValue, Value.AsNString);
+  Result := CompareW(FValue, Value.AsNString);
 end;
 
 
@@ -1606,10 +1612,19 @@ end;
 {                                                                              }
 { TSqlBoolean                                                                  }
 {                                                                              }
-constructor TSqlBoolean.Create(const Value: Boolean);
+constructor TSqlBoolean.Create(const Value: TSqlBooleanValue);
 begin
   inherited Create;
   FValue := Value;
+end;
+
+constructor TSqlBoolean.Create(const Value: Boolean);
+begin
+  inherited Create;
+  if Value then
+    FValue := sbvTrue
+  else
+    FValue := sbvFalse;
 end;
 
 procedure TSqlBoolean.AssignLiteral(const Source: ASqlLiteral);
@@ -1628,12 +1643,12 @@ begin
   Result := True;
 end;
 
-function TSqlBoolean.GetAsBoolean: Boolean;
+function TSqlBoolean.GetAsBoolean: TSqlBooleanValue;
 begin
   Result := FValue;
 end;
 
-procedure TSqlBoolean.SetAsBoolean(const Value: Boolean);
+procedure TSqlBoolean.SetAsBoolean(const Value: TSqlBooleanValue);
 begin
   FValue := Value;
   FNullValue := False;
@@ -1641,7 +1656,7 @@ end;
 
 function TSqlBoolean.Compare(const Value: ASqlLiteral): TCompareResult;
 begin
-  Result := cUtils.Compare(FValue, Value.AsBoolean);
+  Result := SqlBooleanValueCompare(FValue, Value.AsBoolean);
 end;
 
 
@@ -1709,7 +1724,7 @@ var I : Integer;
 begin
   Result := '(';
   for I := 0 to Length(FValue) - 1 do
-    Result := Result + iif(I > 0, ', ', '') + FValue[I].AsString;
+    Result := Result + iifA(I > 0, ', ', '') + FValue[I].AsString;
   Result := Result + ')';
 end;
 

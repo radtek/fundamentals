@@ -99,6 +99,7 @@ type
     constructor CreateBitString(const Value: AnsiString);
     constructor CreateHexString(const Value: AnsiString);
     constructor CreateNString(const Value: WideString);
+    constructor CreateBoolean(const Value: TSqlBooleanValue);
     destructor  Destroy; override;
 
     property  Value: ASqlLiteral read FValue write FValue;
@@ -576,6 +577,8 @@ type
     FFunctionType : TSqlUnaryMathematicalFunctionType;
 
   public
+    constructor CreateEx(const FunctionType: TSqlUnaryMathematicalFunctionType;
+                const Operand: ASqlValueExpression);
     property  FunctionType: TSqlUnaryMathematicalFunctionType read FFunctionType write FFunctionType;
     procedure TextOutputSql(const Output: TSqlTextOutput); override;
     function  Evaluate(const Engine: ASqlDatabaseEngine;
@@ -1112,6 +1115,12 @@ constructor TSqlLiteralValue.CreateNString(const Value: WideString);
 begin
   inherited Create;
   FValue := TSqlNString.Create(Value);
+end;
+
+constructor TSqlLiteralValue.CreateBoolean(const Value: TSqlBooleanValue);
+begin
+  inherited Create;
+  FValue := TSqlBoolean.Create(Value);
 end;
 
 destructor TSqlLiteralValue.Destroy;
@@ -1766,6 +1775,14 @@ end;
 {                                                                              }
 { TSqlUnaryMathematicalFunction                                                }
 {                                                                              }
+constructor TSqlUnaryMathematicalFunction.CreateEx(
+            const FunctionType: TSqlUnaryMathematicalFunctionType;
+            const Operand: ASqlValueExpression);
+begin
+  inherited CreateEx(Operand);
+  FFunctionType := FunctionType;
+end;
+
 procedure TSqlUnaryMathematicalFunction.TextOutputSql(const Output: TSqlTextOutput);
 begin
   case FFunctionType of
@@ -1796,7 +1813,7 @@ begin
                      end;
                    end;
       sumROUND   : R := TSqlInteger.Create(Round(V.AsFloat));
-      sumSIGN    : R := TSqlInteger.Create(Sign(V.AsFloat));
+      sumSIGN    : R := TSqlInteger.Create(Sgn(V.AsFloat));
       sumLOG     : R := TSqlFloat.Create(Ln(V.AsFloat));
       sumLOG10   : ;
       sumSIN     : R := TSqlFloat.Create(Sin(V.AsFloat));
@@ -2484,9 +2501,9 @@ begin
   else
     C := [' '];
   case FTrimOperation of
-    stoLeading  : StrTrimLeftInPlace(S, C);
-    stoTrailing : StrTrimRightInPlace(S, C);
-    stoBoth     : StrTrimInPlace(S, C);
+    stoLeading  : StrTrimLeftInPlaceA(S, C);
+    stoTrailing : StrTrimRightInPlaceA(S, C);
+    stoBoth     : StrTrimInPlaceA(S, C);
   end;
   Result := TSqlString.Create(S);
 end;

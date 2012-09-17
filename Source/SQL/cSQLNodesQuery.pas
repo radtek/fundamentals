@@ -459,6 +459,9 @@ uses
   { System }
   SysUtils,
 
+  { Fundamentals }
+  cDynArrays,
+
   { SQL }
   cSQLLexer,
   cSQLDataTypes,
@@ -1114,7 +1117,7 @@ end;
 
 procedure TSqlSelectList.AddItem(const Item: TSqlSelectItem);
 begin
-  Append(ObjectArray(FList), Item);
+  DynArrayAppend(ObjectArray(FList), Item);
 end;
 
 function TSqlSelectList.Count: Integer;
