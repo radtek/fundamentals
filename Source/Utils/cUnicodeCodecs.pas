@@ -5,7 +5,7 @@
 {   File version:     4.19                                                     }
 {   Description:      Unicode codecs                                           }
 {                                                                              }
-{   Copyright:        Copyright © 2002-2012                                    }
+{   Copyright:        Copyright (c) 2002-2012                                  }
 {                     David J Butler and Dieter Köhler                         }
 {                     All rights reserved.                                     }
 {                     See license below.                                       }

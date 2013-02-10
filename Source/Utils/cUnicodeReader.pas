@@ -5,7 +5,7 @@
 {   File version:     4.07                                                     }
 {   Description:      Unicode reader class                                     }
 {                                                                              }
-{   Copyright:        Copyright © 2002-2012, David J Butler                    }
+{   Copyright:        Copyright (c) 2002-2012, David J Butler                  }
 {                     All rights reserved.                                     }
 {                     Redistribution and use in source and binary forms, with  }
 {                     or without modification, are permitted provided that     }
@@ -75,16 +75,16 @@ uses
 type
   TUnicodeReader = class
   protected
-    FReader      : AReader;
-    FReaderOwner : Boolean;
-    FReaderPos   : Int64;
-    FCodec       : TCustomUnicodeCodec;
-    FCodecOwner  : Boolean;
-    FBuffer      : WideString;
-    FBufPos      : Integer;
-    FBufLen      : Integer;
-    FRawBuf      : Pointer;
-    FRawSize     : Integer;
+    FReader         : AReader;
+    FReaderOwner    : Boolean;
+    FReaderStartPos : Int64;
+    FCodec          : TCustomUnicodeCodec;
+    FCodecOwner     : Boolean;
+    FBuffer         : WideString;
+    FBufPos         : Integer;
+    FBufLen         : Integer;
+    FRawBuf         : Pointer;
+    FRawSize        : Integer;
 
     procedure ReadError;
     function  BufferChars(const Count: Integer): Integer;
@@ -216,7 +216,7 @@ begin
   Assert(Assigned(Reader));
   FReader := Reader;
   FReaderOwner := ReaderOwner;
-  FReaderPos := Reader.Position;
+  FReaderStartPos := Reader.Position;
   FCodec := Codec;
   FCodecOwner := CodecOwner;
   GetMem(FRawBuf, ReaderBlockSize);
@@ -240,7 +240,7 @@ end;
 
 procedure TUnicodeReader.Reset;
 begin
-  FReader.Position := FReaderPos;
+  FReader.Position := FReaderStartPos;
   FBufPos := 0;
   FBufLen := 0;
   // Free excessively large buffer, keep part of it for re-use
@@ -256,6 +256,8 @@ begin
     Result := FReader.EOF;
 end;
 
+// Attempts to decode at least Count characters
+// Returns number of decoded characters available in buffer
 function TUnicodeReader.BufferChars(const Count: Integer): Integer;
 var I, J, L, M, N: Integer;
     P: PByte;
@@ -287,7 +289,7 @@ begin
         end;
     end;
   // Fill unicode buffer
-  Repeat
+  repeat
     // Fill raw character buffer
     P := FRawBuf;
     Inc(P, FRawSize);
@@ -302,7 +304,7 @@ begin
         P := FRawBuf;
         J := FRawSize;
         L := Length(FBuffer) - FBufLen;
-        Repeat
+        repeat
           if L < ReaderBlockSize then
             begin
               // grow unicode buffer to fit at least one raw buffer
@@ -316,7 +318,7 @@ begin
           Dec(J, M);
           Inc(FBufLen, N);
           Dec(L, N);
-        Until (J <= 0) or (L > 0);
+        until (J <= 0) or (L > 0);
         I := FRawSize - J;
       end
     else
@@ -345,7 +347,7 @@ begin
       FRawSize := 0;
     // Check if enough characters have been buffered
     Result := FBufLen - FBufPos;
-  Until Result >= Count;
+  until Result >= Count;
 end;
 
 function TUnicodeReader.GetBuffer(const Count: Integer): Boolean;
@@ -747,7 +749,8 @@ begin
   O := FBufPos;
   if O >= FBufLen then
     if GetBuffer(1) then
-      O := FBufPos else
+      O := FBufPos
+    else
       ReadError;
   // read
   P := Pointer(FBuffer);
@@ -778,7 +781,8 @@ begin
       P := Pointer(FBuffer);
       Inc(P, FBufPos);
       Ch := P^;
-    end else
+    end
+  else
     Ch := WideChar(#0);
 end;
 
