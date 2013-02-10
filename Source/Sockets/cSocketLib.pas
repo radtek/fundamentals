@@ -5,7 +5,7 @@
 {   File version:     4.14                                                     }
 {   Description:      Socket library.                                          }
 {                                                                              }
-{   Copyright:        Copyright © 2001-2011, David J Butler                    }
+{   Copyright:        Copyright (c) 2001-2012, David J Butler                  }
 {                     All rights reserved.                                     }
 {                     This file is licensed under the BSD License.             }
 {                     See http://www.opensource.org/licenses/bsd-license.php   }

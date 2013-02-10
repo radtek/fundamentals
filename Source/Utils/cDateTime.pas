@@ -5,7 +5,7 @@
 {   File version:     4.21                                                     }
 {   Description:      DateTime functions                                       }
 {                                                                              }
-{   Copyright:        Copyright © 1999-2012, David J Butler                    }
+{   Copyright:        Copyright (c) 1999-2012, David J Butler                  }
 {                     All rights reserved.                                     }
 {                     Redistribution and use in source and binary forms, with  }
 {                     or without modification, are permitted provided that     }

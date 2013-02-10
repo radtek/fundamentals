@@ -2,10 +2,10 @@
 {                                                                              }
 {   Library:          Fundamentals 4.00                                        }
 {   File name:        cTCPServer.pas                                           }
-{   File version:     4.10                                                     }
+{   File version:     4.11                                                     }
 {   Description:      TCP server.                                              }
 {                                                                              }
-{   Copyright:        Copyright (c) 2007-2012, David J Butler                  }
+{   Copyright:        Copyright (c) 2007-2013, David J Butler                  }
 {                     All rights reserved.                                     }
 {                     This file is licensed under the BSD License.             }
 {                     See http://www.opensource.org/licenses/bsd-license.php   }
@@ -47,6 +47,7 @@
 {   2011/06/25  0.08  Improved logging.                                        }
 {   2011/07/26  0.09  Improvements.                                            }
 {   2011/09/03  4.10  Revise for Fundamentals 4.                               }
+{   2013/01/28  4.11  Fix for restarting server.                               }
 {                                                                              }
 { Todo:                                                                        }
 { - Multiple processing threads                                                }
@@ -1245,6 +1246,7 @@ begin
       else
         C.SetClientOrphaned;
     end;
+  FreeAndNil(FServerSocket);
   {$IFDEF TCP_DEBUG}
   Log(tlDebug, 'Stopped');
   {$ENDIF}

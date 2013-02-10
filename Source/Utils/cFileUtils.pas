@@ -5,7 +5,7 @@
 {   File version:     4.11                                                     }
 {   Description:      File name and file system functions                      }
 {                                                                              }
-{   Copyright:        Copyright © 2002-2012, David J Butler                    }
+{   Copyright:        Copyright (c) 2002-2012, David J Butler                  }
 {                     All rights reserved.                                     }
 {                     Redistribution and use in source and binary forms, with  }
 {                     or without modification, are permitted provided that     }
@@ -73,7 +73,10 @@ uses
   {$IFDEF MSWIN}
   Windows,
   {$ENDIF}
-  SysUtils;
+  SysUtils,
+
+  { Fundamentals }
+  cUtils;
 
 
 
@@ -85,9 +88,11 @@ const
                   {$IFDEF MSWIN} '\' {$ENDIF};
 
 function  PathHasDriveLetterA(const Path: AnsiString): Boolean;
+function  PathHasDriveLetterU(const Path: UnicodeString): Boolean;
 function  PathHasDriveLetter(const Path: String): Boolean;
 
 function  PathIsDriveLetterA(const Path: AnsiString): Boolean;
+function  PathIsDriveLetterU(const Path: UnicodeString): Boolean;
 function  PathIsDriveLetter(const Path: String): Boolean;
 
 function  PathIsDriveRootA(const Path: AnsiString): Boolean;
@@ -100,6 +105,7 @@ function  PathIsUNCPathA(const Path: AnsiString): Boolean;
 function  PathIsUNCPath(const Path: String): Boolean;
 
 function  PathIsAbsoluteA(const Path: AnsiString): Boolean;
+function  PathIsAbsoluteU(const Path: UnicodeString): Boolean;
 function  PathIsAbsolute(const Path: String): Boolean;
 
 function  PathIsDirectoryA(const Path: AnsiString): Boolean;
@@ -107,11 +113,15 @@ function  PathIsDirectory(const Path: String): Boolean;
 
 function  PathInclSuffixA(const Path: AnsiString;
           const PathSep: AnsiChar = PathSeparator): AnsiString;
+function  PathInclSuffixU(const Path: UnicodeString;
+          const PathSep: WideChar = PathSeparator): UnicodeString;
 function  PathInclSuffix(const Path: String;
           const PathSep: Char = PathSeparator): String;
 
 function  PathExclSuffixA(const Path: AnsiString;
           const PathSep: AnsiChar = PathSeparator): AnsiString;
+function  PathExclSuffixU(const Path: WideString;
+          const PathSep: WideChar = PathSeparator): WideString;
 function  PathExclSuffix(const Path: String;
           const PathSep: Char = PathSeparator): String;
 
@@ -127,11 +137,15 @@ procedure PathEnsureNoSuffix(var Path: String;
 
 function  PathCanonicalA(const Path: AnsiString;
           const PathSep: AnsiChar = PathSeparator): AnsiString;
+function  PathCanonicalU(const Path: UnicodeString;
+          const PathSep: WideChar = PathSeparator): UnicodeString;
 function  PathCanonical(const Path: String;
           const PathSep: Char = PathSeparator): String;
 
 function  PathExpandA(const Path: AnsiString; const BasePath: AnsiString = '';
           const PathSep: AnsiChar = PathSeparator): AnsiString;
+function  PathExpandU(const Path: UnicodeString; const BasePath: UnicodeString = '';
+          const PathSep: WideChar = PathSeparator): UnicodeString;
 function  PathExpand(const Path: String; const BasePath: String = '';
           const PathSep: Char = PathSeparator): String;
 
@@ -150,9 +164,24 @@ procedure PathSplitLeftElement(const Path: String;
 procedure DecodeFilePathA(const FilePath: AnsiString;
           var Path, FileName: AnsiString;
           const PathSep: AnsiChar = PathSeparator);
+procedure DecodeFilePathU(const FilePath: UnicodeString;
+          var Path, FileName: UnicodeString;
+          const PathSep: WideChar = PathSeparator);
 procedure DecodeFilePath(const FilePath: String;
           var Path, FileName: String;
           const PathSep: Char = PathSeparator);
+
+function  PathExtractFileNameA(const FilePath: AnsiString;
+          const PathSep: AnsiChar = PathSeparator): AnsiString;
+function  PathExtractFileNameU(const FilePath: UnicodeString;
+          const PathSep: WideChar = PathSeparator): UnicodeString;
+function  PathExtractFileName(const FilePath: String;
+          const PathSep: Char = PathSeparator): String;
+
+function  PathExtractFileExtA(const FilePath: AnsiString;
+          const PathSep: AnsiChar = PathSeparator): AnsiString;
+function  PathExtractFileExtU(const FilePath: UnicodeString;
+          const PathSep: WideChar = PathSeparator): UnicodeString;
 
 function  FileNameValidA(const FileName: AnsiString): AnsiString;
 function  FileNameValid(const FileName: String): String;
@@ -164,6 +193,8 @@ function  FilePath(const FileName, Path: String; const BasePath: String = '';
 
 function  DirectoryExpandA(const Path: AnsiString; const BasePath: AnsiString = '';
           const PathSep: AnsiChar = PathSeparator): AnsiString;
+function  DirectoryExpandU(const Path: UnicodeString; const BasePath: UnicodeString = '';
+          const PathSep: WideChar = PathSeparator): UnicodeString;
 function  DirectoryExpand(const Path: String; const BasePath: String = '';
           const PathSep: Char = PathSeparator): String;
 
@@ -289,6 +320,7 @@ procedure FileCloseEx(
           const FileHandle: TFileHandle);
 
 function  FileExistsA(const FileName: AnsiString): Boolean;
+function  FileExistsU(const FileName: UnicodeString): Boolean;
 function  FileExists(const FileName: String): Boolean;
 
 function  FileGetSize(const FileName: String): Int64;
@@ -381,7 +413,6 @@ implementation
 
 uses
   { Fundamentals }
-  cUtils,
   cDynArrays,
   cStrings
   {$IFDEF UNIX}
@@ -425,16 +456,31 @@ resourcestring
 { Path functions                                                               }
 {                                                                              }
 function PathHasDriveLetterA(const Path: AnsiString): Boolean;
-var P: PAnsiChar;
 begin
   Result := False;
   if Length(Path) < 2 then
     exit;
-  P := Pointer(Path);
-  if not (P^ in ['A'..'Z', 'a'..'z']) then
+  case Path[1] of
+    'A'..'Z', 'a'..'z' : ;
+  else
     exit;
-  Inc(P);
-  if P^ <> ':' then
+  end;
+  if Path[2] <> ':' then
+    exit;
+  Result := True;
+end;
+
+function PathHasDriveLetterU(const Path: UnicodeString): Boolean;
+begin
+  Result := False;
+  if Length(Path) < 2 then
+    exit;
+  case Path[1] of
+    'A'..'Z', 'a'..'z' : ;
+  else
+    exit;
+  end;
+  if Path[2] <> ':' then
     exit;
   Result := True;
 end;
@@ -457,6 +503,11 @@ end;
 function PathIsDriveLetterA(const Path: AnsiString): Boolean;
 begin
   Result := (Length(Path) = 2) and PathHasDriveLetterA(Path);
+end;
+
+function PathIsDriveLetterU(const Path: UnicodeString): Boolean;
+begin
+  Result := (Length(Path) = 2) and PathHasDriveLetterU(Path);
 end;
 
 function PathIsDriveLetter(const Path: String): Boolean;
@@ -527,8 +578,23 @@ begin
   if PathHasDriveLetterA(Path) then
     Result := True else
   if PAnsiChar(Pointer(Path))^ in ['\', '/'] then
-    Result := True else
+    Result := True
+  else
     Result := False;
+end;
+
+function PathIsAbsoluteU(const Path: UnicodeString): Boolean;
+begin
+  if Path = '' then
+    Result := False else
+  if PathHasDriveLetterU(Path) then
+    Result := True
+  else
+    case Path[1] of
+      '\', '/' : Result := True;
+    else
+      Result := False;
+    end;
 end;
 
 function PathIsAbsolute(const Path: String): Boolean;
@@ -579,16 +645,30 @@ end;
 
 function PathInclSuffixA(const Path: AnsiString; const PathSep: AnsiChar): AnsiString;
 var L: Integer;
-    P: PAnsiChar;
 begin
   L := Length(Path);
   if L = 0 then
-    Result := '' else
+    Result := ''
+  else
     begin
-      P := Pointer(Path);
-      Inc(P, L - 1);
-      if P^ = PathSep then
-        Result := Path else
+      if Path[L] = PathSep then
+        Result := Path
+      else
+        Result := Path + PathSep;
+    end;
+end;
+
+function PathInclSuffixU(const Path: UnicodeString; const PathSep: WideChar): UnicodeString;
+var L: Integer;
+begin
+  L := Length(Path);
+  if L = 0 then
+    Result := ''
+  else
+    begin
+      if Path[L] = PathSep then
+        Result := Path
+      else
         Result := Path + PathSep;
     end;
 end;
@@ -598,10 +678,12 @@ var L: Integer;
 begin
   L := Length(Path);
   if L = 0 then
-    Result := '' else
+    Result := ''
+  else
     begin
       if Path[L] = PathSep then
-        Result := Path else
+        Result := Path
+      else
         Result := Path + PathSep;
     end;
 end;
@@ -628,16 +710,28 @@ end;
 
 function PathExclSuffixA(const Path: AnsiString; const PathSep: AnsiChar): AnsiString;
 var L: Integer;
-    P: PAnsiChar;
 begin
   L := Length(Path);
   if L = 0 then
     Result := '' else
     begin
-      P := Pointer(Path);
-      Inc(P, L - 1);
-      if P^ = PathSep then
-        Result := Copy(Path, 1, L - 1) else
+      if Path[L] = PathSep then
+        Result := Copy(Path, 1, L - 1)
+      else
+        Result := Path;
+    end;
+end;
+
+function PathExclSuffixU(const Path: WideString; const PathSep: WideChar): WideString;
+var L: Integer;
+begin
+  L := Length(Path);
+  if L = 0 then
+    Result := '' else
+    begin
+      if Path[L] = PathSep then
+        Result := Copy(Path, 1, L - 1)
+      else
         Result := Path;
     end;
 end;
@@ -650,7 +744,8 @@ begin
     Result := '' else
     begin
       if Path[L] = PathSep then
-        Result := Copy(Path, 1, L - 1) else
+        Result := Copy(Path, 1, L - 1)
+      else
         Result := Path;
     end;
 end;
@@ -709,9 +804,9 @@ begin
       Result := StrJoinCharA(P, PathSep);
     end;
   // \..\ prefix
-  While StrMatchLeftA(Result, '\..\') do
+  while StrMatchLeftA(Result, '\..\') do
     Delete(Result, 1, 3);
-  While StrMatchLeftA(Result, '/../') do
+  while StrMatchLeftA(Result, '/../') do
     Delete(Result, 1, 3);
   if (Result = '\..') or (Result = '/..') then
     Result := '';
@@ -742,6 +837,105 @@ begin
   // final dot
   Inc(Q, L - 2);
   if not (Q^ in ['.', '\', '/', ':']) then
+    begin
+      Inc(Q);
+      if Q^ = '.' then
+        Delete(Result, L, 1);
+    end;
+end;
+
+function PathCanonicalU(const Path: UnicodeString; const PathSep: WideChar): UnicodeString;
+var L, M : Integer;
+    I, J : Integer;
+    P    : UnicodeStringArray;
+    Q    : PWideChar;
+    C    : WideChar;
+begin
+  Result := Path;
+  // \.\ references
+  M := Length(Result);
+  repeat
+    L := M;
+    if L = 0 then
+      exit;
+    Result := StrReplaceU('\.\', '\', Result);
+    Result := StrReplaceU('/./', '/', Result);
+    M := Length(Result);
+  until L = M;
+  // .\ prefix
+  StrEnsureNoPrefixU(Result, '.\');
+  StrEnsureNoPrefixU(Result, './');
+  // \. suffix
+  StrEnsureNoSuffixU(Result, '\.');
+  StrEnsureNoSuffixU(Result, '/.');
+  // ..
+  if PosStrU('..', Result) > 0 then
+    begin
+      P := StrSplitCharU(Result, PathSep);
+      repeat
+        J := -1;
+        For I := Length(P) - 1 downto 0 do
+          if P[I] = '..' then
+            begin
+              J := I;
+              break;
+            end;
+        if J = -1 then
+          break;
+        M := -1;
+        For I := J - 1 downto 0 do
+          if (P[I] = '') or ((I = 0) and PathHasDriveLetterU(P[I])) then
+            break else
+          if P[I] <> '..' then
+            begin
+              M := I;
+              break;
+            end;
+        if M = -1 then
+          break;
+        DynArrayRemoveU(P, J, 1);
+        DynArrayRemoveU(P, M, 1);
+      until False;
+      Result := StrJoinCharU(P, PathSep);
+    end;
+  // \..\ prefix
+  while StrMatchLeftU(Result, '\..\') do
+    Delete(Result, 1, 3);
+  while StrMatchLeftU(Result, '/../') do
+    Delete(Result, 1, 3);
+  if (Result = '\..') or (Result = '/..') then
+    Result := '';
+  L := Length(Result);
+  if L = 0 then
+    exit;
+  // X:\..\ prefix
+  Q := Pointer(Result);
+  case Q^ of
+    'A'..'Z',
+    'a'..'z' :
+      begin
+        if StrMatchU(Result, ':\..\', 2) then
+          Delete(Result, 4, 3) else
+        if (L = 5) and StrMatchU(Result, ':\..', 2) then
+          begin
+            SetLength(Result, 2);
+            exit;
+          end;
+        L := Length(Result);
+      end;
+  end;
+  // single dot
+  Q := Pointer(Result);
+  if L = 1 then
+    begin
+      if Q^ = '.' then
+        Result := '';
+      exit;
+    end;
+  // final dot
+  Inc(Q, L - 2);
+  C := Q^;
+  if not ((C = '.') or (C = '\') or (C = '/') or (C = ':')) then
     begin
       Inc(Q);
       if Q^ = '.' then
@@ -804,9 +998,9 @@ begin
       Result := StrJoinChar(P, PathSep);
     end;
   // \..\ prefix
-  While StrMatchLeft(Result, '\..\') do
+  while StrMatchLeft(Result, '\..\') do
     Delete(Result, 1, 3);
-  While StrMatchLeft(Result, '/../') do
+  while StrMatchLeft(Result, '/../') do
     Delete(Result, 1, 3);
   if (Result = '\..') or (Result = '/..') then
     Result := '';
@@ -856,6 +1050,17 @@ begin
     Result := Path else
     Result := PathInclSuffixA(BasePath, PathSep) + Path;
   Result := PathCanonicalA(Result, PathSep);
+end;
+
+function PathExpandU(const Path: UnicodeString; const BasePath: UnicodeString;
+    const PathSep: WideChar): UnicodeString;
+begin
+  if Path = '' then
+    Result := BasePath else
+  if PathIsAbsoluteU(Path) then
+    Result := Path else
+    Result := PathInclSuffixU(BasePath, PathSep) + Path;
+  Result := PathCanonicalU(Result, PathSep);
 end;
 
 function PathExpand(const Path: String; const BasePath: String;
@@ -935,6 +1140,22 @@ begin
     end;
 end;
 
+procedure DecodeFilePathU(const FilePath: UnicodeString; var Path, FileName: UnicodeString;
+    const PathSep: WideChar);
+var I: Integer;
+begin
+  I := PosCharRevU(PathSep, FilePath);
+  if I <= 0 then
+    begin
+      Path := '';
+      FileName := FilePath;
+    end else
+    begin
+      Path := Copy(FilePath, 1, I);
+      FileName := CopyFromU(FilePath, I + 1);
+    end;
+end;
+
 procedure DecodeFilePath(const FilePath: String; var Path, FileName: String;
     const PathSep: Char);
 var I: Integer;
@@ -949,6 +1170,57 @@ begin
       Path := Copy(FilePath, 1, I);
       FileName := CopyFrom(FilePath, I + 1);
     end;
+end;
+
+function PathExtractFileNameA(const FilePath: AnsiString;
+         const PathSep: AnsiChar): AnsiString;
+var Path : AnsiString;
+begin
+  DecodeFilePathA(FilePath, Path, Result, PathSep);
+end;
+
+function PathExtractFileNameU(const FilePath: UnicodeString;
+         const PathSep: WideChar): UnicodeString;
+var Path : UnicodeString;
+begin
+  DecodeFilePathU(FilePath, Path, Result, PathSep);
+end;
+
+function PathExtractFileName(const FilePath: String;
+         const PathSep: Char): String;
+var Path : String;
+begin
+  DecodeFilePath(FilePath, Path, Result, PathSep);
+end;
+
+function PathExtractFileExtA(const FilePath: AnsiString;
+         const PathSep: AnsiChar): AnsiString;
+var FileName : AnsiString;
+    I : Integer;
+begin
+  FileName := PathExtractFileNameA(FilePath, PathSep);
+  I := PosCharRevA('.', FileName);
+  if I <= 0 then
+    begin
+      Result := '';
+      exit;
+    end;
+  Result := CopyFromA(FileName, I);
+end;
+
+function PathExtractFileExtU(const FilePath: UnicodeString;
+         const PathSep: WideChar): UnicodeString;
+var FileName : UnicodeString;
+    I : Integer;
+begin
+  FileName := PathExtractFileNameU(FilePath, PathSep);
+  I := PosCharRevU('.', FileName);
+  if I <= 0 then
+    begin
+      Result := '';
+      exit;
+    end;
+  Result := CopyFromU(FileName, I);
 end;
 
 function FileNameValidA(const FileName: AnsiString): AnsiString;
@@ -1008,6 +1280,13 @@ function DirectoryExpandA(const Path: AnsiString; const BasePath: AnsiString;
 begin
   Result := PathExpandA(PathInclSuffixA(Path, PathSep),
       PathInclSuffixA(BasePath, PathSep), PathSep);
+end;
+
+function DirectoryExpandU(const Path: UnicodeString; const BasePath: UnicodeString;
+    const PathSep: WideChar): UnicodeString;
+begin
+  Result := PathExpandU(PathInclSuffixU(Path, PathSep),
+      PathInclSuffixU(BasePath, PathSep), PathSep);
 end;
 
 function DirectoryExpand(const Path: String; const BasePath: String;
@@ -1507,6 +1786,32 @@ begin
     raise EFileError.Create(feInvalidParameter, SInvalidFileName);
   {$IFDEF MSWIN}
   Attr := GetFileAttributesA(PAnsiChar(FileName));
+  if Attr = $FFFFFFFF then
+    Result := False
+  else
+    Result := Attr and FILE_ATTRIBUTE_DIRECTORY = 0;
+  {$ELSE}
+  if FindFirst(FileName, faAnyFile, SRec) <> 0 then
+    Result := False
+  else
+    begin
+      Result := SRec.Attr and faDirectory = 0;
+      FindClose(SRec);
+    end;
+  {$ENDIF}
+end;
+
+function FileExistsU(const FileName: UnicodeString): Boolean;
+{$IFDEF MSWIN}
+var Attr : LongWord;
+{$ELSE}
+var SRec : TSearchRec;
+{$ENDIF}
+begin
+  if FileName = '' then
+    raise EFileError.Create(feInvalidParameter, SInvalidFileName);
+  {$IFDEF MSWIN}
+  Attr := GetFileAttributesW(PWideChar(FileName));
   if Attr = $FFFFFFFF then
     Result := False
   else
@@ -2200,7 +2505,6 @@ begin
   Assert(FilePath('', '\X\Y', 'A\B', '\') = '', 'FilePath');
   Assert(FilePath('C', 'X\Y', 'A\B', '\') = 'A\B\X\Y\C', 'FilePath');
   Assert(FilePath('C', 'X\Y', '', '\') = 'X\Y\C', 'FilePath');
-
   Assert(DirectoryExpandA('', '', '\') = '', 'DirectoryExpand');
   Assert(DirectoryExpandA('', '\X', '\') = '\X\', 'DirectoryExpand');
   Assert(DirectoryExpandA('\', '\X', '\') = '\', 'DirectoryExpand');
@@ -2214,6 +2518,9 @@ begin
 
   Assert(UnixPathToWinPath('/c/d.f') = '\c\d.f', 'UnixPathToWinPath');
   Assert(WinPathToUnixPath('\c\d.f') = '/c/d.f', 'WinPathToUnixPath');
+
+  Assert(PathExtractFileNameA('c:\test\abc\file.txt') = 'file.txt');
+  Assert(PathExtractFileNameU('c:\test\abc\file.txt') = 'file.txt');
 end;
 {$ENDIF}{$ENDIF}
 

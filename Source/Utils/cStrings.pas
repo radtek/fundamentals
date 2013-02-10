@@ -5,7 +5,7 @@
 {   File version:     4.57                                                     }
 {   Description:      String utility functions                                 }
 {                                                                              }
-{   Copyright:        Copyright © 1999-2012, David J Butler                    }
+{   Copyright:        Copyright (c) 1999-2013, David J Butler                  }
 {                     All rights reserved.                                     }
 {                     Redistribution and use in source and binary forms, with  }
 {                     or without modification, are permitted provided that     }
@@ -113,6 +113,7 @@
 {   Delphi 2009 Win32 i386              4.50  2011/09/27                       }
 {   Delphi 2009 .NET                    4.46  2009/10/09                       }
 {   Delphi XE                           4.57  2012/08/29                       }
+{   Delphi XE3 x86-64                   4.57  2013/01/29                       }
 {   FreePascal 2.0.4 Linux i386         4.45  2009/06/06                       }
 {   FreePascal 2.4.0 OSX x86-64         4.47  2010/06/27                       }
 {   FreePascal 2.6.0 Win32 i386         4.57  2012/08/30                       }
@@ -698,6 +699,28 @@ function  IsAsciiStringW(const S: WideString): Boolean;
 function  IsAsciiStringU(const S: UnicodeString): Boolean;
 function  IsAsciiString(const S: String): Boolean;
 
+
+
+{                                                                              }
+{ ASCII functions                                                              }
+{                                                                              }
+function  AsciiHexCharValue(const C: AnsiChar): Integer;
+function  AsciiHexCharValueW(const C: WideChar): Integer;
+
+function  AsciiIsHexChar(const C: AnsiChar): Boolean;
+function  AsciiIsHexCharW(const C: WideChar): Boolean;
+
+function  AsciiDecimalCharValue(const C: AnsiChar): Integer;
+function  AsciiDecimalCharValueW(const C: WideChar): Integer;
+
+function  AsciiIsDecimalChar(const C: AnsiChar): Boolean;
+function  AsciiIsDecimalCharW(const C: WideChar): Boolean;
+
+function  AsciiOctalCharValue(const C: AnsiChar): Integer;
+function  AsciiOctalCharValueW(const C: WideChar): Integer;
+
+function  AsciiIsOctalChar(const C: AnsiChar): Boolean;
+function  AsciiIsOctalCharW(const C: WideChar): Boolean;
 
 
 {                                                                              }
@@ -11131,6 +11154,94 @@ begin
         exit;
       end;
   Result := True;
+end;
+
+
+
+{                                                                              }
+{ ASCII functions                                                              }
+{                                                                              }
+function AsciiHexCharValue(const C: AnsiChar): Integer;
+begin
+  case C of
+    '0'..'9' : Result := Ord(C) - Ord('0');
+    'A'..'F' : Result := Ord(C) - Ord('A') + 10;
+    'a'..'f' : Result := Ord(C) - Ord('a') + 10;
+  else
+    Result := -1;
+  end;
+end;
+
+function AsciiHexCharValueW(const C: WideChar): Integer;
+begin
+  if Ord(C) >= $80 then
+    Result := -1
+  else
+    Result := AsciiHexCharValue(AnsiChar(Ord(C)));
+end;
+
+function AsciiIsHexChar(const C: AnsiChar): Boolean;
+begin
+  Result := AsciiHexCharValue(C) >= 0;
+end;
+
+function AsciiIsHexCharW(const C: WideChar): Boolean;
+begin
+  Result := AsciiHexCharValueW(C) >= 0;
+end;
+
+function AsciiDecimalCharValue(const C: AnsiChar): Integer;
+begin
+  case C of
+    '0'..'9' : Result := Ord(C) - Ord('0');
+  else
+    Result := -1;
+  end;
+end;
+
+function AsciiDecimalCharValueW(const C: WideChar): Integer;
+begin
+  if Ord(C) >= $80 then
+    Result := -1
+  else
+    Result := AsciiDecimalCharValue(AnsiChar(Ord(C)));
+end;
+
+function AsciiIsDecimalChar(const C: AnsiChar): Boolean;
+begin
+  Result := AsciiDecimalCharValue(C) >= 0;
+end;
+
+function AsciiIsDecimalCharW(const C: WideChar): Boolean;
+begin
+  Result := AsciiDecimalCharValueW(C) >= 0;
+end;
+
+function AsciiOctalCharValue(const C: AnsiChar): Integer;
+begin
+  case C of
+    '0'..'7' : Result := Ord(C) - Ord('0');
+  else
+    Result := -1;
+  end;
+end;
+
+function AsciiOctalCharValueW(const C: WideChar): Integer;
+begin
+  if Ord(C) >= $80 then
+    Result := -1
+  else
+    Result := AsciiOctalCharValue(AnsiChar(Ord(C)));
+end;
+
+function AsciiIsOctalChar(const C: AnsiChar): Boolean;
+begin
+  Result := AsciiOctalCharValue(C) >= 0;
+end;
+
+function AsciiIsOctalCharW(const C: WideChar): Boolean;
+begin
+  Result := AsciiOctalCharValueW(C) >= 0;
 end;
 
 

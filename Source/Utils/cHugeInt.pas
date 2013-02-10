@@ -1,10 +1,10 @@
 {******************************************************************************}
 {                                                                              }
 {   File name:        cHugeInt.pas                                             }
-{   File version:     4.18                                                     }
+{   File version:     4.19                                                     }
 {   Description:      HugeInt functions                                        }
 {                                                                              }
-{   Copyright:        Copyright © 2001-2011, David J Butler                    }
+{   Copyright:        Copyright (c) 2001-2012, David J Butler                  }
 {                     All rights reserved.                                     }
 {                     Redistribution and use in source and binary forms, with  }
 {                     or without modification, are permitted provided that     }
@@ -53,6 +53,8 @@
 {   2011/04/02  4.16  Compilable with Delphi 5.                                }
 {   2011/09/03  4.17  Fix for Delphi 7 in HugeIntToInt32.                      }
 {   2011/10/18  4.18  Minor optimisation.                                      }
+{   2012/11/15  4.19  Improvements to HugeWordIsPrime_MillerRabin courtesy of  }
+{                     Wolfgang Ehrhardt.                                       }
 {                                                                              }
 {******************************************************************************}
 
@@ -1482,6 +1484,11 @@ function HugeWordClearBitScanForward(const A: HugeWord): Integer;
 var B : Integer;
     P : PLongWord;
 begin
+  if A.Used = 0 then
+    begin
+      Result := 0;
+      exit;
+    end;
   for B := 0 to A.Used * HugeWordElementBits - 1 do
     begin
       P := A.Data;
@@ -1492,24 +1499,22 @@ begin
           exit;
         end;
     end;
-  Result := -1;
+  Result := A.Used * HugeWordElementBits;
 end;
 
 function HugeWordClearBitScanReverse(const A: HugeWord): Integer;
 var B : Integer;
-    P : PLongWord;
 begin
-  for B := A.Used * HugeWordElementBits - 1 downto 0 do
+  if A.Used = 0 then
     begin
-      P := A.Data;
-      Inc(P, B shr 5); // P = A[B shr 5]
-      if P^ and (1 shl (B and $1F)) = 0 then
-        begin
-          Result := B;
-          exit;
-        end;
+      Result := 0;
+      exit;
     end;
-  Result := -1;
+  B := HugeWordSetBitScanReverse(A);
+  if B < 0 then
+    Result := A.Used * HugeWordElementBits
+  else
+    Result := B + 1;
 end;
 
 { HugeWord Bit Shift                                                           }
@@ -2051,6 +2056,7 @@ end;
 {   Post:  A contains result of A - B                                          }
 {          A normalised                                                        }
 {          Result is sign of A (-1 or +1) or 0 if A is zero                    }
+{$IFDEF ASM386_DELPHI}
 function HugeWordSubtract_Asm1(const A, B, R: PLongWord; const L: LongWord): Boolean; assembler;
 asm
   push esi
@@ -2190,6 +2196,7 @@ begin
   else
     Result := -1;
 end;
+{$ENDIF}
 
 function HugeWordSubtract(var A: HugeWord; const B: HugeWord): Integer;
 var C       : Integer;
@@ -2555,6 +2562,12 @@ begin
     HugeWordFinalise(R);
   end;
 end;
+
+procedure HugeWordMultiply_Karatsuba(var Res: HugeWord; const A, B: HugeWord);
+begin
+end;
+
+
 
 { HugeWord Multiplication                                                      }
 {   Pre:   A, B normalised                                                     }
@@ -3326,7 +3339,7 @@ end;
 {   +---+---+---+---+---+---+---+---+----+                                     }
 {   k = bits in A                                                              }
 {   t = PrimeTableMRCount sufficient for 2^-100 probability of not being prime }
-function HugeWordIsPrime_MillerRabin(const A: HugeWord): TPrimality;
+function HugeWordIsPrime_MillerRabin_Basic(const A: HugeWord): TPrimality;
 var I, L, N : Integer;
     B, C, D : HugeWord;
 begin
@@ -3335,7 +3348,7 @@ begin
   HugeWordInit(D);
   try
     HugeWordSubtractWord32(C, 1);
-    // determine number of checks to do according to number of bits in A 
+    // determine number of checks to do according to number of bits in A
     L := HugeWordSetBitScanReverse(A) + 1;
     if L >= 1024 then
       N := 4 else
@@ -3365,6 +3378,73 @@ begin
   Result := pPotentialPrime;
 end;
 
+function HugeWordIsPrime_MillerRabin(const A: HugeWord): TPrimality;
+var I, L, N, J, P : Integer;
+    B, C, D, E, X : HugeWord;
+begin
+  HugeWordInit(B);
+  HugeWordInitHugeWord(C, A);
+  HugeWordInit(D);
+  HugeWordInit(E);
+  HugeWordInit(X);
+  try
+    HugeWordSubtractWord32(C, 1);
+
+    // determine number of checks to do according to number of bits in A
+    L := HugeWordSetBitScanReverse(A) + 1;
+    if L >= 1024 then
+      N := 4 else
+    if L >= 512 then
+      N := 8 else
+    if L >= 256 then
+      N := 17
+    else
+      N := 25;
+
+    // calculate P and E so that C = A - 1 = 2^P * E
+    HugeWordAssign(E, C); // E = A - 1
+    P := 0;
+    while HugeWordIsEven(E) do
+      begin
+        Inc(P);
+        HugeWordShr1(E);
+      end;
+    // here C = A - 1 = 2^P * E
+
+    // do check using first N prime numbers as "a".
+    // this may be sufficient for actual primality testing for certain A
+    for I := 0 to N - 1 do
+      begin
+        HugeWordAssignWord32(B, PrimeTable[I]);
+        // X = B^E mod A
+        HugeWordPowerAndMod(X, B, E, A);
+        if HugeWordIsOne(X) or HugeWordEquals(X,C) then
+          continue;
+        for J := 1 to P - 1 do
+          begin
+            HugeWordMultiply(D, X, X); // D = X^2
+            HugeWordMod(D, A, X);      // X = X^2 mod A
+            if HugeWordIsOne(X) then
+              begin
+                Result := pNotPrime;
+                exit;
+              end;
+            if HugeWordEquals(X, C) then
+              break; // X = A - 1
+          end;
+      end;
+  finally
+    HugeWordFinalise(D);
+    HugeWordFinalise(C);
+    HugeWordFinalise(B);
+    HugeWordFinalise(E);
+    HugeWordFinalise(X);
+  end;
+  Result := pPotentialPrime;
+end;
+
+
+
 { HugeWord IsPrime                                                             }
 function HugeWordIsPrime(const A: HugeWord): TPrimality;
 begin
@@ -3373,6 +3453,8 @@ begin
     exit;
   Result := HugeWordIsPrime_MillerRabin(A);
 end;
+
+
 
 { HugeWord NextPotentialPrime                                                  }
 {   Returns the next potential prime after A.                                  }
@@ -4717,6 +4799,10 @@ begin
   Assert(not HugeWordIsOdd(A));
   Assert(HugeWordToStrA(A) = '0');
   Assert(HugeWordToHexA(A) = '00000000');
+  Assert(HugeWordSetBitScanForward(A) = -1);
+  Assert(HugeWordSetBitScanReverse(A) = -1);
+  Assert(HugeWordClearBitScanForward(A) = 0);
+  Assert(HugeWordClearBitScanReverse(A) = 0);
 
   // One
   HugeWordAssignOne(A);
@@ -4727,6 +4813,10 @@ begin
   Assert(HugeWordToInt32(A) = 1);
   Assert(HugeWordCompareWord32(A, 0) = 1);
   Assert(HugeWordToHexA(A) = '00000001');
+  Assert(HugeWordSetBitScanForward(A) = 0);
+  Assert(HugeWordSetBitScanReverse(A) = 0);
+  Assert(HugeWordClearBitScanForward(A) = 1);
+  Assert(HugeWordClearBitScanReverse(A) = 1);
 
   // $FFFFFFFF
   HugeWordAssignZero(A);
@@ -4759,6 +4849,10 @@ begin
   Assert(HugeWordSubtractWord32(A, $FFFFFFFF) = -1);
   Assert(HugeWordToWord32(A) = $FFFFFFFF);
   Assert(HugeWordToHexA(A) = 'FFFFFFFF');
+  Assert(HugeWordSetBitScanForward(A) = 0);
+  Assert(HugeWordSetBitScanReverse(A) = 31);
+  Assert(HugeWordClearBitScanForward(A) = 32);
+  Assert(HugeWordClearBitScanReverse(A) = 32);
 
   // $80000000
   HugeWordAssignWord32(A, $80000000);
@@ -4767,11 +4861,22 @@ begin
   Assert(HugeWordIsInt64Range(A));
   Assert(HugeWordToWord32(A) = $80000000);
   Assert(HugeWordEqualsWord32(A, $80000000));
+  Assert(HugeWordSetBitScanForward(A) = 31);
+  Assert(HugeWordSetBitScanReverse(A) = 31);
+  Assert(HugeWordClearBitScanForward(A) = 0);
+  Assert(HugeWordClearBitScanReverse(A) = 32);
+
+  // $100000000
+  HugeWordAssignWord32(A, $80000000);
   HugeWordAdd(A, A);
   Assert(HugeWordToInt64(A) = $100000000);
   Assert(not HugeWordIsWord32Range(A));
   Assert(HugeWordEqualsInt64(A, $100000000));
   Assert(HugeWordToHexA(A) = '0000000100000000');
+  Assert(HugeWordSetBitScanForward(A) = 32);
+  Assert(HugeWordSetBitScanReverse(A) = 32);
+  Assert(HugeWordClearBitScanForward(A) = 0);
+  Assert(HugeWordClearBitScanReverse(A) = 33);
 
   // $1234567890ABCDEF
   HugeWordAssignInt64(A, $1234567890ABCDEF);
@@ -5112,7 +5217,17 @@ begin
   Assert(HugeWordIsPrime(A) <> pNotPrime);
   StrToHugeWordA('1363005552434666078217421284621279933627102780881053358473', A); // Padovan prime
   HugeWordNextPotentialPrime(A);
-  Assert(HugeWordToStrA(A) = '1363005552434666078217421284621279933627102780881053358551');
+  Assert(HugeWordToStrA(A) = '1363005552434666078217421284621279933627102780881053358483');
+  HugeWordAssignWord32(A, 340561);                                                 // Carmichael number 340561 = 13 * 17 * 23 * 67
+  Assert(HugeWordIsPrime(A) = pNotPrime);
+  HugeWordAssignWord32(A, 82929001);                                               // Carmichael number 82929001 = 281 * 421 * 701
+  Assert(HugeWordIsPrime(A) = pNotPrime);
+  StrToHugeWordA('975177403201', A);                                               // Carmichael number 975177403201 = 2341 * 2861 * 145601
+  Assert(HugeWordIsPrime(A) = pNotPrime);
+  StrToHugeWordA('989051977369', A);                                               // Carmichael number 989051977369 = 173 * 36809 * 155317
+  Assert(HugeWordIsPrime(A) = pNotPrime);
+  StrToHugeWordA('999629786233', A);                                               // Carmichael number 999629786233 = 13 * 43 * 127 * 1693 * 8317
+  Assert(HugeWordIsPrime(A) = pNotPrime);
 
   // ExtendedEuclid
   HugeWordAssignWord32(A, 120);
@@ -5718,9 +5833,12 @@ end;
 
 {$IFDEF HUGEINT_PROFILE}
 procedure Profile;
+const
+  Digits_Compare: array[0..2] of Integer = (1000, 10000, 25000);
+  Digits_Multiply: array[0..2] of Integer = (10, 100, 250);
 var
   A, B, C, D : HugeWord;
-  I : Integer;
+  I, J, Di : Integer;
   T : LongWord;
 begin
   HugeWordInit(A);
@@ -5728,36 +5846,44 @@ begin
   HugeWordInit(C);
   HugeWordInit(D);
 
-  HugeWordRandom(A, 10000);
-  HugeWordAssign(B, A);
-
-  T := GetTickCount;
-  for I := 1 to 100000 do
+  for J := 0 to 2 do
     begin
-      HugeWordCompare(A, B);
+      Di := Digits_Compare[J];
+      HugeWordRandom(A, Di);
+      HugeWordAssign(B, A);
+
+      T := GetTickCount;
+      for I := 1 to 15000 do
+        HugeWordCompare(A, B);
+      T := GetTickCount - T;
+      Writeln('Compare: ':15, Di:10, ' ', 1000 / (T / 15000):0:1, '/s');
     end;
-  T := GetTickCount - T;
-  Writeln('Compare: ', 1000 / (T / 100000):0:1, '/s');
 
-  HugeWordRandom(A, 100);
-  HugeWordRandom(B, 100);
-
-  T := GetTickCount;
-  for I := 1 to 20000 do
+  for J := 0 to 2 do
     begin
-      HugeWordMultiply_Long_NN_Unsafe(C, A, B);
-      // HugeWordMultiply_Long(A, A, B);
-    end;
-  T := GetTickCount - T;
-  Writeln('Mul_Long_NN_Unsafe: ', 1000 / (T / 20000):0:1, '/s');
+      Di := Digits_Multiply[J];
+      HugeWordRandom(A, Di);
+      HugeWordRandom(B, Di);
 
-  T := GetTickCount;
-  for I := 1 to 1500 do
-    begin
-      HugeWordMultiply_ShiftAdd(C, A, B);
+      T := GetTickCount;
+      for I := 1 to 15000 do
+        HugeWordMultiply_Long(C, A, B);
+      T := GetTickCount - T;
+      Writeln('Mul_Long: ':15, Di:10, ' ', 1000 / (T / 15000):0:1, '/s');
     end;
-  T := GetTickCount - T;
-  Writeln('Mul_ShiftAdd: ', 1000 / (T / 1500):0:1, '/s');
+
+  for J := 0 to 2 do
+    begin
+      Di := Digits_Multiply[J];
+      HugeWordRandom(A, Di);
+      HugeWordRandom(B, Di);
+
+      T := GetTickCount;
+      for I := 1 to 1500 do
+        HugeWordMultiply_ShiftAdd(C, A, B);
+      T := GetTickCount - T;
+      Writeln('Mul_ShiftAdd: ':15, Di:10, ' ', 1000 / (T / 1500):0:1, '/s');
+    end;
 
   HugeWordRandom(A, 100);
   HugeWordRandom(B, 80);
@@ -5828,5 +5954,53 @@ end;
 
 
 
+// See:
+// http://maths-people.anu.edu.au/~brent/pd/mca-cup-0.5.9.pdf
+// http://code.google.com/p/bignumberslibrary/source/browse/trunk/src/ru/kirilchuk/bigint/BigInteger.java
+
 end.
+
+
+    /**
+     * Multiplies two BigIntegers using the Karatsuba multiplication
+     * algorithm.  This is a recursive divide-and-conquer algorithm which is
+     * more efficient for large numbers than what is commonly called the
+     * "grade-school" algorithm used in multiplyToLen.  If the numbers to be
+     * multiplied have length n, the "grade-school" algorithm has an
+     * asymptotic complexity of O(n^2).  In contrast, the Karatsuba algorithm
+     * has complexity of O(n^(log2(3))), or O(n^1.585).  It achieves this
+     * increased performance by doing 3 multiplies instead of 4 when
+     * evaluating the product.  As it has some overhead, should be used when
+     * both numbers are larger than a certain threshold (found
+     * experimentally).
+     *
+     * See:  http://en.wikipedia.org/wiki/Karatsuba_algorithm
+     */
+    private final BigInteger multiplyKaratsuba(BigInteger x, BigInteger y) {
+        int N = Math.max(x.bitLength(), y.bitLength());
+
+        if (N <= 2000) {             // main parameter to optimize
+            int[] result = multiplyToLen(x.mag, x.mag.length, y.mag, y.mag.length, null);
+            return new BigInteger(trustedStripLeadingZeroInts(result), x.signum * y.signum);
+        }
+
+        // number of bits divided by 2, rounded up
+        N = N / 2 + N % 2;
+
+        // x = a + b*2^N y = c + d*2^N
+        BigInteger b = x.shiftRight(N);
+        BigInteger a = x.subtract(b.shiftLeft(N));
+        BigInteger d = y.shiftRight(N);
+        BigInteger c = y.subtract(d.shiftLeft(N));
+
+        // compute sub-expressions
+        BigInteger ac = multiplyKaratsuba(a, c);
+        BigInteger bd = multiplyKaratsuba(b, d);
+        BigInteger abcd = multiplyKaratsuba(a.add(b), c.add(d));
+
+        // getting result
+        BigInteger result = ac.add(abcd.subtract(ac).subtract(bd).shiftLeft(N)).add(bd.shiftLeft(2 * N));
+
+        return result;
+    }
 

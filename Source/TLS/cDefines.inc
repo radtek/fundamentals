@@ -1,11 +1,11 @@
 {******************************************************************************}
 {                                                                              }
 {   File name:        cDefines.inc                                             }
-{   File updated:     2012/05/12                                               }
+{   File updated:     2013/01/28                                               }
 {                                                                              }
 {   Library:          Fundamentals 4.00                                        }
 {   Home page:        http://fundementals.sourceforge.net                      }
-{   Copyright:        Copyright © 1998-2012, David J Butler                    }
+{   Copyright:        Copyright (c) 1998-2013, David J Butler                  }
 {                     All rights reserved.                                     }
 {                                                                              }
 { Conditionals defined elsewhere:                                              }
@@ -73,6 +73,7 @@
 {   SupportDynArray            - Compiler supports dynamic arrays.             }
 {   SupportInt64               - Compiler supports Int64 type.                 }
 {   SupportWideChar            - Compiler supports WideChar type.              }
+{   SupportUCS4Char            - Compiler supports UC4Char type.               }
 {   SupportCurrency            - Compiler supports Currency type.              }
 {   SupportVariant             - Compiler supports Variant type.               }
 {   SupportAssert              - Compiler supports Assert statement.           }
@@ -90,10 +91,11 @@
 {   SupportNativeInt           - Compiler supports NativeInt type.             }
 {   SupportUInt64              - Compiler supports UInt64 type.                }
 {                                                                              }
-{   CharIsAnsi      - Default Char type is AnsiChar (1 byte).                  }
-{   CharIsWide      - Default Char type is WideChar (2 bytes).                 }
-{   StringIsAnsi    - Default String type is AnsiString.                       }
-{   StringIsUnicode - Default String type is UnicodeString.                    }
+{   CharIsAnsi        - Default Char type is AnsiChar (1 byte).                }
+{   CharIsWide        - Default Char type is WideChar (2 bytes).               }
+{   StringIsAnsi      - Default String type is AnsiString.                     }
+{   StringIsUnicode   - Default String type is UnicodeString.                  }
+{   ExtendedIsDouble  - Extended type is Double.                               }
 {                                                                              }
 {   UseInline         - SupportInline and not PurePascal.                      }
 {                                                                              }
@@ -448,18 +450,36 @@
 
 
 {                                                                              }
+{ Delphi XE3                                                                   }
+{                                                                              }
+{$IFDEF VER240}
+  {$DEFINE DELPHI}
+  {$DEFINE DELPHIXE3}
+  {$DEFINE DELPHI3_UP}
+  {$DEFINE DELPHI4_UP}
+  {$DEFINE DELPHI5_UP}
+  {$DEFINE DELPHI6_UP}
+  {$DEFINE DELPHI7_UP}
+  {$DEFINE DELPHI8_UP}
+  {$DEFINE DELPHI2005_UP}
+  {$DEFINE DELPHI2006_UP}
+  {$DEFINE DELPHI2007_UP}
+  {$DEFINE DELPHI2009_UP}
+  {$DEFINE DELPHI2010_UP}
+  {$DEFINE DELPHIXE_UP}
+  {$DEFINE DELPHIXE2_UP}
+  {$DEFINE DELPHIXE3_UP}
+{$ENDIF}
+
+
+
+{                                                                              }
 { Future Delphi versions                                                       }
 {                                                                              }
-{$IFDEF VER235}
-  {$DEFINE DELPHI_Future}
-{$ENDIF}
-{$IFDEF VER240}
-  {$DEFINE DELPHI_Future}
-{$ENDIF}
-{$IFDEF VER245}
-  {$DEFINE DELPHI_Future}
-{$ENDIF}
 {$IFDEF VER250}
+  {$DEFINE DELPHI_Future}
+{$ENDIF}
+{$IFDEF VER260}
   {$DEFINE DELPHI_Future}
 {$ENDIF}
 
@@ -478,6 +498,7 @@
   {$DEFINE DELPHI2010_UP}
   {$DEFINE DELPHIXE_UP}
   {$DEFINE DELPHIXE2_UP}
+  {$DEFINE DELPHIXE3_UP}
 {$ENDIF}
 
 
@@ -561,8 +582,10 @@
 {$IFDEF DELPHI6_UP}
   {$DEFINE SupportUTF8String}
   {$DEFINE SupportUCS4String}
+  {$DEFINE SupportUCS4Char}
   {$IFDEF DELPHI2009_UP}{$IFDEF ManagedCode}
     {$UNDEF SupportUCS4String}
+    {$UNDEF SupportUCS4Char}
   {$ENDIF}{$ENDIF}
   {$DEFINE SupportEnumValue}
 {$ENDIF}
@@ -606,6 +629,12 @@
     {$DEFINE StringIsAnsi}
   {$ENDIF}
   {$DEFINE SetSizeAlignIsByte}
+{$ENDIF}
+
+{$IFDEF DELPHIXE3_UP}
+  {$IFDEF CPU_X86_64}
+    {$DEFINE ExtendedIsDouble}
+  {$ENDIF}
 {$ENDIF}
 
 
@@ -781,6 +810,7 @@
 {$ENDIF}
 {$IFDEF DOT_NET}
   {$DEFINE ManagedCode}
+  {$DEFINE ExtendedIsDouble}
 {$ENDIF}
 
 

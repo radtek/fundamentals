@@ -5,7 +5,7 @@
 {   File version:     4.22                                                     }
 {   Description:      Reader, Writer and Stream classes                        }
 {                                                                              }
-{   Copyright:        Copyright © 1999-2012, David J Butler                    }
+{   Copyright:        Copyright (c) 1999-2012, David J Butler                  }
 {                     All rights reserved.                                     }
 {                     Redistribution and use in source and binary forms, with  }
 {                     or without modification, are permitted provided that     }
@@ -790,8 +790,10 @@ type
     procedure ReadBuffer(var Buffer; const Size: Integer);
     function  ReadByte: Byte;
     function  ReadStrA(const Size: Integer): AnsiString;
+
     procedure WriteBuffer(const Buffer; const Size: Integer);
     procedure WriteStrA(const S: AnsiString);
+    procedure WriteStrU(const S: UnicodeString);
 
     procedure Assign(const Source: TObject); virtual;
     function  WriteTo(const Destination: AStream; const BlockSize: Integer = 0;
@@ -2955,8 +2957,8 @@ end;
 
 procedure AWriterEx.WritePackedString(const V: String);
 begin
-  {$IFDEF CharIsWide}
-  WritePackedWideString(V);
+  {$IFDEF StringIsUnicode}
+  WritePackedUnicodeString(V);
   {$ELSE}
   WritePackedAnsiString(V);
   {$ENDIF}
@@ -3753,6 +3755,11 @@ end;
 procedure AStream.WriteStrA(const S: AnsiString);
 begin
   WriteBuffer(Pointer(S)^, Length(S));
+end;
+
+procedure AStream.WriteStrU(const S: UnicodeString);
+begin
+  WriteBuffer(Pointer(S)^, Length(S) * SizeOf(WideChar));
 end;
 
 procedure AStreamCopyCallback(const Source, Destination: AStream;

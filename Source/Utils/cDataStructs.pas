@@ -5,7 +5,7 @@
 {   File version:     4.35                                                     }
 {   Description:      Data structures                                          }
 {                                                                              }
-{   Copyright:        Copyright © 1999-2012, David J Butler                    }
+{   Copyright:        Copyright (c) 1999-2012, David J Butler                  }
 {                     All rights reserved.                                     }
 {                     Redistribution and use in source and binary forms, with  }
 {                     or without modification, are permitted provided that     }
@@ -161,7 +161,7 @@
 {   2011/08/27  4.33  Fixed bugs in THashedAnsiStringArray reported by         }
 {                     H Visli.                                                 }
 {   2012/04/11  4.34  Unicode string changes.                                  }
-{   2012/08/29  4.35  Unicode string changes.                                  }
+{   2012/09/01  4.35  Unicode string changes.                                  }
 {                                                                              }
 { Supported compilers:                                                         }
 {                                                                              }
@@ -10993,9 +10993,9 @@ var I, J : Pointer;
 begin
   I := Item[Idx1];
   J := Item[Idx2];
-  if LongWord(I) < LongWord(J) then
+  if NativeInt(I) < NativeInt(J) then
     Result := crLess else
-  if LongWord(I) > LongWord(J) then
+  if NativeInt(I) > NativeInt(J) then
     Result := crGreater else
     Result := crEqual;
 end;
@@ -11021,7 +11021,7 @@ begin
                 Result := I;
                 exit;
               end else
-            if LongWord(D) > LongWord(Find) then
+            if NativeInt(D) > NativeInt(Find) then
               H := I - 1 else
               L := I + 1;
           until L > H;
@@ -11199,9 +11199,9 @@ var I, J : IInterface;
 begin
   I := Item[Idx1];
   J := Item[Idx2];
-  if LongWord(I) < LongWord(J) then
+  if NativeInt(I) < NativeInt(J) then
     Result := crLess else
-  if LongWord(I) > LongWord(J) then
+  if NativeInt(I) > NativeInt(J) then
     Result := crGreater else
     Result := crEqual;
 end;
@@ -11227,7 +11227,7 @@ begin
                 Result := I;
                 exit;
               end else
-            if LongWord(D) > LongWord(Find) then
+            if NativeInt(D) > NativeInt(Find) then
               H := I - 1 else
               L := I + 1;
           until L > H;

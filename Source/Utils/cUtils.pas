@@ -2,10 +2,10 @@
 {                                                                              }
 {   Library:          Fundamentals 4.00                                        }
 {   File name:        cUtils.pas                                               }
-{   File version:     4.50                                                     }
+{   File version:     4.51                                                     }
 {   Description:      Utility functions for simple data types                  }
 {                                                                              }
-{   Copyright:        Copyright © 2000-2012, David J Butler                    }
+{   Copyright:        Copyright © 2000-2013, David J Butler                    }
 {                     All rights reserved.                                     }
 {                     Redistribution and use in source and binary forms, with  }
 {                     or without modification, are permitted provided that     }
@@ -100,6 +100,7 @@
 {   2012/04/04  4.48  Moved dynamic arrays functions to cDynArrays.            }
 {   2012/04/11  4.49  StringToFloat/FloatToStr functions.                      }
 {   2012/08/26  4.50  UnicodeString versions of functions.                     }
+{   2013/01/29  4.51  Compilable with Delphi XE3 x86-64.                       }
 {                                                                              }
 { Supported compilers:                                                         }
 {                                                                              }
@@ -112,7 +113,8 @@
 {   Delphi 2007 Win32 i386              4.50  2012/08/26                       }
 {   Delphi 2009 Win32 i386              4.46  2011/09/27                       }
 {   Delphi 2009 .NET                    4.45  2009/10/09                       }
-{   Delphi XE                           4.50  2012/08/26                       }
+{   Delphi XE                           4.51  2013/01/29                       }
+{   Delphi XE3 x86-64                   4.51  2013/01/29                       }
 {   FreePascal 2.0.4 Linux i386                                                }
 {   FreePascal 2.4.0 OSX x86-64         4.46  2010/06/27                       }
 {   FreePascal 2.6.0 Win32              4.50  2012/08/30                       }
@@ -146,7 +148,7 @@ const
   LibraryMajorVersion = 4;
   LibraryMinorVersion = 0;
   LibraryName         = 'Fundamentals ' + LibraryVersion;
-  LibraryCopyright    = 'Copyright (c) 1998-2012 David J Butler';
+  LibraryCopyright    = 'Copyright (c) 1998-2013 David J Butler';
 
 
 
@@ -350,7 +352,7 @@ const
   MaxSingle   : Single   = 3.4E+38;
   MinDouble   : Double   = 5.0E-324;
   MaxDouble   : Double   = 1.7E+308;
-  {$IFDEF CLR}
+  {$IFDEF ExtendedIsDouble}
   MinExtended : Extended = 5.0E-324;
   MaxExtended : Extended = 1.7E+308;
   {$ELSE}
@@ -371,6 +373,7 @@ type
   {$ENDIF}
 
   {$IFNDEF ManagedCode}
+  {$IFNDEF ExtendedIsDouble}
   ExtendedRec = packed record
     case Boolean of
       True: (
@@ -380,13 +383,14 @@ type
       False: (Value: Extended);
   end;
   {$ENDIF}
+  {$ENDIF}
 
   {$IFDEF CLR}
   Float  = Double;
   {$ELSE}
   Float  = Extended;
-  PFloat = ^Float;
   {$ENDIF}
+  PFloat = ^Float;
 
 {$IFNDEF ManagedCode}
 const
@@ -410,8 +414,10 @@ function  InCurrencyRange(const A: Int64): Boolean; overload;
 {$ENDIF}
 
 { FloatExponent returns the exponent component of an Extended value            }
+{$IFNDEF ExtendedIsDouble}
 function  FloatExponentBase2(const A: Extended; var Exponent: Integer): Boolean;
 function  FloatExponentBase10(const A: Extended; var Exponent: Integer): Boolean;
+{$ENDIF}
 
 { FloatIsInfinity is True if A is a positive or negative infinity.             }
 { FloatIsNaN is True if A is Not-a-Number.                                     }
@@ -434,7 +440,7 @@ const
   // the floating-point type can store.
   SingleCompareDelta   = 1.0E-34;
   DoubleCompareDelta   = 1.0E-280;
-  {$IFDEF CLR}
+  {$IFDEF ExtendedIsDouble}
   ExtendedCompareDelta = DoubleCompareDelta;
   {$ELSE}
   ExtendedCompareDelta = 1.0E-4400;
@@ -456,7 +462,7 @@ function  FloatsCompare(const A, B: Float;
 
 
 
-{$IFNDEF CLR}
+{$IFNDEF ExtendedIsDouble}
 {                                                                              }
 { Scaled approximate comparison of floating point values                       }
 {                                                                              }
@@ -1239,6 +1245,7 @@ procedure SelfTest;
 implementation
 
 uses
+  { System }
   SysUtils,
   Math;
 
@@ -1545,6 +1552,7 @@ begin
 end;
 {$ENDIF}
 
+{$IFNDEF ExtendedIsDouble}
 function FloatExponentBase2(const A: Extended; var Exponent: Integer): Boolean;
 var RecA : ExtendedRec absolute A;
     ExpA : Word;
@@ -1569,6 +1577,7 @@ begin
   if Result then
     Exponent := Round(Exponent / Log2_10);
 end;
+{$ENDIF}
 
 function FloatIsInfinity(const A: Extended): Boolean;
 var Ext : ExtendedRec absolute A;
@@ -1626,7 +1635,7 @@ end;
 
 
 
-{$IFNDEF CLR}
+{$IFNDEF ExtendedIsDouble}
 {                                                                              }
 { Scaled approximate comparison                                                }
 {                                                                              }
@@ -1822,17 +1831,19 @@ end;
 {$ELSE}
 function RotateLeftBits16(const Value: Word; const Bits: Byte): Word;
 var I, B : Integer;
+    R : Word;
 begin
-  Result := Value;
+  R := Value;
   if Bits >= 16 then
     B := Bits mod 16
   else
     B := Bits;
   for I := 1 to B do
-    if Result and $8000 = 0 then
-      Result := Result shl 1
+    if R and $8000 = 0 then
+      R := Word(R shl 1)
     else
-      Result := Word(Result shl 1) or 1;
+      R := Word(R shl 1) or 1;
+  Result := R;
 end;
 {$ENDIF}
 
@@ -1845,17 +1856,19 @@ end;
 {$ELSE}
 function RotateLeftBits32(const Value: LongWord; const Bits: Byte): LongWord;
 var I, B : Integer;
+    R : LongWord;
 begin
-  Result := Value;
+  R := Value;
   if Bits >= 32 then
     B := Bits mod 32
   else
     B := Bits;
   for I := 1 to B do
-    if Result and $80000000 = 0 then
-      Result := Result shl 1
+    if R and $80000000 = 0 then
+      R := LongWord(R shl 1)
     else
-      Result := LongWord(Result shl 1) or 1;
+      R := LongWord(R shl 1) or 1;
+  Result := R;
 end;
 {$ENDIF}
 
@@ -1868,17 +1881,19 @@ end;
 {$ELSE}
 function RotateRightBits16(const Value: Word; const Bits: Byte): Word;
 var I, B : Integer;
+    R : Word;
 begin
-  Result := Value;
+  R := Value;
   if Bits >= 16 then
     B := Bits mod 16
   else
     B := Bits;
   for I := 1 to B do
-    if Result and 1 = 0 then
-      Result := Result shr 1
+    if R and 1 = 0 then
+      R := Word(R shr 1)
     else
-      Result := (Result shr 1) or $8000;
+      R := Word(R shr 1) or $8000;
+  Result := R;
 end;
 {$ENDIF}
 
@@ -1891,17 +1906,19 @@ end;
 {$ELSE}
 function RotateRightBits32(const Value: LongWord; const Bits: Byte): LongWord;
 var I, B : Integer;
+    R : LongWord;
 begin
-  Result := Value;
+  R := Value;
   if Bits >= 32 then
     B := Bits mod 32
   else
     B := Bits;
   for I := 1 to B do
-    if Result and 1 = 0 then
-      Result := Result shr 1
+    if R and 1 = 0 then
+      R := LongWord(R shr 1)
     else
-      Result := (Result shr 1) or $80000000;
+      R := LongWord(R shr 1) or $80000000;
+  Result := R;
 end;
 {$ENDIF}
 
@@ -4947,8 +4964,8 @@ begin
       exit;
     end;
   B := Abs(A);
-  // very small numbers (Extended precision) are zero
-  if B < 1e-2000 then
+  // very small numbers (Double precision) are zero
+  if B < 1e-300 then
     begin
       Result := '0';
       exit;
@@ -5068,7 +5085,7 @@ begin
         begin
           HasDig := True;
           // maximum Extended is roughly 1.1e4932, maximum Double is roughly 1.7e308
-          if ApproxCompare(Abs(Res), 1.0e+1000) in [crEqual, crGreater] then
+          if Abs(Res) >= 1.0e+290 then
             begin
               Value := 0;
               StrLen := Len;
@@ -5216,7 +5233,7 @@ begin
         begin
           HasDig := True;
           // maximum Extended is roughly 1.1e4932, maximum Double is roughly 1.7e308
-          if ApproxCompare(Abs(Res), 1.0e+1000) in [crEqual, crGreater] then
+          if Abs(Res) >= 1.0e+1000 then
             begin
               Value := 0;
               StrLen := Len;
@@ -5364,7 +5381,7 @@ begin
         begin
           HasDig := True;
           // maximum Extended is roughly 1.1e4932, maximum Double is roughly 1.7e308
-          if ApproxCompare(Abs(Res), 1.0e+1000) in [crEqual, crGreater] then
+          if Abs(Res) >= 1.0e+1000 then
             begin
               Value := 0;
               StrLen := Len;
@@ -7342,7 +7359,9 @@ begin
 end;
 
 procedure Test_Float;
+{$IFNDEF ExtendedIsDouble}
 var E : Integer;
+{$ENDIF}
 begin
   Assert(not FloatZero(1e-1, 1e-2),   'FloatZero');
   Assert(FloatZero(1e-2, 1e-2),       'FloatZero');
@@ -7373,7 +7392,7 @@ begin
   Assert(not FloatsEqual(2.00000000011, 2.0, 1e-10),   'FloatsEqual');
   Assert(not FloatsEqual(2.00000000011, 2.0, 1e-11),   'FloatsEqual');
 
-  {$IFNDEF CLR}
+  {$IFNDEF ExtendedIsDouble}
   Assert(FloatsCompare(0.0, 0.0, MinExtended) = crEqual,  'FloatsCompare');
   Assert(FloatsCompare(1.2, 1.2, MinExtended) = crEqual,  'FloatsCompare');
   Assert(FloatsCompare(1.23456789e-300, 1.23456789e-300, MinExtended) = crEqual, 'FloatsCompare');
@@ -7389,7 +7408,7 @@ begin
   Assert(FloatsCompare(0.5003, 0.5001, 1e-4) = crGreater, 'FloatsCompare');
   Assert(FloatsCompare(0.5003, 0.5001, 1e-5) = crGreater, 'FloatsCompare');
 
-  {$IFNDEF CLR}
+  {$IFNDEF ExtendedIsDouble}
   Assert(ApproxEqual(0.0, 0.0),                                'ApproxEqual');
   Assert(not ApproxEqual(0.0, 1e-100, 1e-10),                  'ApproxEqual');
   Assert(not ApproxEqual(1.0, 1e-100, 1e-10),                  'ApproxEqual');
@@ -7424,6 +7443,7 @@ begin
   Assert(ApproxCompare(-1.2345e-10, -1.2349e-10, 1e-4) = crGreater, 'ApproxCompare');
   {$ENDIF}
 
+  {$IFNDEF ExtendedIsDouble}
   Assert(FloatExponentBase10(1.0, E),    'FloatExponent');
   Assert(E = 0,                          'FloatExponent');
   Assert(FloatExponentBase10(10.0, E),   'FloatExponent');
@@ -7438,6 +7458,7 @@ begin
   Assert(E = 0,                          'FloatExponent');
   Assert(FloatExponentBase10(-0.999, E), 'FloatExponent');
   Assert(E = 0,                          'FloatExponent');
+  {$ENDIF}
 end;
 
 procedure Test_IntStr;
@@ -7700,23 +7721,29 @@ begin
   Assert(FloatToStringA(0.0000000000000001) = '1E-0016');
   Assert(FloatToStringA(0.0000000000000012345) = '0.000000000000001');
   Assert(FloatToStringA(0.00000000000000012345) = '1.2345E-0016');
+  {$IFNDEF ExtendedIsDouble}
   Assert(FloatToStringA(123456789.123456789) = '123456789.123456789');
   Assert(FloatToStringA(123456789012345.1234567890123456789) = '123456789012345.1234');
   Assert(FloatToStringA(1234567890123456.1234567890123456789) = '1.23456789012346E+0015');
+  {$ENDIF}
   Assert(FloatToStringA(0.12345) = '0.12345');
   Assert(FloatToStringA(1e100) = '1E+0100');
   Assert(FloatToStringA(1.234e+100) = '1.234E+0100');
   Assert(FloatToStringA(-1.5e-100) = '-1.5E-0100');
+  {$IFNDEF ExtendedIsDouble}
   Assert(FloatToStringA(1.234e+1000) = '1.234E+1000');
   Assert(FloatToStringA(-1e-4000) = '0');
+  {$ENDIF}
 
   Assert(FloatToStringW(0.0) = '0');
   Assert(FloatToStringW(-1.5) = '-1.5');
   Assert(FloatToStringW(1.5) = '1.5');
   Assert(FloatToStringW(1.1) = '1.1');
+  {$IFNDEF ExtendedIsDouble}
   Assert(FloatToStringW(123456789.123456789) = '123456789.123456789');
   Assert(FloatToStringW(123456789012345.1234567890123456789) = '123456789012345.1234');
   Assert(FloatToStringW(1234567890123456.1234567890123456789) = '1.23456789012346E+0015');
+  {$ENDIF}
   Assert(FloatToStringW(0.12345) = '0.12345');
   Assert(FloatToStringW(1e100) = '1E+0100');
   Assert(FloatToStringW(1.234e+100) = '1.234E+0100');
@@ -7726,9 +7753,11 @@ begin
   Assert(FloatToStringU(-1.5) = '-1.5');
   Assert(FloatToStringU(1.5) = '1.5');
   Assert(FloatToStringU(1.1) = '1.1');
+  {$IFNDEF ExtendedIsDouble}
   Assert(FloatToStringU(123456789.123456789) = '123456789.123456789');
   Assert(FloatToStringU(123456789012345.1234567890123456789) = '123456789012345.1234');
   Assert(FloatToStringU(1234567890123456.1234567890123456789) = '1.23456789012346E+0015');
+  {$ENDIF}
   Assert(FloatToStringU(0.12345) = '0.12345');
   Assert(FloatToStringU(1e100) = '1E+0100');
   Assert(FloatToStringU(1.234e+100) = '1.234E+0100');
@@ -7738,9 +7767,11 @@ begin
   Assert(FloatToString(-1.5) = '-1.5');
   Assert(FloatToString(1.5) = '1.5');
   Assert(FloatToString(1.1) = '1.1');
+  {$IFNDEF ExtendedIsDouble}
   Assert(FloatToString(123456789.123456789) = '123456789.123456789');
   Assert(FloatToString(123456789012345.1234567890123456789) = '123456789012345.1234');
   Assert(FloatToString(1234567890123456.1234567890123456789) = '1.23456789012346E+0015');
+  {$ENDIF}
   Assert(FloatToString(0.12345) = '0.12345');
   Assert(FloatToString(1e100) = '1E+0100');
   Assert(FloatToString(1.234e+100) = '1.234E+0100');
@@ -7759,48 +7790,62 @@ begin
   Assert((E = 123.4) and (L = 10));
   A := '1.2e300x';
   Assert(TryStringToFloatPA(PAnsiChar(A), Length(A), E, L) = convertOK);
+  {$IFNDEF ExtendedIsDouble}
   Assert(ApproxEqual(E, 1.2e300, 1e-2) and (L = 7));
+  {$ENDIF}
   A := '1.2e-300e';
   Assert(TryStringToFloatPA(PAnsiChar(A), Length(A), E, L) = convertOK);
+  {$IFNDEF ExtendedIsDouble}
   Assert(ApproxEqual(E, 1.2e-300, 1e-2) and (L = 8));
+  {$ENDIF}
 
   // 9999..9999 overflow
+  {$IFNDEF ExtendedIsDouble}
   A := '';
   for L := 1 to 5000 do
     A := A + '9';
   Assert(TryStringToFloatPA(PAnsiChar(A), Length(A), E, L) = convertOverflow);
-  Assert((E = 0.0) and (L >= 500));
+  Assert((E = 0.0) and (L >= 200));
+  {$ENDIF}
 
   // 1200..0000
+  {$IFNDEF ExtendedIsDouble}
   A := '12';
-  for L := 1 to 500 do
+  for L := 1 to 100 do
     A := A + '0';
   Assert(TryStringToFloatPA(PAnsiChar(A), Length(A), E, L) = convertOK);
-  Assert(ApproxEqual(E, 1.2e+501, 1e-2) and (L = 502));
+  Assert(ApproxEqual(E, 1.2e+101, 1e-2) and (L = 102));
+  {$ENDIF}
 
   // 0.0000..0001 overflow
+  {$IFNDEF ExtendedIsDouble}
   A := '0.';
   for L := 1 to 5000 do
     A := A + '0';
   A := A + '1';
   Assert(TryStringToFloatPA(PAnsiChar(A), Length(A), E, L) = convertOverflow);
   Assert((E = 0.0) and (L >= 500));
+  {$ENDIF}
 
   // 0.0000..000123
+  {$IFNDEF ExtendedIsDouble}
   A := '0.';
-  for L := 1 to 500 do
+  for L := 1 to 100 do
     A := A + '0';
   A := A + '123';
   Assert(TryStringToFloatPA(PAnsiChar(A), Length(A), E, L) = convertOK);
-  Assert(ApproxEqual(E, 1.23e-501, 1e-3) and (L = 505));
+  Assert(ApproxEqual(E, 1.23e-101, 1e-3) and (L = 105));
+  {$ENDIF}
 
-  // 1200..0000e500
+  // 1200..0000e100
+  {$IFNDEF ExtendedIsDouble}
   A := '12';
-  for L := 1 to 500 do
+  for L := 1 to 100 do
     A := A + '0';
-  A := A + 'e500';
+  A := A + 'e100';
   Assert(TryStringToFloatPA(PAnsiChar(A), Length(A), E, L) = convertOK);
-  Assert(ApproxEqual(E, 1.2e+1001, 1e-1) and (L = 506));
+  Assert(ApproxEqual(E, 1.2e+201, 1e-1) and (L = 106));
+  {$ENDIF}
 
   Assert(StringToFloatA('0') = 0.0);
   Assert(StringToFloatA('1') = 1.0);
@@ -7813,6 +7858,7 @@ begin
   Assert(StringToFloatA('0000000000000000000000001.1000000000000000000000000') = 1.1);
   Assert(StringToFloatA('.5') = 0.5);
   Assert(StringToFloatA('-.5') = -0.5);
+  {$IFNDEF ExtendedIsDouble}
   Assert(ApproxEqual(StringToFloatA('1.123456789'), 1.123456789, 1e-10));
   Assert(ApproxEqual(StringToFloatA('123456789.123456789'), 123456789.123456789, 1e-10));
   Assert(ApproxEqual(StringToFloatA('1.5e500'), 1.5e500, 1e-2));
@@ -7820,6 +7866,7 @@ begin
   Assert(ApproxEqual(StringToFloatA('1.2E-500'), 1.2e-500, 1e-2));
   Assert(ApproxEqual(StringToFloatA('-1.2E-500'), -1.2e-500, 1e-2));
   Assert(ApproxEqual(StringToFloatA('-1.23456789E-500'), -1.23456789e-500, 1e-9));
+  {$ENDIF}
 
   Assert(not TryStringToFloatA('', E));
   Assert(not TryStringToFloatA('+', E));

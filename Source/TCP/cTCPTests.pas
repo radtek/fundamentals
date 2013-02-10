@@ -67,8 +67,8 @@
 
 {$IFDEF TCP_SELFTEST}
 {$IFDEF TCPSERVER_TLS}
-  {.DEFINE TCPSERVER_SELFTEST}
-  {.DEFINE TCPSERVER_SELFTEST_TLS}
+  {$DEFINE TCPSERVER_SELFTEST}
+  {$DEFINE TCPSERVER_SELFTEST_TLS}
 {$ENDIF}
 {$ENDIF}
 
@@ -214,6 +214,28 @@ begin
     S.Active := False;
     Assert(not S.Active);
     Assert(S.State = ssClosed);
+  finally
+    S.Free;
+  end;
+
+  S := TF4TCPServer.Create(nil);
+  try
+    // init
+    S.AddressFamily := iaIP4;
+    S.ServerPort := 12345;
+    S.MaxClients := -1;
+    Assert(S.State = ssInit);
+    for I := 1 to 10 do
+      begin
+        // activate
+        Assert(not S.Active);
+        S.Active := True;
+        Assert(S.Active);
+        // deactivate
+        S.Active := False;
+        Assert(not S.Active);
+        Assert(S.State = ssClosed);
+      end;
   finally
     S.Free;
   end;

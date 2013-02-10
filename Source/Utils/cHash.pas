@@ -2,10 +2,10 @@
 {                                                                              }
 {   Library:          Fundamentals 4.00                                        }
 {   File name:        cHash.pas                                                }
-{   File version:     4.17                                                     }
+{   File version:     4.18                                                     }
 {   Description:      Hashing functions                                        }
 {                                                                              }
-{   Copyright:        Copyright © 1999-2011, David J Butler                    }
+{   Copyright:        Copyright (c) 1999-2013, David J Butler                  }
 {                     All rights reserved.                                     }
 {                     Redistribution and use in source and binary forms, with  }
 {                     or without modification, are permitted provided that     }
@@ -54,6 +54,7 @@
 {   2010/11/17  4.15  Added HMAC-SHA512, SHA224, SHA384.                       }
 {   2011/04/02  4.16  Compilable with Delphi 5.                                }
 {   2011/10/14  4.17  Compilable with Delphi XE.                               }
+{   2013/01/27  4.18  Added RipeMD160 sponsored and donated by Stefan Westner. }
 {                                                                              }
 { Supported compilers:                                                         }
 {                                                                              }
@@ -90,6 +91,7 @@
 {   SHA1           160               Secure hash                               }
 {   SHA256         256               Secure hash                               }
 {   SHA512         512               Secure hash                               }
+{   RipeMD160      160               Secure hash                               }
 {   HMAC/MD5       128               Secure keyed hash                         }
 {   HMAC/SHA1      160               Secure keyed hash                         }
 {   HMAC/SHA256    256               Secure keyed hash                         }
@@ -505,6 +507,30 @@ function  SHA512DigestToHexW(const Digest: T512BitDigest): WideString;
 
 
 {                                                                              }
+{ RIPEMD160                                                                    }
+{                                                                              }
+{   RIPEMD-160 is a 160-bit cryptographic hash function, designed by           }
+{   Hans Dobbertin, Antoon Bosselaers, and Bart Preneel. It is intended to     }
+{   be used as a secure replacement for the 128-bit hash functions MD4, MD5,   }
+{   and RIPEMD.                                                                }
+{   The authors of RIPEMD-160 and RIPEMD-128 do not hold any patents on the    }
+{   algorithms (nor on the optional extensions), and are also not aware of     }
+{   any patents on these algorithms.                                           }
+{                                                                              }
+procedure RipeMD160InitDigest(var Digest: T160BitDigest);
+procedure RipeMD160Buf(var Digest: T160BitDigest; const Buf; const BufSize: Integer);
+procedure RipeMD160FinalBuf(var Digest: T160BitDigest; const Buf; const BufSize: Integer; const TotalSize: Int64);
+
+function  CalcRipeMD160(const Buf; const BufSize: Integer): T160BitDigest; overload;
+function  CalcRipeMD160(const Buf: AnsiString): T160BitDigest; overload;
+
+function  RipeMD160DigestToStrA(const Digest: T160BitDigest): AnsiString;
+function  RipeMD160DigestToHexA(const Digest: T160BitDigest): AnsiString;
+function  RipeMD160DigestToHexW(const Digest: T160BitDigest): WideString;
+
+
+
+{                                                                              }
 { HMAC-MD5 keyed hashing                                                       }
 {                                                                              }
 {   HMAC allows secure keyed hashing (hashing with a password).                }
@@ -730,6 +756,18 @@ type
     class function BlockSize: Integer; override;
   end;
 
+  { TRipeMD160Hash                                                             }
+  TRipeMD160Hash = class(AHash)
+  protected
+    procedure InitHash(const Digest: Pointer; const Key: Pointer; const KeySize: Integer); override;
+    procedure ProcessBuf(const Buf; const BufSize: Integer); override;
+    procedure ProcessFinalBuf(const Buf; const BufSize: Integer; const TotalSize: Int64); override;
+
+  public
+    class function DigestSize: Integer; override;
+    class function BlockSize: Integer; override;
+  end;
+
   { THMAC_MD5Hash                                                              }
   THMAC_MD5Hash = class(AHash)
   protected
@@ -805,7 +843,7 @@ type
       hashCRC16, hashCRC32,
       hashAdler32,
       hashELF,
-      hashMD5, hashSHA1, hashSHA256, hashSHA512,
+      hashMD5, hashSHA1, hashSHA256, hashSHA512, hashRipeMD160,
       hashHMAC_MD5, hashHMAC_SHA1, hashHMAC_SHA256, hashHMAC_SHA512);
 
 
@@ -1810,12 +1848,15 @@ end;
 {$ELSE}
 function RotateLeftBits(const Value: LongWord; const Bits: Byte): LongWord;
 var I : Integer;
+    R : LongWord;
 begin
-  Result := Value;
+  R := Value;
   for I := 1 to Bits do
-    if Result and $80000000 = 0 then
-      Result := Value shl 1 else
-      Result := (Value shl 1) or 1;
+    if R and $80000000 = 0 then
+      R := LongWord(R shl 1)
+    else
+      R := LongWord(R shl 1) or 1;
+  Result := R;
 end;
 {$ENDIF}
 
@@ -2874,6 +2915,329 @@ end;
 
 
 {                                                                              }
+{ RIPEMD160                                                                    }
+{   160 bit RIPEMD.                                                            }
+{                                                                              }
+
+// f(j, x, y, z) = x XOR y XOR z                (0 <= j <= 15)
+function RipeMD_F1(const X, Y, Z: LongWord): LongWord;
+begin
+  Result := X xor Y xor Z;
+end;
+
+// f(j, x, y, z) = (x AND y) OR (NOT(x) AND z)  (16 <= j <= 31)
+function RipeMD_F2(const X, Y, Z: LongWord): LongWord;
+begin
+  Result := (X and Y) or ((not X) and Z);
+end;
+
+// f(j, x, y, z) = (x OR NOT(y)) XOR z          (32 <= j <= 47)
+function RipeMD_F3(const X, Y, Z: LongWord): LongWord;
+begin
+  Result := (X or (not Y)) xor Z;
+end;
+
+// f(j, x, y, z) = (x AND z) OR (y AND NOT(z))  (48 <= j <= 63)
+function RipeMD_F4(const X, Y, Z: LongWord): LongWord;
+begin
+  Result := (X and Z) or (Y and (not Z));
+end;
+
+// f(j, x, y, z) = x XOR (y OR NOT(z))          (64 <= j <= 79)
+function RipeMD_F5(const X, Y, Z: LongWord): LongWord;
+begin
+  Result := X xor (Y or (not Z));
+end;
+
+// f(j, x, y, z)
+function RipeMD_F(const J: Byte; const X, Y, Z: LongWord): LongWord;
+begin
+  case J of
+    0..15  : Result := RipeMD_F1(X, Y, Z);
+    16..31 : Result := RipeMD_F2(X, Y, Z);
+    32..47 : Result := RipeMD_F3(X, Y, Z);
+    48..63 : Result := RipeMD_F4(X, Y, Z);
+    64..79 : Result := RipeMD_F5(X, Y, Z);
+  else
+    raise EHashError.Create(hashInternalError, 'Internal error');
+  end;
+end;
+
+const
+  // K(j) = 0x00000000      (0 <= j <= 15)
+  // K(j) = 0x5A827999     (16 <= j <= 31)      int(2**30 x sqrt(2))
+  // K(j) = 0x6ED9EBA1     (32 <= j <= 47)      int(2**30 x sqrt(3))
+  // K(j) = 0x8F1BBCDC     (48 <= j <= 63)      int(2**30 x sqrt(5))
+  // K(j) = 0xA953FD4E     (64 <= j <= 79)      int(2**30 x sqrt(7))
+  RipeMD_K : array[0..4] of LongWord = (
+      $00000000,
+      $5A827999,
+      $6ED9EBA1,
+      $8F1BBCDC,
+      $A953FD4E );
+
+  // K'(j) = 0x50A28BE6     (0 <= j <= 15)      int(2**30 x cbrt(2))
+  // K'(j) = 0x5C4DD124    (16 <= j <= 31)      int(2**30 x cbrt(3))
+  // K'(j) = 0x6D703EF3    (32 <= j <= 47)      int(2**30 x cbrt(5))
+  // K'(j) = 0x7A6D76E9    (48 <= j <= 63)      int(2**30 x cbrt(7))
+  // K'(j) = 0x00000000    (64 <= j <= 79)
+  RipeMD_KP : array[0..4] of LongWord = (
+      $50A28BE6,
+      $5C4DD124,
+      $6D703EF3,
+      $7A6D76E9,
+      $00000000 );
+
+  // r(j)      = j                    (0 <= j <= 15)
+  // r(16..31) = 7, 4, 13, 1, 10, 6, 15, 3, 12, 0, 9, 5, 2, 14, 11, 8
+  // r(32..47) = 3, 10, 14, 4, 9, 15, 8, 1, 2, 7, 0, 6, 13, 11, 5, 12
+  // r(48..63) = 1, 9, 11, 10, 0, 8, 12, 4, 13, 3, 7, 15, 14, 5, 6, 2
+  // r(64..79) = 4, 0, 5, 9, 7, 12, 2, 10, 14, 1, 3, 8, 11, 6, 15, 13
+  RipeMD_R : array[0..79] of Byte = (
+      0,  1,  2,  3,  4,  5,  6,  7,  8,  9, 10, 11, 12, 13, 14, 15,
+      7,  4, 13,  1, 10,  6, 15,  3, 12,  0,  9,  5,  2, 14, 11,  8,
+      3, 10, 14,  4,  9, 15,  8,  1,  2,  7,  0,  6, 13, 11,  5, 12,
+      1,  9, 11, 10,  0,  8, 12,  4, 13,  3,  7, 15, 14,  5,  6,  2,
+      4,  0,  5,  9,  7, 12,  2, 10, 14,  1,  3,  8, 11,  6, 15, 13 );
+
+  // r'(0..15) = 5, 14, 7, 0, 9, 2, 11, 4, 13, 6, 15, 8, 1, 10, 3, 12
+  // r'(16..31)= 6, 11, 3, 7, 0, 13, 5, 10, 14, 15, 8, 12, 4, 9, 1, 2
+  // r'(32..47)= 15, 5, 1, 3, 7, 14, 6, 9, 11, 8, 12, 2, 10, 0, 4, 13
+  // r'(48..63)= 8, 6, 4, 1, 3, 11, 15, 0, 5, 12, 2, 13, 9, 7, 10, 14
+  // r'(64..79)= 12, 15, 10, 4, 1, 5, 8, 7, 6, 2, 13, 14, 0, 3, 9, 11
+  RipeMD_RP : array[0..79] of Byte = (
+       5, 14,  7,  0,  9,  2, 11,  4, 13,  6, 15, 8,  1, 10,  3, 12,
+       6, 11,  3,  7,  0, 13,  5, 10, 14, 15,  8, 12, 4,  9,  1,  2,
+      15,  5,  1,  3,  7, 14,  6,  9, 11,  8, 12, 2, 10,  0,  4, 13,
+       8,  6,  4,  1,  3, 11, 15,  0,  5, 12,  2, 13, 9,  7, 10, 14,
+      12, 15, 10,  4,  1,  5,  8,  7,  6,  2, 13, 14, 0,  3,  9, 11 );
+
+  // s(0..15)  = 11, 14, 15, 12, 5, 8, 7, 9, 11, 13, 14, 15, 6, 7, 9, 8
+  // s(16..31) = 7, 6, 8, 13, 11, 9, 7, 15, 7, 12, 15, 9, 11, 7, 13, 12
+  // s(32..47) = 11, 13, 6, 7, 14, 9, 13, 15, 14, 8, 13, 6, 5, 12, 7, 5
+  // s(48..63) = 11, 12, 14, 15, 14, 15, 9, 8, 9, 14, 5, 6, 8, 6, 5, 12
+  // s(64..79) = 9, 15, 5, 11, 6, 8, 13, 12, 5, 12, 13, 14, 11, 8, 5, 6
+  RipeMD_S : array[0..79] of Byte = (
+      11, 14, 15, 12,  5,  8,  7,  9, 11, 13, 14, 15,  6,  7,  9,  8,
+       7,  6,  8, 13, 11,  9,  7, 15,  7, 12, 15,  9, 11,  7, 13, 12,
+      11, 13,  6,  7, 14,  9, 13, 15, 14,  8, 13,  6,  5, 12,  7,  5,
+      11, 12, 14, 15, 14, 15,  9,  8,  9, 14,  5,  6,  8,  6,  5, 12,
+       9, 15,  5, 11,  6,  8, 13, 12,  5, 12, 13, 14, 11,  8,  5,  6 );
+
+  // s'(0..15) = 8, 9, 9, 11, 13, 15, 15, 5, 7, 7, 8, 11, 14, 14, 12, 6
+  // s'(16..31)= 9, 13, 15, 7, 12, 8, 9, 11, 7, 7, 12, 7, 6, 15, 13, 11
+  // s'(32..47)= 9, 7, 15, 11, 8, 6, 6, 14, 12, 13, 5, 14, 13, 13, 7, 5
+  // s'(48..63)= 15, 5, 8, 11, 14, 14, 6, 14, 6, 9, 12, 9, 12, 5, 15, 8
+  // s'(64..79)= 8, 5, 12, 9, 12, 5, 14, 6, 8, 13, 6, 5, 15, 13, 11, 11
+  RipeMD_SP : array[0..79] of Byte = (
+       8,  9,  9, 11, 13, 15, 15,  5,  7,  7,  8, 11, 14, 14, 12,  6,
+       9, 13, 15,  7, 12,  8,  9, 11,  7,  7, 12,  7,  6, 15, 13, 11,
+       9,  7, 15, 11,  8,  6,  6, 14, 12, 13,  5, 14, 13, 13,  7,  5,
+      15,  5,  8, 11, 14, 14,  6, 14,  6,  9, 12,  9, 12,  5, 15,  8,
+       8,  5, 12,  9, 12,  5, 14,  6,  8, 13,  6,  5, 15, 13, 11, 11 );
+
+// Pascal version of:
+// function Word32Add(const A, B: LongWord): LongWord; assembler;
+// asm
+//       ADD     EAX, EDX
+// end;
+//
+// Temporary turn Q off as an optimisation since Word32Add is frequently used
+// and it can never overflow in any case
+{$IFOPT Q+}{$DEFINE QOn}{$Q-}{$ELSE}{$UNDEF QOn}{$ENDIF}
+function Word32Add(const A, B: LongWord): LongWord; {$IFDEF UseInline}inline;{$ENDIF}
+var R : Int64;
+begin
+  R := Int64(A) + Int64(B);
+  Result := LongWord(R and $FFFFFFFF);
+end;
+{$IFDEF QOn}{$Q+}{$ENDIF}
+
+type
+  TRipeMD160Block = array[0..15] of LongWord;
+  PRipeMD160Block = ^TRipeMD160Block;
+
+(*
+    It is assumed that the message after padding consists of t 16-word blocks
+    that will be denoted with X[i][j], with 0 <= i <= t-1 and 0 <= j <= 15.
+    The symbol [+] denotes addition modulo 2**32 and rol_s denotes cyclic left
+    shift (rotate) over s positions.
+    A := h0; B := h1; C := h2; D = h3; E = h4;
+    A' := h0; B' := h1; C' := h2; D' = h3; E' = h4;
+    for j := 0 to 79 {
+        T := rol_s(j)(A [+] f(j, B, C, D) [+] X[i][r(j)] [+] K(j)) [+] E;
+        A := E; E := D; D := rol_10(C); C := B; B := T;
+        T := rol_s'(j)(A' [+] f(79-j, B', C', D') [+] X[i][r'(j)] [+] K'(j)) [+] E';
+        A' := E'; E' := D'; D' := rol_10(C'); C' := B'; B' := T;
+    }
+    T := h1 [+] C [+] D'; h1 := h2 [+] D [+] E'; h2 := h3 [+] E [+] A';
+    h3 := h4 [+] A [+] B'; h4 := h0 [+] B [+] C'; h0 := T;
+*)
+procedure RipeMD160Block(var Digest: T160BitDigest; const Block: TRipeMD160Block);
+var
+  H0, H1, H2, H3, H4 : LongWord;
+  A, B, C, D, E : LongWord;
+  AP, BP, CP, DP, EP : LongWord;
+  J, J16 : Byte;
+  T : LongWord;
+begin
+  H0 := Digest.Longs[0];
+  H1 := Digest.Longs[1];
+  H2 := Digest.Longs[2];
+  H3 := Digest.Longs[3];
+  H4 := Digest.Longs[4];
+
+  // A := h0; B := h1; C := h2; D = h3; E = h4;
+  A := H0;
+  B := H1;
+  C := H2;
+  D := H3;
+  E := H4;
+
+  // A' := h0; B' := h1; C' := h2; D' = h3; E' = h4;
+  AP := H0;
+  BP := H1;
+  CP := H2;
+  DP := H3;
+  EP := H4;
+
+  for J := 0 to 79 do
+    begin
+      J16 := J div 16;
+      // T := rol_s(j)(A [+] f(j, B, C, D) [+] X[i][r(j)] [+] K(j)) [+] E;
+      T := Word32Add(A, RipeMD_F(J, B, C, D));
+      T := Word32Add(T, Block[RipeMD_R[J]]);
+      T := Word32Add(T, RipeMD_K[J16]);
+      T := RotateLeftBits(T, RipeMD_S[J]);
+      T := Word32Add(T, E);
+      // A := E; E := D; D := rol_10(C); C := B; B := T;
+      A := E;
+      E := D;
+      D := RotateLeftBits(C, 10);
+      C := B;
+      B := T;
+      // T := rol_s'(j)(A' [+] f(79-j, B', C', D') [+] X[i][r'(j)] [+] K'(j)) [+] E';
+      T := Word32Add(AP, RipeMD_F(79 - J, BP, CP, DP));
+      T := Word32Add(T, Block[RipeMD_RP[J]]);
+      T := Word32Add(T, RipeMD_KP[J16]);
+      T := RotateLeftBits(T, RipeMD_SP[J]);
+      T := Word32Add(T, EP);
+      // A' := E'; E' := D'; D' := rol_10(C'); C' := B'; B' := T;
+      AP := EP;
+      EP := DP;
+      DP := RotateLeftBits(CP, 10);
+      CP := BP;
+      BP := T;
+    end;
+
+  // T := h1 [+] C [+] D';
+  T := Word32Add(H1, C);
+  T := Word32Add(T, DP);
+  // h1 := h2 [+] D [+] E';
+  H1 := Word32Add(H2, D);
+  H1 := Word32Add(H1, EP);
+  // h2 := h3 [+] E [+] A';
+  H2 := Word32Add(H3, E);
+  H2 := Word32Add(H2, AP);
+  // h3 := h4 [+] A [+] B';
+  H3 := Word32Add(H4, A);
+  H3 := Word32Add(H3, BP);
+  // h4 := h0 [+] B [+] C';
+  H4 := Word32Add(H0, B);
+  H4 := Word32Add(H4, CP);
+  // h0 := T;
+  H0 := T;
+
+  Digest.Longs[0] := H0;
+  Digest.Longs[1] := H1;
+  Digest.Longs[2] := H2;
+  Digest.Longs[3] := H3;
+  Digest.Longs[4] := H4;
+end;
+
+// initial value (hexadecimal)
+// h0 = 0x67452301; h1 = 0xEFCDAB89; h2 = 0x98BADCFE; h3 = 0x10325476; h4 = 0xC3D2E1F0;
+procedure RipeMD160InitDigest(var Digest: T160BitDigest);
+begin
+  Digest.Longs[0] := $67452301;
+  Digest.Longs[1] := $EFCDAB89;
+  Digest.Longs[2] := $98BADCFE;
+  Digest.Longs[3] := $10325476;
+  Digest.Longs[4] := $C3D2E1F0;
+end;
+
+procedure RipeMD160Buf(var Digest: T160BitDigest; const Buf; const BufSize: Integer);
+var P : PRipeMD160Block;
+    I, J : Integer;
+begin
+  I := BufSize;
+  if I <= 0 then
+    exit;
+  Assert(I mod 64 = 0, 'BufSize must be multiple of 64 bytes');
+  P := @Buf;
+  for J := 0 to I div 64 - 1 do
+    begin
+      RipeMD160Block(Digest, P^);
+      Inc(P);
+    end;
+end;
+
+procedure RipeMD160FinalBuf(var Digest: T160BitDigest; const Buf; const BufSize: Integer; const TotalSize: Int64);
+var B1, B2 : T512BitBuf;
+    C : Integer;
+begin
+  StdFinalBuf512(Buf, BufSize, TotalSize, B1, B2, C, False);
+  RipeMD160Block(Digest, PRipeMD160Block(@B1)^);
+  if C > 1 then
+    RipeMD160Block(Digest, PRipeMD160Block(@B2)^);
+  SecureClear512(B1);
+  if C > 1 then
+    SecureClear512(B2);
+end;
+
+function CalcRipeMD160(const Buf; const BufSize: Integer): T160BitDigest;
+var I, J : Integer;
+    P    : PByte;
+begin
+  RipeMD160InitDigest(Result);
+  P := @Buf;
+  if BufSize <= 0 then
+    I := 0 else
+    I := BufSize;
+  J := (I div 64) * 64;
+  if J > 0 then
+    begin
+      RipeMD160Buf(Result, P^, J);
+      Inc(P, J);
+      Dec(I, J);
+    end;
+  RipeMD160FinalBuf(Result, P^, I, BufSize);
+end;
+
+function CalcRipeMD160(const Buf: AnsiString): T160BitDigest;
+begin
+  Result := CalcRipeMD160(Pointer(Buf)^, Length(Buf));
+end;
+
+function RipeMD160DigestToStrA(const Digest: T160BitDigest): AnsiString;
+begin
+  SetLength(Result, Sizeof(Digest));
+  Move(Digest, Pointer(Result)^, Sizeof(Digest));
+end;
+
+function RipeMD160DigestToHexA(const Digest: T160BitDigest): AnsiString;
+begin
+  Result := DigestToHexA(Digest, Sizeof(Digest));
+end;
+
+function RipeMD160DigestToHexW(const Digest: T160BitDigest): WideString;
+begin
+  Result := DigestToHexW(Digest, Sizeof(Digest));
+end;
+
+
+
+{                                                                              }
 { HMAC utility functions                                                       }
 {                                                                              }
 procedure HMAC_KeyBlock512(const Key; const KeySize: Integer; var Buf: T512BitBuf);
@@ -3247,6 +3611,7 @@ begin
       hashSHA1        : P160BitDigest(Digest)^ := CalcSHA1(Buf, BufSize);
       hashSHA256      : P256BitDigest(Digest)^ := CalcSHA256(Buf, BufSize);
       hashSHA512      : P512BitDigest(Digest)^ := CalcSHA512(Buf, BufSize);
+      hashRipeMD160   : P160BitDigest(Digest)^ := CalcRipeMD160(Buf, BufSize);
       hashHMAC_MD5    : P128BitDigest(Digest)^ := CalcHMAC_MD5(nil, 0, Buf, BufSize);
       hashHMAC_SHA1   : P160BitDigest(Digest)^ := CalcHMAC_SHA1(nil, 0, Buf, BufSize);
       hashHMAC_SHA256 : P256BitDigest(Digest)^ := CalcHMAC_SHA256(nil, 0, Buf, BufSize);
@@ -3717,6 +4082,36 @@ end;
 
 
 {                                                                              }
+{ TRipeMD160Hash                                                               }
+{                                                                              }
+procedure TRipeMD160Hash.InitHash(const Digest: Pointer; const Key: Pointer; const KeySize: Integer);
+begin
+  RipeMD160InitDigest(P160BitDigest(FDigest)^);
+end;
+
+procedure TRipeMD160Hash.ProcessBuf(const Buf; const BufSize: Integer);
+begin
+  RipeMD160Buf(P160BitDigest(FDigest)^, Buf, BufSize);
+end;
+
+procedure TRipeMD160Hash.ProcessFinalBuf(const Buf; const BufSize: Integer; const TotalSize: Int64);
+begin
+  RipeMD160FinalBuf(P160BitDigest(FDigest)^, Buf, BufSize, TotalSize);
+end;
+
+class function TRipeMD160Hash.DigestSize: Integer;
+begin
+  Result := 20;
+end;
+
+class function TRipeMD160Hash.BlockSize: Integer;
+begin
+  Result := 64;
+end;
+
+
+
+{                                                                              }
 { THMAC_MD5Hash                                                                }
 {                                                                              }
 destructor THMAC_MD5Hash.Destroy;
@@ -3929,7 +4324,7 @@ const
       TCRC16Hash, TCRC32Hash,
       TAdler32Hash,
       TELFHash,
-      TMD5Hash, TSHA1Hash, TSHA256Hash, TSHA512Hash,
+      TMD5Hash, TSHA1Hash, TSHA256Hash, TSHA512Hash, TRipeMD160Hash,
       THMAC_MD5Hash, THMAC_SHA1Hash, THMAC_SHA256Hash, THMAC_SHA512Hash);
 
 function GetHashClassByType(const HashType: THashType): THashClass;
@@ -4102,6 +4497,22 @@ begin
   Assert(SHA512DigestToHexA(CalcHMAC_SHA512('Jefe', 'what do ya want for nothing?')) = '164b7a7bfcf819e2e395fbe73b56e0a387bd64222e831fd610270cd7ea2505549758bf75c05a994a6d034f65f8f0e6fdcaeab1a34d4a6b4b636e070a38bce737');
   SetLength(S, 131); FillChar(Pointer(S)^, 131, #$aa);
   Assert(SHA512DigestToHexA(CalcHMAC_SHA512(S, 'This is a test using a larger than block-size key and a larger than block-size data. The key needs to be hashed before being used by the HMAC algorithm.')) = 'e37b6a775dc87dbaa4dfa9f96e5e3ffddebd71f8867289865df5a32d20cdc944b6022cac3c4982b10d5eeb55c3e4de15134676fb6de0446065c97440fa8c6a58');
+
+  // RipeMD160
+  Assert(RipeMD160DigestToHexA(CalcRipeMD160('')) = '9c1185a5c5e9fc54612808977ee8f548b2258d31');
+  Assert(RipeMD160DigestToHexA(CalcRipeMD160('a')) = '0bdc9d2d256b3ee9daae347be6f4dc835a467ffe');
+  Assert(RipeMD160DigestToHexA(CalcRipeMD160('abc')) = '8eb208f7e05d987a9b044a8e98c6b087f15a0bfc');
+  Assert(RipeMD160DigestToHexA(CalcRipeMD160('message digest')) = '5d0689ef49d2fae572b881b123a85ffa21595f36');
+  Assert(RipeMD160DigestToHexA(CalcRipeMD160('abcdefghijklmnopqrstuvwxyz')) = 'f71c27109c692c1b56bbdceb5b9d2865b3708dbc');
+  Assert(RipeMD160DigestToHexA(CalcRipeMD160('abcdbcdecdefdefgefghfghighijhijkijkljklmklmnlmnomnopnopq')) = '12a053384a9c0c88e405a06c27dcf49ada62eb2b');
+  Assert(RipeMD160DigestToHexA(CalcRipeMD160('ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789')) = 'b0e20b6e3116640286ed3a87a5713079b21f5189');
+  Assert(RipeMD160DigestToHexA(CalcRipeMD160('12345678901234567890123456789012345678901234567890123456789012345678901234567890')) = '9b752e45573d4b39f4dbd3323cab82bf63326bfb');
+  Assert(RipeMD160DigestToHexA(CalcRipeMD160(MillionA)) = '52783243c1697bdbe16d37f97f68f08325dc1528');
+  Assert(RipeMD160DigestToHexA(CalcRipeMD160('Fundamentals')) = '0b4dfcb4cf845bee8a53bad703e164b50e8199cc');
+  Assert(RipeMD160DigestToHexA(CalcRipeMD160('12345678901234567890123456789012345678901234567890123456789012345678901234567890123456789012345678901234567890123456789')) = 'e5ad452926b1b80e69a8c116748386ed920fd80e');          // 119 bytes
+  Assert(RipeMD160DigestToHexA(CalcRipeMD160('123456789012345678901234567890123456789012345678901234567890123456789012345678901234567890123456789012345678901234567890')) = '65aaa2d6fb77e63b02a56ed9eced04fe47da43c1');         // 120 bytes
+  Assert(RipeMD160DigestToHexA(CalcRipeMD160('1234567890123456789012345678901234567890123456789012345678901234567890123456789012345678901234567890123456789012345678901234567')) = '5ef3b16743e09d8ac8410d03e72bb2fabb507749');  // 127 bytes
+  Assert(RipeMD160DigestToHexA(CalcRipeMD160('12345678901234567890123456789012345678901234567890123456789012345678901234567890123456789012345678901234567890123456789012345678')) = 'e6841f68c8fe1a94cbb8b53d79056d139434b49a'); // 128 bytes
 end;
 {$ENDIF}
 

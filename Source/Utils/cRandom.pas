@@ -5,7 +5,7 @@
 {   File version:     4.13                                                     }
 {   Description:      Random number functions                                  }
 {                                                                              }
-{   Copyright:        Copyright © 1999-2011, David J Butler                    }
+{   Copyright:        Copyright (c) 1999-2011, David J Butler                  }
 {                     All rights reserved.                                     }
 {                     Redistribution and use in source and binary forms, with  }
 {                     or without modification, are permitted provided that     }
@@ -61,9 +61,20 @@
 {$IFDEF FREEPASCAL}{$IFDEF DEBUG}
   {$WARNINGS OFF}{$HINTS OFF}
 {$ENDIF}{$ENDIF}
+
 unit cRandom;
 
 interface
+
+
+
+{                                                                              }
+{ UnicodeString                                                                }
+{                                                                              }
+{$IFNDEF SupportUnicodeString}
+type
+  UnicodeString = WideString;
+{$ENDIF}
 
 
 
@@ -97,11 +108,16 @@ function  RandomByteNonZero: Byte;
 function  RandomWord: Word;
 function  RandomInt64: Int64; overload;
 function  RandomInt64(const N: Int64): Int64; overload;
-function  RandomHex(const Digits: Integer = 8): String;
+
+function  RandomHex(const Digits: Integer): String;
+function  RandomHexA(const Digits: Integer): AnsiString;
+function  RandomHexU(const Digits: Integer): UnicodeString;
+
 function  RandomFloat: Extended;
-function  RandomAlphaStr(const Length: Integer): AnsiString;
-function  RandomPseudoWord(const Length: Integer): AnsiString;
-function  RandomPassword(const MinLength, MaxLength: Integer;
+
+function  RandomUpperAlphaStrA(const Length: Integer): AnsiString;
+function  RandomPseudoWordA(const Length: Integer): AnsiString;
+function  RandomPasswordA(const MinLength, MaxLength: Integer;
           const CaseSensitive, UseSymbols, UseNumbers: Boolean): AnsiString;
 
 
@@ -682,19 +698,51 @@ begin
     end;
 end;
 
+const
+  HexDigits  : String = '0123456789ABCDEF';
+  HexDigitsA : AnsiString = '0123456789ABCDEF';
+  HexDigitsU : UnicodeString = '0123456789ABCDEF';
+
 function RandomHex(const Digits: Integer): String;
 var I : Integer;
 begin
-  Result := '';
-  Repeat
-    I := Digits - Length(Result);
-    if I > 0 then
-      Result := Result + IntToHex(RandomUniform, 8);
-  Until I <= 0;
+  if Digits <= 0 then
+    begin
+      Result := '';
+      exit;
+    end;
   SetLength(Result, Digits);
+  for I := 1 to Digits do
+    Result[I] := HexDigits[1 + RandomUniform(16)];
 end;
 
-function RandomAlphaStr(const Length: Integer): AnsiString;
+function RandomHexA(const Digits: Integer): AnsiString;
+var I : Integer;
+begin
+  if Digits <= 0 then
+    begin
+      Result := '';
+      exit;
+    end;
+  SetLength(Result, Digits);
+  for I := 1 to Digits do
+    Result[I] := HexDigitsA[1 + RandomUniform(16)];
+end;
+
+function RandomHexU(const Digits: Integer): UnicodeString;
+var I : Integer;
+begin
+  if Digits <= 0 then
+    begin
+      Result := '';
+      exit;
+    end;
+  SetLength(Result, Digits);
+  for I := 1 to Digits do
+    Result[I] := HexDigitsU[1 + RandomUniform(16)];
+end;
+
+function RandomUpperAlphaStrA(const Length: Integer): AnsiString;
 var I : Integer;
 begin
   if Length <= 0 then
@@ -713,7 +761,7 @@ const
   Consonants     = 'BCDFGHJKLMNPQRSTVWXZ';
   ConsonantCount = Length(Consonants);
 
-function RandomPseudoWord(const Length: Integer): AnsiString;
+function RandomPseudoWordA(const Length: Integer): AnsiString;
 var I, A, P, T : Integer;
 begin
   if Length <= 0 then
@@ -745,7 +793,7 @@ const
   PasswordNumberChars = '0123456789';
   PasswordNumberCharCount = Length(PasswordNumberChars);
 
-function RandomPassword(const MinLength, MaxLength: Integer;
+function RandomPasswordA(const MinLength, MaxLength: Integer;
          const CaseSensitive, UseSymbols, UseNumbers: Boolean): AnsiString;
 var I, J, K, N, Length : Integer;
     C : AnsiChar;
@@ -759,7 +807,7 @@ begin
     Length := MinLength
   else
     Length := MinLength + RandomUniform(MaxLength - MinLength + 1);
-  Result := RandomPseudoWord(Length);
+  Result := RandomPseudoWordA(Length);
   if CaseSensitive then
     begin
       N := RandomUniform(1 + Length div 2);
@@ -835,11 +883,11 @@ var I, L : Integer;
     A, B, C : LongWord;
     T1, T2 : Int64;
 begin
-  Assert(Length(RandomPassword(0, 0, True, True, True)) = 0);
-  Assert(Length(RandomPassword(1, 1, True, True, True)) = 1);
+  Assert(Length(RandomPasswordA(0, 0, True, True, True)) = 0);
+  Assert(Length(RandomPasswordA(1, 1, True, True, True)) = 1);
   for I := 1 to 100 do
   begin
-    L := Length(RandomPassword(5, 16, True, True, True));
+    L := Length(RandomPasswordA(5, 16, True, True, True));
     Assert((L >= 5) and (L <= 16));
   end;
   // Note: These are primitive sanity tests that may fail occasionally

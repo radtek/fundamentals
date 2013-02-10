@@ -5,7 +5,7 @@
 {   File version:     4.06                                                     }
 {   Description:      Maths utility functions                                  }
 {                                                                              }
-{   Copyright:        Copyright © 1995-2012, David J Butler                    }
+{   Copyright:        Copyright (c) 1995-2012, David J Butler                  }
 {                     All rights reserved.                                     }
 {                     Redistribution and use in source and binary forms, with  }
 {                     or without modification, are permitted provided that     }

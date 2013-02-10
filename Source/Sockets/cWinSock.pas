@@ -5,7 +5,7 @@
 {   File version:     4.10                                                     }
 {   Description:      WinSock API                                              }
 {                                                                              }
-{   Copyright:        Copyright © 2001-2011, David J Butler                    }
+{   Copyright:        Copyright (c) 2001-2011, David J Butler                  }
 {                     All rights reserved.                                     }
 {                     This file is licensed under the BSD License.             }
 {                     See http://www.opensource.org/licenses/bsd-license.php   }

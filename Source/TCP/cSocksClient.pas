@@ -9,7 +9,7 @@
 {                                                                              }
 {   A SOCKS client implementation that is transport agnostic.                  }
 {                                                                              }
-{   Copyright:        Copyright © 2008-2011, David J Butler                    }
+{   Copyright:        Copyright (c) 2008-2011, David J Butler                  }
 {                     All rights reserved.                                     }
 {                     This file is licensed under the BSD License.             }
 {                     See http://www.opensource.org/licenses/bsd-license.php   }
