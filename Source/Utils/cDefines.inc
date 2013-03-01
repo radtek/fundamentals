@@ -36,6 +36,7 @@
 {     DELPHI2010      - Delphi 2010.                                           }
 {     DELPHIXE        - Delphi XE.                                             }
 {     DELPHIXE2       - Delphi XE2.                                            }
+{     DELPHIXE3       - Delphi XE3.                                            }
 {                                                                              }
 {     DELPHI3_UP      - Delphi 3 or later.                                     }
 {     DELPHI4_UP      - Delphi 4 or later.                                     }
@@ -50,6 +51,7 @@
 {     DELPHI2010_UP   - Delphi 2010 or later.                                  }
 {     DELPHIXE_UP     - Delphi XE or later.                                    }
 {     DELPHIXE2_UP    - Delphi XE2 or later.                                   }
+{     DELPHIXE3_UP    - Delphi XE3 or later.                                   }
 {                                                                              }
 {     DELPHI3_DOWN    - Delphi 3 or earlier.                                   }
 {     DELPHI4_DOWN    - Delphi 4 or earlier.                                   }
@@ -632,9 +634,7 @@
 {$ENDIF}
 
 {$IFDEF DELPHIXE3_UP}
-  {$IFDEF CPU_X86_64}
-    {$DEFINE ExtendedIsDouble}
-  {$ENDIF}
+  {$DEFINE ExtendedIsDouble}
 {$ENDIF}
 
 

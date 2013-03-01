@@ -393,9 +393,11 @@ type
   PFloat = ^Float;
 
 {$IFNDEF ManagedCode}
+{$IFNDEF ExtendedIsDouble}
 const
   ExtendedNan      : ExtendedRec = (Mantissa:($FFFFFFFF, $FFFFFFFF); Exponent:$7FFF);
   ExtendedInfinity : ExtendedRec = (Mantissa:($00000000, $80000000); Exponent:$7FFF);
+{$ENDIF}
 {$ENDIF}
 
 { Min returns smallest of A and B                                              }
@@ -421,8 +423,10 @@ function  FloatExponentBase10(const A: Extended; var Exponent: Integer): Boolean
 
 { FloatIsInfinity is True if A is a positive or negative infinity.             }
 { FloatIsNaN is True if A is Not-a-Number.                                     }
+{$IFNDEF ExtendedIsDouble}
 function  FloatIsInfinity(const A: Extended): Boolean;
 function  FloatIsNaN(const A: Extended): Boolean;
+{$ENDIF}
 
 
 
@@ -1579,6 +1583,7 @@ begin
 end;
 {$ENDIF}
 
+{$IFNDEF ExtendedIsDouble}
 function FloatIsInfinity(const A: Extended): Boolean;
 var Ext : ExtendedRec absolute A;
 begin
@@ -1596,6 +1601,7 @@ begin
   else
     Result := (Ext.Mantissa[1] <> $80000000) or (Ext.Mantissa[0] <> 0)
 end;
+{$ENDIF}
 
 
 
@@ -4958,11 +4964,13 @@ var B : Extended;
     E : Integer;
 begin
   // handle special floating point values
+  {$IFNDEF ExtendedIsDouble}
   if FloatIsInfinity(A) or FloatIsNaN(A) then
     begin
       Result := '';
       exit;
     end;
+  {$ENDIF}
   B := Abs(A);
   // very small numbers (Double precision) are zero
   if B < 1e-300 then
