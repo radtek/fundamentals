@@ -2,10 +2,10 @@
 {                                                                              }
 {   Library:          Fundamentals 4.00                                        }
 {   File name:        cCipherDES.pas                                           }
-{   File version:     0.02                                                     }
+{   File version:     4.02                                                     }
 {   Description:      DES cipher routines                                      }
 {                                                                              }
-{   Copyright:        Copyright (c) 2007-2011, David J Butler                  }
+{   Copyright:        Copyright (c) 2007-2013, David J Butler                  }
 {                     All rights reserved.                                     }
 {                     This file is licensed under the BSD License.             }
 {                     See http://www.opensource.org/licenses/bsd-license.php   }
@@ -41,8 +41,8 @@
 {                                                                              }
 { Revision history:                                                            }
 {                                                                              }
-{   2007/01/06  0.01  DES and Triple-DES                                       }
-{   2010/12/16  0.02  DES-40                                                   }
+{   2007/01/06  4.01  DES and Triple-DES                                       }
+{   2010/12/16  4.02  DES-40                                                   }
 {                                                                              }
 { Todo: Test TripeDES-3                                                        }
 {       Test DES-40                                                            }

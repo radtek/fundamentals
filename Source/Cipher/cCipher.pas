@@ -5,7 +5,7 @@
 {   File version:     4.07                                                     }
 {   Description:      Cipher library                                           }
 {                                                                              }
-{   Copyright:        Copyright (c) 2007-2011, David J Butler                  }
+{   Copyright:        Copyright (c) 2007-2013, David J Butler                  }
 {                     All rights reserved.                                     }
 {                     This file is licensed under the BSD License.             }
 {                     See http://www.opensource.org/licenses/bsd-license.php   }
@@ -41,8 +41,8 @@
 {   2007/01/07  0.02  ECB and padding support                                  }
 {   2008/06/15  0.03  CBC mode                                                 }
 {   2008/06/17  0.04  CFB and OFB modes                                        }
-{   2010/11/18  0.05  Revision                                                 }
-{   2010/12/16  0.06  AES cipher                                               }
+{   2010/11/18  4.05  Revision                                                 }
+{   2010/12/16  4.06  AES cipher                                               }
 {   2011/08/09  4.07  Revision                                                 }
 {                                                                              }
 { Todo:                                                                        }

@@ -2,10 +2,10 @@
 {                                                                              }
 {   Library:          Fundamentals 4.00                                        }
 {   File name:        cCipherRC2.pas                                           }
-{   File version:     0.01                                                     }
+{   File version:     4.01                                                     }
 {   Description:      RC2 cipher routines                                      }
 {                                                                              }
-{   Copyright:        Copyright (c) 2007-2011, David J Butler                  }
+{   Copyright:        Copyright (c) 2007-2013, David J Butler                  }
 {                     All rights reserved.                                     }
 {                     This file is licensed under the BSD License.             }
 {                     See http://www.opensource.org/licenses/bsd-license.php   }
@@ -37,7 +37,7 @@
 {                                                                              }
 { Revision history:                                                            }
 {                                                                              }
-{   2007/01/05  0.01  Initial version.                                         }
+{   2007/01/05  4.01  Initial version.                                         }
 {                                                                              }
 {******************************************************************************}
 

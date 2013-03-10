@@ -5,7 +5,12 @@
 {   File version:     0.02                                                     }
 {   Description:      FunE (Fundamentals Encryption) cipher                    }
 {                                                                              }
-{   Copyright:        Copyright (c) 2010-2011, David J Butler                  }
+{                     FunE is an experimental cipher developed by              }
+{                     David J Butler.                                          }
+{                     It uses a 256 bit key with 1024 bits of internal         }
+{                     state.                                                   }
+{                                                                              }
+{   Copyright:        Copyright (c) 2010-2013, David J Butler                  }
 {                     All rights reserved.                                     }
 {                     This file is licensed under the BSD License.             }
 {                     See http://www.opensource.org/licenses/bsd-license.php   }
@@ -128,13 +133,15 @@ begin
 end;
 
 // TransformB_ROT
+// Rotate transform
 // Invertible
 function FUNE_TransformB_ROT(const A: Byte): Byte;
 begin
   Result := Byte(A shl 3) or Byte(A shr 5);
 end;
 
-// TransformB_XOR
+// TransformB_BTC
+// Bit count transform
 // Not invertible
 const
   FUNE_BitCountTable : array[Byte] of Byte =
@@ -156,9 +163,9 @@ const
      4, 5, 5, 6, 5, 6, 6, 7, 5, 6, 6, 7, 6, 7, 7, 8);
 
   FUNE_TransformB_XORTable : array[0..8] of Byte = (
-     $F0, $1E, $D2, $3C, $B4, $5A, $96, $78, $A5);
+     $F0, $1E, $D2, $3C, $B4, $5A, $96, $78, $87);
 
-function FUNE_TransformB_XOR(const A: Byte): Byte;
+function FUNE_TransformB_BTC(const A: Byte): Byte;
 var F : Byte;
 begin
   F := FUNE_BitCountTable[A];
@@ -167,6 +174,7 @@ begin
 end;
 
 // TransformB_MUL
+// Multiply transform
 // Not invertible
 function FUNE_TransformB_MUL(const A: Byte): Byte;
 begin
@@ -205,12 +213,12 @@ var L : array[1..4] of Byte;
     M : array[1..4] of Byte;
 begin
   L[1] := FUNE_TransformB_SUB(A);
-  L[2] := FUNE_TransformB_XOR(A);
+  L[2] := FUNE_TransformB_BTC(A);
   L[3] := FUNE_TransformB_MUL(A);
   L[4] := FUNE_TransformB_ROT(A);
 
   M[1] := FUNE_TransformB_SUB(I);
-  M[2] := FUNE_TransformB_XOR(I);
+  M[2] := FUNE_TransformB_BTC(I);
   M[3] := FUNE_TransformB_MUL(I);
   M[4] := FUNE_TransformB_ROT(I);
 
@@ -220,7 +228,7 @@ begin
   L[4] := FUNE_TransformBB_ADD(L[4], M[3]);
 
   L[1] := FUNE_TransformB_SUB(L[1]);
-  L[2] := FUNE_TransformB_XOR(L[2]);
+  L[2] := FUNE_TransformB_BTC(L[2]);
   L[3] := FUNE_TransformB_MUL(L[3]);
   L[4] := FUNE_TransformB_ROT(L[4]);
 
@@ -229,7 +237,7 @@ begin
   L[3] := FUNE_TransformBB_ADD(L[3], L[4]);
   L[4] := FUNE_TransformBB_ADD(L[4], L[1]);
 
-  L[1] := FUNE_TransformB_XOR(L[1]);
+  L[1] := FUNE_TransformB_BTC(L[1]);
   L[2] := FUNE_TransformB_MUL(L[2]);
   L[3] := FUNE_TransformB_ROT(L[3]);
   L[4] := FUNE_TransformB_SUB(L[4]);
@@ -242,7 +250,7 @@ begin
   L[1] := FUNE_TransformB_MUL(L[1]);
   L[2] := FUNE_TransformB_ROT(L[2]);
   L[3] := FUNE_TransformB_SUB(L[3]);
-  L[4] := FUNE_TransformB_XOR(L[4]);
+  L[4] := FUNE_TransformB_BTC(L[4]);
 
   L[1] := FUNE_TransformBB_ADD(L[1], L[4]);
   L[2] := FUNE_TransformBB_ADD(L[2], L[1]);
@@ -251,7 +259,7 @@ begin
 
   L[1] := FUNE_TransformB_ROT(L[1]);
   L[2] := FUNE_TransformB_SUB(L[2]);
-  L[3] := FUNE_TransformB_XOR(L[3]);
+  L[3] := FUNE_TransformB_BTC(L[3]);
   L[4] := FUNE_TransformB_MUL(L[4]);
 
   Result := PLongWord(@L)^;

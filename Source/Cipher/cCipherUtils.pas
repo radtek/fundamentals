@@ -1,11 +1,11 @@
 {******************************************************************************}
 {                                                                              }
 {   Library:          Fundamentals 4.00                                        }
-{   File name:        cCipherRC4.pas                                           }
-{   File version:     0.06                                                     }
-{   Description:      RC4 cipher routines                                      }
+{   File name:        cCipherUtils.pas                                         }
+{   File version:     4.01                                                     }
+{   Description:      Cipher library                                           }
 {                                                                              }
-{   Copyright:        Copyright (c) 2007-2011, David J Butler                  }
+{   Copyright:        Copyright (c) 2007-2013, David J Butler                  }
 {                     All rights reserved.                                     }
 {                     This file is licensed under the BSD License.             }
 {                     See http://www.opensource.org/licenses/bsd-license.php   }
@@ -35,117 +35,93 @@
 {   Forum:            http://sourceforge.net/forum/forum.php?forum_id=2117     }
 {   E-mail:           fundamentalslib at gmail.com                             }
 {                                                                              }
-{ References:                                                                  }
-{                                                                              }
-{   * www.mozilla.org/projects/security/pki/nss/                               }
-{       draft-kaukonen-cipher-arcfour-03.txt                                   }
-{                                                                              }
 { Revision history:                                                            }
 {                                                                              }
-{   2007/01/05  0.01  Initial version.                                         }
+{   2007/01/05  4.01  Initial version                                          }
 {                                                                              }
 {******************************************************************************}
 
 {$INCLUDE cCipher.inc}
 
-unit cCipherRC4;
+unit cCipherUtils;
 
 interface
 
+uses
+  { System }
+  SysUtils;
+
 
 
 {                                                                              }
-{ RC4                                                                          }
-{ Also known as Arcfour.                                                       }
+{ Cipher errors                                                                }
 {                                                                              }
+const
+  CipherError_InvalidCipher     = 1;
+  CipherError_InvalidKeySize    = 2;
+  CipherError_InvalidKeyBits    = 3;
+  CipherError_InvalidCipherMode = 4;
+  CipherError_InvalidBufferSize = 5;
+  CipherError_InvalidBuffer     = 6;
+  CipherError_InvalidData       = 7;
+
 type
-  TRC4SBox = array[Byte] of Byte;
-  TRC4Context = packed record
-    S  : TRC4SBox;
-    SI : Byte;
-    SJ : Byte;
+  ECipher = class(Exception)
+  protected
+    FErrorCode : Integer;
+  public
+    constructor Create(const ErrorCode: Integer; const Msg: String);
+    property ErrorCode: Integer read FErrorCode;
   end;
-  PRC4Context = ^TRC4Context;
 
-procedure RC4Init(const Key; const KeySize: Integer; var Context: TRC4Context);
-procedure RC4Buffer(var Context: TRC4Context; var Buffer; const BufferSize: Integer);
+
+
+{                                                                              }
+{ Secure clear helper function                                                 }
+{                                                                              }
+procedure SecureClear(var Buffer; const BufferSize: Integer);
+procedure SecureClearStr(var S: AnsiString);
 
 
 
 implementation
 
-uses
-  { Cipher }
-  cCipherUtils;
-
-
-  
-{                                                                              }
-{ Utilities                                                                    }
-{                                                                              }
-
-{$IFDEF DELPHI5}
-type
-  PByte = ^Byte;
-{$ENDIF}
-
 
 
 {                                                                              }
-{ RC4                                                                          }
+{ Cipher errors                                                                }
 {                                                                              }
-procedure RC4Init(const Key; const KeySize: Integer; var Context: TRC4Context);
-type
-  TRC4KeyBuffer = array[Byte] of Byte;
-  PRC4KeyBuffer = ^TRC4KeyBuffer;
-var I, J, T : Byte;
-    K       : PRC4KeyBuffer;
+constructor ECipher.Create(const ErrorCode: Integer; const Msg: String);
 begin
-  // Validate parameters
-  if KeySize > 256 then
-    raise ECipher.Create(CipherError_InvalidKeySize, 'Maximum RC4 key length is 256');
-  if KeySize < 1 then
-    raise ECipher.Create(CipherError_InvalidKeySize, 'Minimum RC4 key length is 1');
-  // Prepare RC4 context
-  with Context do
-    begin
-      for I := 0 to 255 do
-        S[I] := I;
-      K := @Key;
-      J := 0;
-      for I := 0 to 255 do
-        begin
-          J := Byte(J + S[I] + K^[I mod KeySize]);
-          T := S[I];
-          S[I] := S[J];
-          S[J] := T;
-        end;
-      SI := 0;
-      SJ := 0;
-    end;
+  FErrorCode := ErrorCode;
+  inherited Create(Msg);
 end;
 
-procedure RC4Buffer(var Context: TRC4Context; var Buffer; const BufferSize: Integer);
-var T : Byte;
-    F : Integer;
-    P : PByte;
+
+
+{                                                                              }
+{ Secure clear helper function                                                 }
+{   Securely clears a piece of memory before it is released to help prevent    }
+{   sensitive information from being exposed.                                  }
+{                                                                              }
+procedure SecureClear(var Buffer; const BufferSize: Integer);
 begin
-  P := @Buffer;
-  with Context do
-    for F := 0 to BufferSize - 1 do
-      begin
-        SI := Byte(SI + 1);
-        SJ := Byte(SJ + S[SI]);
-        T := S[SI];
-        S[SI] := S[SJ];
-        S[SJ] := T;
-        T := Byte(S[SI] + S[SJ]);
-        T := S[T];
-        P^ := P^ xor T;
-        Inc(P);
-      end;
+  if BufferSize <= 0 then
+    exit;
+  FillChar(Buffer, BufferSize, $00);
+end;
+
+procedure SecureClearStr(var S: AnsiString);
+var L : Integer;
+begin
+  L := Length(S);
+  if L = 0 then
+    exit;
+  SecureClear(S[1], L);
+  S := '';
 end;
 
 
 
 end.
+

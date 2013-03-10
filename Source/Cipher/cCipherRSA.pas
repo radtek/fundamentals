@@ -2,10 +2,10 @@
 {                                                                              }
 {   Library:          Fundamentals 4.00                                        }
 {   File name:        cCipherRSA.pas                                           }
-{   File version:     0.06                                                     }
+{   File version:     4.06                                                     }
 {   Description:      RSA cipher routines                                      }
 {                                                                              }
-{   Copyright:        Copyright (c) 2008-2011, David J Butler                  }
+{   Copyright:        Copyright (c) 2008-2013, David J Butler                  }
 {                     All rights reserved.                                     }
 {                     This file is licensed under the BSD License.             }
 {                     See http://www.opensource.org/licenses/bsd-license.php   }
@@ -41,8 +41,8 @@
 {   2010/08/04  0.02  Update for changes to HugeWord                           }
 {   2010/08/04  0.03  PKCS encoding                                            }
 {   2010/08/09  0.04  OAEP encoding                                            }
-{   2010/08/10  0.05  Test cases                                               }
-{   2010/12/01  0.06  RSAPublicKeyAssignBuf                                    }
+{   2010/08/10  4.05  Test cases                                               }
+{   2010/12/01  4.06  RSAPublicKeyAssignBuf                                    }
 {                                                                              }
 {******************************************************************************}
 
