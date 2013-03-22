@@ -229,7 +229,9 @@ function  WideStringToUTF8Size(const S: WideString): Integer;
 function  UnicodeStringToUTF8Size(const S: UnicodeString): Integer;
 function  WideBufToUTF8String(const Buf: PWideChar; const Len: Integer): AnsiString;
 function  WideStringToUTF8String(const S: WideString): AnsiString;
+function  WideStringToUnicodeString(const S: WideString): UnicodeString;
 function  UnicodeStringToUTF8String(const S: UnicodeString): AnsiString;
+function  UnicodeStringToWideString(const S: UnicodeString): WideString;
 function  LongBufToUTF8Size(const Buf: PAnsiChar; const Len: Integer): Integer;
 function  LongStringToUTF8Size(const S: AnsiString): Integer;
 function  LongStringToUTF8String(const S: AnsiString): AnsiString;
@@ -2260,9 +2262,19 @@ begin
   Result := WideBufToUTF8String(Pointer(S), Length(S));
 end;
 
+function WideStringToUnicodeString(const S: WideString): UnicodeString;
+begin
+  Result := S;
+end;
+
 function UnicodeStringToUTF8String(const S: UnicodeString): AnsiString;
 begin
   Result := WideBufToUTF8String(Pointer(S), Length(S));
+end;
+
+function UnicodeStringToWideString(const S: UnicodeString): WideString;
+begin
+  Result := S;
 end;
 
 const
