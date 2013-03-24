@@ -2,10 +2,10 @@
 {                                                                              }
 {   Library:          Fundamentals 4.00                                        }
 {   File name:        cHTTPClient.pas                                          }
-{   File version:     4.08                                                     }
+{   File version:     4.09                                                     }
 {   Description:      HTTP client.                                             }
 {                                                                              }
-{   Copyright:        Copyright (c) 2009-2011, David J Butler                  }
+{   Copyright:        Copyright (c) 2009-2013, David J Butler                  }
 {                     All rights reserved.                                     }
 {                     This file is licensed under the BSD License.             }
 {                     See http://www.opensource.org/licenses/bsd-license.php   }
@@ -45,6 +45,7 @@
 {  2011/06/19  0.06  Response content mechanisms.                              }
 {  2011/07/31  0.07  Connection close support.                                 }
 {  2011/10/06  4.08  SynchronisedEvents option.                                }
+{  2013/03/23  4.09  CustomHeader property.                                    }
 {                                                                              }
 {******************************************************************************}
 
@@ -171,6 +172,7 @@ type
     FReferer       : AnsiString;
     FCookie        : AnsiString;
     FAuthorization : AnsiString;
+    FCustomHeaders : THTTPCustomHeaders;
 
     // request content parameters
     FRequestContentType   : AnsiString;
@@ -255,6 +257,11 @@ type
     procedure SetKeepAlive(const KeepAlive: THTTPKeepAliveOption);
     procedure SetReferer(const Referer: AnsiString);
     procedure SetAuthorization(const Authorization: AnsiString);
+
+    function  GetCustomHeaderByName(const FieldName: AnsiString): PHTTPCustomHeader;
+    function  AddCustomHeader(const FieldName: AnsiString): PHTTPCustomHeader;
+    function  GetCustomHeader(const FieldName: AnsiString): AnsiString;
+    procedure SetCustomHeader(const FieldName: AnsiString; const FieldValue: AnsiString);
 
     procedure SetRequestContentType(const RequestContentType: AnsiString);
     function  GetRequestContentMechanism: THTTPContentWriterMechanism;
@@ -395,6 +402,7 @@ type
     property  Referer: AnsiString read FReferer write SetReferer;
     property  Cookie: AnsiString read FCookie write FCookie;
     property  Authorization: AnsiString read FAuthorization write SetAuthorization;
+    property  CustomHeader[const FieldName: AnsiString]: AnsiString read GetCustomHeader write SetCustomHeader;
 
     property  RequestContentType: AnsiString read FRequestContentType write SetRequestContentType;
     property  RequestContentMechanism: THTTPContentWriterMechanism read GetRequestContentMechanism write SetRequestContentMechanism default hctmString;
@@ -409,7 +417,7 @@ type
     property  State: THTTP4ClientState read GetState;
     property  StateStr: String read GetStateStr;
     property  Active: Boolean read FActive write SetActive default False;
-    
+
     procedure Request;
 
     property  ErrorMsg: String read FErrorMsg;
@@ -894,6 +902,58 @@ begin
     exit;
   CheckNotBusyWithRequest;
   FAuthorization := Authorization;
+end;
+
+function TF4HTTPClient.GetCustomHeaderByName(const FieldName: AnsiString): PHTTPCustomHeader;
+var I : Integer;
+    P : PHTTPCustomHeader;
+begin
+  for I := 0 to Length(FCustomHeaders) - 1 do
+    begin
+      P := @FCustomHeaders[I];
+      if StrEqualNoAsciiCaseA(FieldName, P^.FieldName) then
+        begin
+          Result := P;
+          exit;
+        end;
+    end;
+  Result := nil;
+end;
+
+function TF4HTTPClient.AddCustomHeader(const FieldName: AnsiString): PHTTPCustomHeader;
+var L : Integer;
+    P : PHTTPCustomHeader;
+begin
+  Assert(FieldName <> '');
+  L := Length(FCustomHeaders);
+  SetLength(FCustomHeaders, L + 1);
+  P := @FCustomHeaders[L];
+  P^.FieldName := FieldName;
+  Result := P;
+end;
+
+function TF4HTTPClient.GetCustomHeader(const FieldName: AnsiString): AnsiString;
+var P : PHTTPCustomHeader;
+begin
+  P := GetCustomHeaderByName(FieldName);
+  if Assigned(P) then
+    Result := P^.FieldValue
+  else
+    Result := '';
+end;
+
+procedure TF4HTTPClient.SetCustomHeader(const FieldName: AnsiString; const FieldValue: AnsiString);
+var P : PHTTPCustomHeader;
+begin
+  P := GetCustomHeaderByName(FieldName);
+  if Assigned(P) then
+    if StrEqualNoAsciiCaseA(FieldValue, P^.FieldValue) then
+      exit;
+  CheckNotBusyWithRequest;
+  if not Assigned(P) then
+    P := AddCustomHeader(FieldName);
+  Assert(Assigned(P));
+  P^.FieldValue := FieldValue;
 end;
 
 procedure TF4HTTPClient.SetRequestContentType(const RequestContentType: AnsiString);
@@ -1688,6 +1748,8 @@ begin
       FRequest.Header.Cookie.Custom := FCookie;
     end;
 
+  FRequest.Header.CustomHeaders := FCustomHeaders;
+
   if FRequestContentType <> '' then
     begin
       FRequest.Header.CommonHeaders.ContentType.Value := hctCustomString;
@@ -1715,7 +1777,7 @@ begin
   Assert(Assigned(FTCPClient));
   Assert(FState in [hcsSendingRequest, hcsSendingContent]);
   //
-  FTCPClient.Connection.WriteAnsiStr(S);
+  FTCPClient.Connection.WriteStrA(S);
 end;
 
 procedure TF4HTTPClient.SendRequest;
