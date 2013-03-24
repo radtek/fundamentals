@@ -2,7 +2,7 @@
 {                                                                              }
 {   Library:          Fundamentals 4.00                                        }
 {   File name:        cUtils.pas                                               }
-{   File version:     4.51                                                     }
+{   File version:     4.52                                                     }
 {   Description:      Utility functions for simple data types                  }
 {                                                                              }
 {   Copyright:        Copyright (c) 2000-2013, David J Butler                  }
@@ -101,6 +101,7 @@
 {   2012/04/11  4.49  StringToFloat/FloatToStr functions.                      }
 {   2012/08/26  4.50  UnicodeString versions of functions.                     }
 {   2013/01/29  4.51  Compilable with Delphi XE3 x86-64.                       }
+{   2013/03/22  4.52  Minor fixes.                                             }
 {                                                                              }
 { Supported compilers:                                                         }
 {                                                                              }
@@ -113,7 +114,7 @@
 {   Delphi 2007 Win32 i386              4.50  2012/08/26                       }
 {   Delphi 2009 Win32 i386              4.46  2011/09/27                       }
 {   Delphi 2009 .NET                    4.45  2009/10/09                       }
-{   Delphi XE                           4.51  2013/01/29                       }
+{   Delphi XE                           4.52  2013/03/22                       }
 {   Delphi XE3 x86-64                   4.51  2013/01/29                       }
 {   FreePascal 2.0.4 Linux i386                                                }
 {   FreePascal 2.4.0 OSX x86-64         4.46  2010/06/27                       }
@@ -3553,11 +3554,18 @@ begin
 end;
 
 function IntToStringA(const A: Int64): AnsiString;
-var L, T, I : Integer;
+var T : Int64;
+    L, I : Integer;
 begin
+  // special cases
   if A = 0 then
     begin
       Result := '0';
+      exit;
+    end;
+  if A = MinInt64 then
+    begin
+      Result := '-9223372036854775808';
       exit;
     end;
   // calculate string length
@@ -3589,11 +3597,18 @@ begin
 end;
 
 function IntToStringW(const A: Int64): WideString;
-var L, T, I : Integer;
+var T : Int64;
+    L, I : Integer;
 begin
+  // special cases
   if A = 0 then
     begin
       Result := '0';
+      exit;
+    end;
+  if A = MinInt64 then
+    begin
+      Result := '-9223372036854775808';
       exit;
     end;
   // calculate string length
@@ -3627,9 +3642,15 @@ end;
 function IntToStringU(const A: Int64): UnicodeString;
 var L, T, I : Integer;
 begin
+  // special cases
   if A = 0 then
     begin
       Result := '0';
+      exit;
+    end;
+  if A = MinInt64 then
+    begin
+      Result := '-9223372036854775808';
       exit;
     end;
   // calculate string length
@@ -3661,11 +3682,18 @@ begin
 end;
 
 function IntToString(const A: Int64): String;
-var L, T, I : Integer;
+var T : Int64;
+    L, I : Integer;
 begin
+  // special cases
   if A = 0 then
     begin
       Result := '0';
+      exit;
+    end;
+  if A = MinInt64 then
+    begin
+      Result := '-9223372036854775808';
       exit;
     end;
   // calculate string length
@@ -7482,13 +7510,19 @@ begin
   Assert(HexCharToInt('F') = 15,   'HexCharToInt');
   Assert(HexCharToInt('G') = -1,   'HexCharToInt');
 
-  Assert(IntToStringA(0) = '0',       'IntToAnsiString');
-  Assert(IntToStringA(1) = '1',       'IntToAnsiString');
-  Assert(IntToStringA(-1) = '-1',     'IntToAnsiString');
-  Assert(IntToStringA(10) = '10',     'IntToAnsiString');
-  Assert(IntToStringA(-10) = '-10',   'IntToAnsiString');
-  Assert(IntToStringA(123) = '123',   'IntToAnsiString');
-  Assert(IntToStringA(-123) = '-123', 'IntToAnsiString');
+  Assert(IntToStringA(0) = '0',                           'IntToStringA');
+  Assert(IntToStringA(1) = '1',                           'IntToStringA');
+  Assert(IntToStringA(-1) = '-1',                         'IntToStringA');
+  Assert(IntToStringA(10) = '10',                         'IntToStringA');
+  Assert(IntToStringA(-10) = '-10',                       'IntToStringA');
+  Assert(IntToStringA(123) = '123',                       'IntToStringA');
+  Assert(IntToStringA(-123) = '-123',                     'IntToStringA');
+  Assert(IntToStringA(MinLongInt) = '-2147483648',        'IntToStringA');
+  Assert(IntToStringA(-2147483649) = '-2147483649',       'IntToStringA');
+  Assert(IntToStringA(MaxLongInt) = '2147483647',         'IntToStringA');
+  Assert(IntToStringA(2147483648) = '2147483648',         'IntToStringA');
+  Assert(IntToStringA(MinInt64) = '-9223372036854775808', 'IntToStringA');
+  Assert(IntToStringA(MaxInt64) = '9223372036854775807',  'IntToStringA');
 
   Assert(IntToStringW(0) = '0',                     'IntToWideString');
   Assert(IntToStringW(1) = '1',                     'IntToWideString');
@@ -7661,6 +7695,14 @@ begin
   {$IFNDEF DELPHI7_DOWN}
   Assert(not TryStringToInt64('-9223372036854775809', I),  'StringToInt');
   {$ENDIF}
+
+  Assert(StringToInt64A('0') = 0,                                       'StringToInt64');
+  Assert(StringToInt64A('1') = 1,                                       'StringToInt64');
+  Assert(StringToInt64A('-123') = -123,                                 'StringToInt64');
+  Assert(StringToInt64A('-0001') = -1,                                  'StringToInt64');
+  Assert(StringToInt64A('-9223372036854775807') = -9223372036854775807, 'StringToInt64');
+  Assert(StringToInt64A('-9223372036854775808') = -9223372036854775808, 'StringToInt64');
+  Assert(StringToInt64A('9223372036854775807') = 9223372036854775807,   'StringToInt64');
 
   Assert(HexToUIntA('FFFFFFFF') = $FFFFFFFF, 'HexStringToUInt');
   Assert(HexToUIntA('FFFFFFFF') = $FFFFFFFF, 'HexStringToUInt');

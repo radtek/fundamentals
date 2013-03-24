@@ -1,7 +1,7 @@
 {******************************************************************************}
 {                                                                              }
 {   File name:        cJSON.pas                                                }
-{   File version:     4.07                                                     }
+{   File version:     4.08                                                     }
 {   Description:      JSON                                                     }
 {                                                                              }
 {   Copyright:        Copyright (c) 2011-2013, David J Butler                  }
@@ -39,6 +39,7 @@
 {   2011/07/24  0.05  Variant getters and setters.                             }
 {   2011/08/27  0.06  Getters and setters for JSONArray.                       }
 {   2013/03/22  4.07  UnicodeString changes.                                   }
+{   2013/03/23  4.08  Improvements.                                            }
 {                                                                              }
 { References:                                                                  }
 {                                                                              }
@@ -73,7 +74,7 @@ type
   { TJSON values }
 
   EJSONValue = class(Exception);
-  
+
   EJSONSchema = class(EJSONValue);
 
   TJSONValueType = (
@@ -90,6 +91,7 @@ type
     jboIndent
     );
 
+  TJSONArray = class;
   TJSONObject = class;
 
   TJSONValue = class
@@ -107,6 +109,8 @@ type
     function  GetValueInt: Int64; virtual;
     function  GetValueFloat: Extended; virtual;
     function  GetValueBoolean: Boolean; virtual;
+    function  GetValueArray: TJSONArray; virtual;
+    function  GetValueObject: TJSONObject; virtual;
     function  GetValueVariant: Variant; virtual;
 
     procedure SetValueStr(const AValue: UnicodeString); virtual;
@@ -140,6 +144,8 @@ type
     property  ValueInt: Int64 read GetValueInt write SetValueInt;
     property  ValueFloat: Extended read GetValueFloat write SetValueFloat;
     property  ValueBoolean: Boolean read GetValueBoolean write SetValueBoolean;
+    property  ValueArray: TJSONArray read GetValueArray;
+    property  ValueObject: TJSONObject read GetValueObject;
     property  ValueVariant: Variant read GetValueVariant write SetValueVariant;
 
     property  ValueIsStr: Boolean read GetValueIsStr;
@@ -281,6 +287,8 @@ type
     function  GetItemAsInt(const Idx: Integer): Int64;
     function  GetItemAsFloat(const Idx: Integer): Extended;
     function  GetItemAsBoolean(const Idx: Integer): Boolean;
+    function  GetItemAsArray(const Idx: Integer): TJSONArray;
+    function  GetItemAsObject(const Idx: Integer): TJSONObject;
     function  GetItemAsVariant(const Idx: Integer): Variant;
 
     procedure SetItemAsStr(const Idx: Integer; const Value: UnicodeString);
@@ -294,6 +302,7 @@ type
   protected
     procedure BuildJSONString(const A: TUnicodeStringBuilder; const AOptions: TJSONStringOptions; const ALevel: Integer); override;
     function  GetValueType: TJSONValueType; override;
+    function  GetValueArray: TJSONArray; override;
     function  GetValueIsArray: Boolean; override;
 
   public
@@ -313,6 +322,8 @@ type
     property  ItemAsInt[const Idx: Integer]: Int64 read GetItemAsInt write SetItemAsInt;
     property  ItemAsFloat[const Idx: Integer]: Extended read GetItemAsFloat write SetItemAsFloat;
     property  ItemAsBoolean[const Idx: Integer]: Boolean read GetItemAsBoolean write SetItemAsBoolean;
+    property  ItemAsArray[const Idx: Integer]: TJSONArray read GetItemAsArray;
+    property  ItemAsObject[const Idx: Integer]: TJSONObject read GetItemAsObject;
     property  ItemAsVariant[const Idx: Integer]: Variant read GetItemAsVariant write SetItemAsVariant;
 
     procedure Append(const A: TJSONValue);
@@ -351,6 +362,7 @@ type
   protected
     procedure BuildJSONString(const A: TUnicodeStringBuilder; const AOptions: TJSONStringOptions; const ALevel: Integer); override;
     function  GetValueType: TJSONValueType; override;
+    function  GetValueObject: TJSONObject; override;
     function  GetValueIsObject: Boolean; override;
 
   public
@@ -639,6 +651,16 @@ end;
 function TJSONValue.GetValueBoolean: Boolean;
 begin
   raise EJSONValue.CreateFmt('%s: Conversion of value to %s not supported', [ClassName, 'boolean']);
+end;
+
+function TJSONValue.GetValueObject: TJSONObject;
+begin
+  raise EJSONValue.CreateFmt('%s: Conversion of value to %s not supported', [ClassName, 'object']);
+end;
+
+function TJSONValue.GetValueArray: TJSONArray;
+begin
+  raise EJSONValue.CreateFmt('%s: Conversion of value to %s not supported', [ClassName, 'array']);
 end;
 
 function TJSONValue.GetValueVariant: Variant;
@@ -1339,6 +1361,11 @@ begin
   Result := jvtArray;
 end;
 
+function TJSONArray.GetValueArray: TJSONArray;
+begin
+  Result := self;
+end;
+
 function TJSONArray.GetValueIsArray: Boolean;
 begin
   Result := True;
@@ -1390,6 +1417,16 @@ end;
 function TJSONArray.GetItemAsBoolean(const Idx: Integer): Boolean;
 begin
   Result := GetItem(Idx).GetValueBoolean;
+end;
+
+function TJSONArray.GetItemAsArray(const Idx: Integer): TJSONArray;
+begin
+  Result := GetItem(Idx).GetValueArray;
+end;
+
+function TJSONArray.GetItemAsObject(const Idx: Integer): TJSONObject;
+begin
+  Result := GetItem(Idx).GetValueObject;
 end;
 
 function TJSONArray.GetItemAsVariant(const Idx: Integer): Variant;
@@ -1672,6 +1709,11 @@ end;
 function TJSONObject.GetValueType: TJSONValueType;
 begin
   Result := jvtObject;
+end;
+
+function TJSONObject.GetValueObject: TJSONObject;
+begin
+  Result := self;
 end;
 
 function TJSONObject.GetValueIsObject: Boolean;
