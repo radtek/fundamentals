@@ -778,7 +778,7 @@ begin
       Result := 'pbEncodeField' + FPascalProtoStr +
           '(' + ParBuf + ', ' + ParBufSize + ', ' + ParTagID + ', ' + ParValue + ')';
     bkEnum :
-      Result := 'pbEncodeField' + FEnum.FName +
+      Result := 'pbEncodeField' + FEnum.FPascalProtoName +
           '(' + ParBuf + ', ' + ParBufSize + ', ' + ParTagID + ', ' + ParValue + ')';
     bkMsg  :
       Result := 'pbEncodeField' + FMsg.FPascalProtoName +
